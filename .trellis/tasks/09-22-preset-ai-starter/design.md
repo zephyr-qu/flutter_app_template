@@ -57,11 +57,19 @@ lib/features/article/data/article_module.dart → 同上
 
 已由 `packages/app_core` 承载（`failure` / `result` / `run_catching` / `logging` / `models` / `network` / `database` / `theme` / 三态 UI 组件 / 各 feature 的 `api|service|model`）。
 
-## 4. pubspec 变更
+## 4. pubspec 变更（版本经 2026-09-22 实测解析）
 
-**移除**：`signals_flutter`、`signals_hooks`、`flutter_hooks`、`get_it`、`injectable`、`injectable_generator`、`flex_color_scheme`
+**移除**：`signals_flutter`、`signals_hooks`、`flutter_hooks`、`get_it`、`injectable`、`injectable_generator`
 
-**新增**：`flutter_riverpod`、`riverpod_annotation` + dev `riverpod_generator`、`riverpod_lint`、`custom_lint`
+**新增**：`flutter_riverpod: ^3.4.3`、`riverpod_annotation: ^4.0.7` + dev `riverpod_generator: ^4.0.9`
+
+三个不做的决定（都实测过，理由要留在 `BRANCH.md`）：
+
+| 包 | 结论 | 理由 |
+|---|---|---|
+| `flex_color_scheme` | **不动** | 它只在 `packages/app_core`，根工程没引用。换主题 = 改共有包 = 两分支分叉。见 PRD「范围调整」 |
+| `custom_lint` | **不装** | 所有版本都要求 `analyzer <8 或 ^8`，本项目钉 `analyzer 13.3.0`（`drift_dev` / `retrofit_generator` / `check_conventions` 都依赖它）。**不为了装 lint 反向降 analyzer** |
+| `riverpod_lint` | **不装** | 3.1.9 起走 `analysis_server_plugin`（只在 IDE 生效，`dart analyze` 与 CI 都不执行）。项目已有明确立场：这类规则不进仓库，门禁逻辑一律用脚本。Riverpod 的禁止模式由 `check_boundaries` 新增规则兜 |
 
 ## 5. 门禁调整
 

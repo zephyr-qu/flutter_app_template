@@ -20,13 +20,13 @@ dependencies:
     sdk: flutter
 
   # ── State Management ──
-  signals_flutter: ^7.1.0
-  signals_hooks: ^7.1.0
-  flutter_hooks: ^0.21.3+1
+  # 本分支是 Riverpod 栈（preset/ai-starter）。与 master 的 signals 栈**互不合并**：
+  # 状态管理是分支的差异本身，两套混用只会互相覆盖（见 BRANCH.md）。
+  flutter_riverpod: ^3.4.3
+  riverpod_annotation: ^4.0.7 # @riverpod 注解；Ref 类型由 riverpod 提供
 
-  # ── Dependency Injection ──
-  get_it: ^9.2.0
-  injectable: ^3.0.0 # 运行时注解，DI 自动注册
+  # 依赖注入由 Riverpod provider 承担 —— `lib/di/` 在本分支不存在，
+  # get_it / injectable 与它们的 generator 因此一起移除。
 
   # ── Network & API ──
   # dio_smart_retry / pretty_dio_logger 只被 app_core 的 Dio 工厂使用，声明在包里
@@ -65,8 +65,14 @@ dev_dependencies:
   json_serializable: ^6.9.3 # 生成 toJson/fromJson
   freezed: ^4.0.1 # 生成 copyWith/==/hashCode
 
-  # ── Code Gen：DI ──
-  injectable_generator: ^3.1.0 # 生成 ServiceLocator 注册代码
+  # ── Code Gen：Riverpod ──
+  # 生成 provider 的 *.g.dart。**没有 riverpod_lint / custom_lint**：
+  # custom_lint 所有版本都要求 analyzer <8 或 ^8，而本项目钉定 analyzer 13
+  # （drift_dev / retrofit_generator / tool/check_conventions.dart 都依赖它）；
+  # riverpod_lint 3.1.9 起走 analysis_server_plugin —— 只在 IDE 生效，CI 不执行，
+  # 与「门禁逻辑一律用脚本」的既有立场冲突。
+  # 禁止模式改由 tool/check_boundaries.dart 的规则兜（那里在 CI 里真的会跑）。
+  riverpod_generator: ^4.0.9
 
   # ── Code Gen：API ──
   retrofit_generator: ^10.2.1 # 生成 Retrofit 客户端实现

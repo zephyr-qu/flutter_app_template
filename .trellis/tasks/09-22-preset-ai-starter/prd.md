@@ -20,13 +20,26 @@
 | 状态管理 | signals / signals_flutter / signals_hooks | **Riverpod 3.x** |
 | 页面组合 | flutter_hooks + HookWidget | `ConsumerWidget` / `ConsumerStatefulWidget` |
 | 依赖注入 | get_it + injectable (+generator) | **Riverpod provider**（`lib/di/` 整体消失） |
-| 主题 | flex_color_scheme | **`ColorScheme.fromSeed`**（官方 API） |
+| 主题 | flex_color_scheme | **保留、不动**（见下方「范围调整」） |
 | 路由 | auto_route | auto_route（**保留**） |
 | 网络 / 序列化 / 数据库 / l10n | dio+retrofit / freezed+json_serializable / drift / ARB | **全部保留** |
 
 ### 示例收敛
 
 删掉 `features/article`、`features/demo` 的**业务内容**，但保留一个 `features/sample/` 三件套金标准（`page/` + `logic/` + `data/` + **对应测试**），作为 AI 唯一照抄对象。
+
+### 范围调整（2026-09-22，实测后）
+
+原计划把主题从 `flex_color_scheme` 换成官方 `ColorScheme.fromSeed`。**实测后撤掉这一条**：
+
+- `flex_color_scheme` 现在只存在于 `packages/app_core`（pubspec + `theme/app_theme.dart` +
+  `app_color_scheme.dart`），根工程一处都没引用——换主题 = 改**共有包**
+- 而共有包「两个分支完全一致」正是 `09-22-extract-app-core` 花整个任务换来的东西。
+  为了一个与状态管理正交的主题库把它拆掉，收益为负
+- `flex_color_scheme` 本身是主流库、社区示例充足，不违背本分支「AI 语料丰富度」的判据
+
+结论：**本分支主题保持现状**，`packages/app_core` 零改动（除测试）；换栈范围只限根工程的
+状态管理 / DI / 页面组合三件事。`BRANCH.md` 里要写明这一条，免得后来者以为漏做了。
 
 ### spec 重写（成败关键）
 
