@@ -12,6 +12,10 @@ environment:
 # 生产依赖（编译和运行期都需要）
 # ──────────────────────────────────────────────
 dependencies:
+  # ── 共享基础设施（与状态管理无关，signals / Riverpod 双栈共用） ──
+  app_core:
+    path: packages/app_core
+
   flutter:
     sdk: flutter
   # ── 国际化（l10n） ──
@@ -28,19 +32,15 @@ dependencies:
   injectable: ^3.0.0 # 运行时注解，DI 自动注册
 
   # ── Network & API ──
+  # dio_smart_retry / pretty_dio_logger 只被 app_core 的 Dio 工厂使用，声明在包里
   dio: ^5.10.0
-  dio_smart_retry: ^7.0.1
-  pretty_dio_logger: ^1.4.0 # 调试日志，kDebugMode 下启用
-  msw_dio_interceptor: ^1.0.5 # Mock API，isMock 开关控制
+  msw_dio_interceptor: ^1.0.5 # Mock API（应用专属规则在 core/data/network/dio_client.dart）
   retrofit: ^4.9.2 # 运行时注解，API 客户端生成
 
   # ── Data & Persistence ──
+  # path_provider 只被 app_core 的 database / file_storage 使用，声明在包里
   shared_preferences: ^2.5.3
-  path_provider: ^2.1.0
   drift: ^2.34.1 # 运行时注解，数据库引擎；原生 SQLite 由 sqlite3 3.x 的 build hook 提供
-
-  # ── UI ──
-  flex_color_scheme: ^8.4.0
 
   # ── Serialization（运行时依赖） ──
   json_annotation: ^4.12.0 # @JsonSerializable 注解
@@ -50,7 +50,7 @@ dependencies:
   auto_route: ^11.1.0 # @RoutePage 注解
 
   # ── Utils ──
-  logger: ^2.6.2
+  # logger 只被 app_core 的 logging 使用，声明在包里
   flutter_dotenv: ^6.0.0
   intl: ^0.20.3
   leak_tracker: ^11.0.2 # 内存泄漏检测（debug 模式自动启用）

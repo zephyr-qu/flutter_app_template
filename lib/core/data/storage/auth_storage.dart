@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:app_core/data/network/token_store.dart';
+import 'package:app_core/logging/logging.dart';
+import 'package:app_core/models/token_set.dart';
+import 'package:app_core/models/user.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:injectable/injectable.dart';
-import 'package:my_app/core/logging/logging.dart';
-import 'package:my_app/core/models/token_set.dart';
-import 'package:my_app/core/models/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -16,8 +17,11 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 一个键 = 一处状态，[saveTokens] / [clearAuth] 不必再维护多份副本的一致性。
 ///
 /// 存储划分与读写失败策略（读软写硬）见 backend/database-guidelines.md。
+///
+/// 实现 [TokenStore] 供 `app_core` 的网络层使用；[currentUser] / [isLoggedInSignal]
+/// 是本分支自己的事——路由守卫据此重评登录态。
 @Singleton()
-class AuthStorage {
+class AuthStorage implements TokenStore {
   new(this._prefs, this._secure) {
     _loadUserFromStorage();
     ready = _loadTokensFromStorage();
@@ -37,6 +41,7 @@ class AuthStorage {
   TokenSet? _tokens;
 
   /// 令牌载入内存的完成信号；`AuthInterceptor` 附加 Authorization 前会 await 它
+  @override
   late final Future<void> ready;
 
   static const String _keyUser = 'auth.user';
@@ -84,6 +89,7 @@ class AuthStorage {
   ///
   /// [tokens] 的刷新令牌为空时**沿用当前值**——服务端只在轮换时才返回新的，
   /// 用 null 覆盖会把可用的会话丢掉。
+  @override
   Future<void> saveTokens(TokenSet tokens) async {
     final refreshed = tokens.refreshToken;
     final merged = refreshed == null || refreshed.isEmpty
@@ -100,13 +106,16 @@ class AuthStorage {
   }
 
   /// 获取访问令牌（读内存缓存，同步）
+  @override
   String? getAccessToken() => _tokens?.accessToken;
 
   /// 获取刷新令牌（读内存缓存，同步）
+  @override
   String? getRefreshToken() => _tokens?.refreshToken;
 
   /// 是否临近过期（默认提前 [skew]）；没有过期时刻时恒为 false
-  bool isAccessTokenExpiring({Duration skew = const Duration(seconds: 30)}) {
+  @override
+  bool isAccessTokenExpiring({Duration skew = defaultTokenExpirySkew}) {
     final expiresAt = _tokens?.expiresAt;
     if (expiresAt == null) return false;
     return !DateTime.now().add(skew).isBefore(expiresAt);
@@ -115,6 +124,7 @@ class AuthStorage {
   /// 清除认证信息（登出、刷新失败时调用）
   ///
   /// 安全存储删除失败只记日志不外抛——本地登出必须成功。
+  @override
   Future<void> clearAuth() async {
     currentUser.value = null;
     _tokens = null;

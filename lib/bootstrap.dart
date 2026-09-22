@@ -1,10 +1,9 @@
+import 'package:app_core/logging/logging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:leak_tracker/leak_tracker.dart';
 import 'package:my_app/app/app.dart';
-import 'package:my_app/core/logging/logging.dart';
-
 import 'package:my_app/di/service_locator.dart';
 
 /// Required environment variables for the app.

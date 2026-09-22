@@ -1,11 +1,11 @@
+import 'package:app_core/config/network_config.dart';
+import 'package:app_core/models/token_set.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/config/network_config.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/network/dio_client.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/models/token_set.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/scripted_http_adapter.dart';

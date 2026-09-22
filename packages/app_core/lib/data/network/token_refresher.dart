@@ -1,20 +1,22 @@
+import 'package:app_core/data/network/auth_extra_keys.dart';
+import 'package:app_core/data/network/token_store.dart';
+import 'package:app_core/logging/logging.dart';
+import 'package:app_core/models/token_set.dart';
 import 'package:dio/dio.dart';
-import 'package:my_app/core/data/network/auth_extra_keys.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/logging/logging.dart';
-import 'package:my_app/core/models/token_set.dart';
 
 /// 用刷新令牌换取新的访问令牌。
 ///
 /// single-flight：并发调用共享同一个 Future，只发一次真实请求。
 /// 为什么必须如此见 backend/error-handling.md。
+///
+/// 依赖 [TokenStore] 而非具体存储实现，理由见 auth_interceptor.dart。
 class TokenRefresher {
   new(this._storage, this._dio);
 
   /// 刷新接口路径（相对 baseUrl）
   static const String path = '/refresh';
 
-  final AuthStorage _storage;
+  final TokenStore _storage;
   final Dio _dio;
 
   Future<String?>? _inFlight;

@@ -1,5 +1,5 @@
+import 'package:app_core/config/network_config.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/config/network_config.dart';
 
 void main() {
   group('NetworkConfig.fromEnv', () {

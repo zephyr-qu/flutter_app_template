@@ -1,7 +1,7 @@
+import 'package:app_core/base/failure.dart';
+import 'package:app_core/base/run_catching.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/base/failure.dart';
-import 'package:my_app/core/base/run_catching.dart';
 
 void main() {
   group('runCatching', () {

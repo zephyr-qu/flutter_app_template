@@ -1,20 +1,19 @@
-import 'dart:convert';
-
+import 'package:app_core/config/network_config.dart';
+import 'package:app_core/data/network/dio_factory.dart';
 import 'package:dio/dio.dart';
-import 'package:dio_smart_retry/dio_smart_retry.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:injectable/injectable.dart';
 import 'package:msw_dio_interceptor/msw_dio_interceptor.dart';
-import 'package:my_app/core/config/network_config.dart';
 import 'package:my_app/core/config/user_preferences.dart';
-import 'package:my_app/core/data/network/auth_interceptor.dart';
-import 'package:my_app/core/data/network/token_refresher.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/logging/log_redactor.dart';
-import 'package:my_app/core/logging/logging.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
+/// Dio 与 NetworkConfig 的 DI 装配。
+///
+/// 拦截器栈本身在 `app_core` 的 [createDio] 里（与状态管理无关，两个栈共用）；
+/// 本层只做三件 signals / DI 专属的事：
+/// 1. 从 `dotenv` 取配置（环境变量在 `bootstrap()` 之后才加载）
+/// 2. 从 `UserPreferences` 取 `enableDebugLogging`
+/// 3. 注册本应用专属的 Mock 规则
 @module
 abstract class NetworkModule {
   /// 全项目唯一读 `dotenv` 的地方（环境变量在 `bootstrap()` 之后才加载）。
@@ -27,70 +26,19 @@ abstract class NetworkModule {
     UserPreferences preferences,
     AuthStorage authStorage,
     NetworkConfig config,
-  ) {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: config.baseUrl,
-        connectTimeout: Duration(milliseconds: config.connectTimeout),
-        receiveTimeout: Duration(milliseconds: config.receiveTimeout),
-        headers: config.defaultHeaders,
-      ),
-    );
-
-    // ── 拦截器顺序：Auth → 解码 → Retry → Mock ──
-    // 顺序承载两条语义（Retry 不吞 401、重放走完整条链）。
-    // 改之前先跑 test/core/data/network/interceptor_stack_test.dart，
-    // 理由见 backend/network-guidelines.md。
-
-    // 认证拦截器（附加访问令牌；401 时刷新令牌并重放原请求；刷新失败则登出）
-    dio.interceptors.add(
-      AuthInterceptor(authStorage, TokenRefresher(authStorage, dio), dio),
-    );
-
-    // 兜底解码：部分后端以 text/plain 返回 JSON 字符串，这里手动解析
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onResponse: (response, handler) {
-          final data = response.data;
-          if (data is String) {
-            try {
-              response.data = json.decode(data);
-            } catch (e) {
-              Logging.warning('响应体不是合法 JSON，保留原始字符串: $e');
-            }
-          }
-          handler.next(response);
-        },
-      ),
-    );
-
-    dio.interceptors.add(RetryInterceptor(dio: dio, retries: config.retries));
-
-    // Mock 拦截器（仅在 isMock=true 时启用）
-    if (config.isMock) {
-      const mockEngine = MockHttpEngine();
-      dio.interceptors.add(MockInterceptor(engine: mockEngine));
-      _registerMockRules();
-    }
-
-    if (kDebugMode && preferences.enableDebugLogging.value) {
-      // 逐行脱敏后再落控制台：登录请求体的 password、响应里的
-      // accessToken / refreshToken 都不能进日志（理由见 log_redactor.dart）。
-      // redactor 必须在拦截器外建好 —— 它要跨行记住「敏感值还没结束」。
-      final redactor = LogRedactor();
-      dio.interceptors.add(
-        PrettyDioLogger(
-          requestBody: true,
-          logPrint: (object) => debugPrint(redactor.redact(object.toString())),
-        ),
-      );
-    }
-
-    return dio;
-  }
+  ) => createDio(
+    config: config,
+    tokenStore: authStorage,
+    enableDebugLogging: preferences.enableDebugLogging.value,
+    isMock: config.isMock,
+    registerMockRules: _registerMockRules,
+  );
 }
 
 /// 注册内置 Mock 规则。
+///
+/// 规则留在应用侧而不是 `app_core`：它们是本应用的具体端点，包不该知道
+/// `/articles` / `/login` 这类业务路径（见 design 6.5）。
 ///
 /// 必须用 `MockRule.regex` 且锚定 URL 结尾 —— `MockRule(path: ...)` 永远打不中，
 /// 会静默失效并打到真实网络（原因见 backend/network-guidelines.md）。

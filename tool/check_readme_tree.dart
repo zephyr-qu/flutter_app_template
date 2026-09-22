@@ -24,13 +24,17 @@ import 'dart:io';
 
 import 'check_boundaries.dart' show isGeneratedPath;
 
-/// 要检查的文档 → 该文档里目录树的根。
+/// 要检查的「文档 → 目录树根」对。
 ///
-/// 这两处都画了 `lib/` 的完整树，任一处漏项都会被同一个脚本抓出来。
-const targets = <String, String>{
-  'README.md': 'lib',
-  '.trellis/spec/frontend/directory-structure.md': 'lib',
-};
+/// 用「对」的列表而不是 doc → root 的映射：一个文档里可以有多棵树
+/// （README 同时画了 `lib/` 与 `packages/app_core/`）。
+const targets = <(String, String)>[
+  ('README.md', 'lib'),
+  // 根取 `lib/` 而不是 `packages/app_core`：后者的直接子项里有 .dart_tool / build /
+  // coverage / pubspec.lock 这些产物，树里列出它们只会变成噪音。
+  ('README.md', 'packages/app_core/lib'),
+  ('.trellis/spec/frontend/directory-structure.md', 'lib'),
+];
 
 /// 树里的占位写法（`{feature}/`、`*.dart`），没有对应的真实路径。
 final _placeholder = RegExp('[{*]');
@@ -221,11 +225,12 @@ bool _isUnder(String path, String dir) =>
     dir.isEmpty || path.startsWith('$dir/');
 
 void main(List<String> args) {
-  final docs = args.isEmpty ? targets.keys.toList() : args;
+  final selected = args.isEmpty
+      ? targets
+      : targets.where((target) => args.contains(target.$1)).toList();
   final violations = <String>[];
 
-  for (final docPath in docs) {
-    final root = targets[docPath] ?? 'lib';
+  for (final (docPath, root) in selected) {
     final file = File(docPath);
     if (!file.existsSync()) {
       violations.add('$docPath  文档不存在');
@@ -251,7 +256,7 @@ void main(List<String> args) {
   }
 
   if (violations.isEmpty) {
-    stdout.writeln('✅ 目录树与实际 lib/ 一致（${docs.length} 份文档）');
+    stdout.writeln('✅ 目录树与实际内容一致（${selected.length} 棵）');
     return;
   }
 

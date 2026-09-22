@@ -1,10 +1,10 @@
 import 'dart:async';
 
+import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/theme/app_theme_extension.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/l10n/app_localizations.dart';
 

@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:app_core/data/storage/file_storage.dart' show FileStorage;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/data/storage/file_storage.dart' show FileStorage;
 
 /// 把 `path_provider` 的平台通道指向测试自己创建的临时目录。
 ///

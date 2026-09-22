@@ -1,7 +1,7 @@
+import 'package:app_core/base/failure.dart';
+import 'package:app_core/base/result.dart';
+import 'package:app_core/logging/logging.dart';
 import 'package:dio/dio.dart';
-import 'package:my_app/core/base/failure.dart';
-import 'package:my_app/core/base/result.dart';
-import 'package:my_app/core/logging/logging.dart';
 
 /// 执行可能失败的异步调用，把异常统一转成 [Result]：
 /// `DioException` → [handleDioError]，其它异常 → [FailureCode.unknown]。

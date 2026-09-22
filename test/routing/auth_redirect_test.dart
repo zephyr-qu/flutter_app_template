@@ -1,3 +1,6 @@
+import 'package:app_core/models/token_set.dart';
+import 'package:app_core/models/user.dart';
+import 'package:app_core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,9 +11,6 @@ import 'package:my_app/app/routing/auth_reevaluate.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/models/token_set.dart';
-import 'package:my_app/core/models/user.dart';
-import 'package:my_app/core/theme/app_theme.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/auth/logic/auth_view_model.dart';
 import 'package:my_app/features/auth/page/login_page.dart';

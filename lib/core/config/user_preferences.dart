@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:app_core/logging/logging.dart';
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
-import 'package:my_app/core/logging/logging.dart';
 import 'package:my_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';

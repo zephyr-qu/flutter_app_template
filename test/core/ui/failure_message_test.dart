@@ -1,5 +1,5 @@
+import 'package:app_core/base/failure.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/base/failure.dart';
 import 'package:my_app/core/ui/failure_message.dart';
 import 'package:my_app/l10n/app_localizations.dart';
 import 'package:my_app/l10n/app_localizations_en.dart';

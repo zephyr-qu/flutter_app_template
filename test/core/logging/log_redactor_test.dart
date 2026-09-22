@@ -1,5 +1,5 @@
+import 'package:app_core/logging/log_redactor.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/logging/log_redactor.dart';
 
 /// 每个用例都用**新实例**：`LogRedactor` 跨行带状态（长值折行），
 /// 复用一个实例会让上一条日志的状态污染下一条。

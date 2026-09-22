@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:injectable/injectable.dart';
-import 'package:my_app/core/logging/logging.dart';
+import 'package:app_core/logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// 文本 / 字节的文件读写。
@@ -10,7 +9,9 @@ import 'package:path_provider/path_provider.dart';
 /// 所有文件都落在**自己的子目录**里（见 [namespace]），不直接写根目录。临时目录是
 /// 全 App 共用的，其他插件（图片缓存、下载、播放器…）也会往里放文件；没有一个自己
 /// 的目录，就没法安全地「只清自己的」——见 [clearTemp]。
-@Singleton()
+///
+/// **不带 DI 注解**：本包不依赖 injectable / get_it / riverpod，注册由各分支的
+/// 装配层负责（signals 分支见 `lib/core/core_module.dart`）。
 class FileStorage {
   /// 应用目录 / 临时目录下用来存放本类文件的子目录名。
   ///

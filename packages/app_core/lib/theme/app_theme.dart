@@ -1,9 +1,8 @@
+import 'package:app_core/theme/app_color_scheme.dart';
+import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import 'package:my_app/core/theme/app_color_scheme.dart';
-import 'package:my_app/core/theme/app_theme_extension.dart';
 
 /// 主题组装 —— 对外只暴露 [buildLightTheme] / [buildDarkTheme]。
 ///

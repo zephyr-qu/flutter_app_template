@@ -1,6 +1,6 @@
+import 'package:app_core/data/storage/file_storage.dart';
+import 'package:app_core/logging/logging.dart';
 import 'package:injectable/injectable.dart';
-import 'package:my_app/core/data/storage/file_storage.dart';
-import 'package:my_app/core/logging/logging.dart';
 import 'package:my_app/features/article/data/article_dao.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 

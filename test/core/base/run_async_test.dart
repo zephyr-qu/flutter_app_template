@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:app_core/base/failure.dart';
+import 'package:app_core/base/result.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/base/failure.dart';
-import 'package:my_app/core/base/result.dart';
 import 'package:my_app/core/base/run_async.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 

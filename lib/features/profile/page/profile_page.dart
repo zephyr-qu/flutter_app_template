@@ -1,11 +1,11 @@
+import 'package:app_core/models/user.dart';
+import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/models/user.dart';
-import 'package:my_app/core/theme/app_theme_extension.dart';
 import 'package:my_app/core/ui/failure_message.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';

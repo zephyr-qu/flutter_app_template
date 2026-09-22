@@ -1,0 +1,40 @@
+name: app_core
+description: "与状态管理无关的基础设施：网络 / 数据库 / 主题 / 日志 / 模型 / 结果类型"
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  # 与根工程保持一致（见根 pubspec.yaml 的说明）
+  sdk: ">=3.13.0 <4.0.0"
+  flutter: ">=3.44.0"
+
+# ──────────────────────────────────────────────
+# 本包**不得**依赖 signals_* / riverpod* / get_it / injectable：
+# 这正是它能同时服务 signals 栈与 Riverpod 栈的前提。
+# 依赖注入、状态管理都由各分支的适配层负责（见 design 6.1 / 6.5）。
+#
+# 依赖按字母序排列（very_good_analysis 的 sort_pub_dependencies 强制），
+# 因此不按功能分组加注释 —— 那会破坏字母序。
+# ──────────────────────────────────────────────
+dependencies:
+  dio: ^5.10.0
+  dio_smart_retry: ^7.0.1
+  drift: ^2.34.1
+  flex_color_scheme: ^8.4.0
+  flutter:
+    sdk: flutter
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.12.0
+  logger: ^2.6.2
+  msw_dio_interceptor: ^1.0.5
+  path_provider: ^2.1.0
+  pretty_dio_logger: ^1.4.0
+
+dev_dependencies:
+  build_runner: ^2.4.14
+  drift_dev: ^2.34.2+1
+  flutter_test:
+    sdk: flutter
+  freezed: ^4.0.1
+  json_serializable: ^6.9.3
+  very_good_analysis: ^11.0.0

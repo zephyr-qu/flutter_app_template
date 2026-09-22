@@ -1,6 +1,6 @@
+import 'package:app_core/base/failure.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/base/failure.dart';
 
 DioException _err({
   required DioExceptionType type,

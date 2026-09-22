@@ -1,16 +1,19 @@
+import 'package:app_core/data/network/auth_extra_keys.dart';
+import 'package:app_core/data/network/token_refresher.dart';
+import 'package:app_core/data/network/token_store.dart';
+import 'package:app_core/logging/logging.dart';
 import 'package:dio/dio.dart';
-import 'package:my_app/core/data/network/auth_extra_keys.dart';
-import 'package:my_app/core/data/network/token_refresher.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/logging/logging.dart';
 
 /// 认证拦截器：请求附加令牌；401 时刷新并重放原请求，刷新用尽则清凭证。
+///
+/// 依赖 [TokenStore] 而不是具体的存储实现：令牌存在哪里（安全存储 + 内存缓存）
+/// 以及登录态用哪种状态管理暴露，都不是网络层该知道的事。见 design 6.1。
 ///
 /// 防递归标记、为何不在这里跳转等约定见 backend/error-handling.md「401 与令牌刷新」。
 class AuthInterceptor extends Interceptor {
   new(this._auth, this._refresher, this._dio);
 
-  final AuthStorage _auth;
+  final TokenStore _auth;
   final TokenRefresher _refresher;
 
   /// 用于重放。必须是同一个 Dio，否则重放会绕开 mock / 重试拦截器。

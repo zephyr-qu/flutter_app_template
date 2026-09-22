@@ -1,9 +1,9 @@
+import 'package:app_core/data/network/auth_extra_keys.dart';
+import 'package:app_core/data/network/auth_interceptor.dart';
+import 'package:app_core/data/network/token_refresher.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:my_app/core/data/network/auth_extra_keys.dart';
-import 'package:my_app/core/data/network/auth_interceptor.dart';
-import 'package:my_app/core/data/network/token_refresher.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
 
 import '../../../support/scripted_http_adapter.dart';

@@ -1,13 +1,15 @@
 // 架构边界检查（FSD）。
 //
 // ```bash
-// dart run tool/check_boundaries.dart        # 默认扫 lib/
+// dart run tool/check_boundaries.dart        # 默认扫 defaultRoots
+// dart run tool/check_boundaries.dart lib    # 也可只扫指定根
 // ```
 //
 // 规则与「为什么是脚本而不是 analyzer 插件」见 frontend/quality-guidelines.md。
 //
-// 四条规则：core/ 不得依赖上层；跨 feature 只共享 data/ 层；
-// features/*/logic 不得用 getIt；从容器取 ViewModel 的页面必须给出可选注入点。
+// 五条规则：core/ 不得依赖上层；跨 feature 只共享 data/ 层；
+// features/*/logic 不得用 getIt；从容器取 ViewModel 的页面必须给出可选注入点；
+// packages/app_core 不得依赖状态管理 / DI。
 //
 // 脚本另外会对「import/export 行没被正则完整解析」打 warning：warning 只提示、
 // 不影响退出码，用来暴露正则级检查的已知缺口（条件导入、跨行指令）。
@@ -19,6 +21,28 @@ const Set<String> sharedLayers = {'data'};
 
 /// 组合层目录：FSD 的 app 层（根组件、路由、全局页面），可以 import 任何东西。
 final List<String> compositionDirs = ['lib/app/'];
+
+/// 默认扫描的根。
+///
+/// `packages/app_core/lib` 必须一起扫：抽包之后如果只扫 `lib/`，
+/// 新包就成了**边界真空**——等于用一次重构把一道门禁换成没有门禁。
+const List<String> defaultRoots = ['lib', 'packages/app_core/lib'];
+
+/// 共享基础设施包**不得**出现的依赖。
+///
+/// 这是它能同时服务 signals 栈与 Riverpod 栈的唯一前提：一旦包内出现
+/// `signals` / `riverpod`，另一个栈就用不了它，抽包的意义直接归零。
+/// `get_it` / `injectable` 同理——DI 方式本身是栈相关的，注册归各分支的装配层。
+const Set<String> forbiddenInCorePackage = {
+  'signals_core',
+  'signals_flutter',
+  'signals_hooks',
+  'riverpod',
+  'flutter_riverpod',
+  'riverpod_annotation',
+  'get_it',
+  'injectable',
+};
 
 class BoundaryViolation {
   const new({
@@ -43,16 +67,18 @@ class BoundaryViolation {
 }
 
 void main(List<String> args) {
-  final root = args.isNotEmpty ? args.first : 'lib';
+  final roots = args.isNotEmpty ? args : defaultRoots;
   final violations = <BoundaryViolation>[];
 
-  for (final file in dartFiles(root)) {
-    violations.addAll(
-      findViolations(
-        path: normalizePath(file.path),
-        content: file.readAsStringSync(),
-      ),
-    );
+  for (final root in roots) {
+    for (final file in dartFiles(root)) {
+      violations.addAll(
+        findViolations(
+          path: normalizePath(file.path),
+          content: file.readAsStringSync(),
+        ),
+      );
+    }
   }
 
   final errors = violations.where((v) => !v.isWarning).toList();
@@ -70,7 +96,7 @@ void main(List<String> args) {
 
   if (errors.isEmpty) {
     final suffix = warnings.isEmpty ? '' : '，另有 ${warnings.length} 条疑似漏检提示';
-    stdout.writeln('✅ 架构边界检查通过（$root）$suffix');
+    stdout.writeln('✅ 架构边界检查通过（${roots.join('、')}）$suffix');
     return;
   }
 
@@ -143,7 +169,17 @@ List<BoundaryViolation> findViolations({
       );
     }
 
-    final target = _resolveImport(directive.group(2)!, path);
+    final rawUri = directive.group(2)!;
+
+    // 规则 5：共享基础设施包不得依赖状态管理 / DI
+    final forbidden = _checkForbiddenPackage(path: path, uri: rawUri);
+    if (forbidden != null) {
+      violations.add(
+        BoundaryViolation(file: path, line: lineNumber, message: forbidden),
+      );
+    }
+
+    final target = _resolveImport(rawUri, path);
     if (target == null) continue;
 
     final message = _checkImport(path: path, target: target);
@@ -293,6 +329,33 @@ String? _checkImport({required String path, required String target}) {
       '（page/logic 属于 feature 内部，改成用 core 信号或对方 data 层的能力）';
 }
 
+/// 规则 5：`packages/app_core` 不得依赖状态管理 / DI。
+///
+/// 包内一旦出现 `signals` / `riverpod`，另一个栈就用不了它，抽包的意义直接归零；
+/// `get_it` / `injectable` 同理——它们是装配方式，注册归各分支的装配层
+/// （见 `.trellis/tasks/09-22-extract-app-core/design.md` 6.1 / 6.5）。
+String? _checkForbiddenPackage({required String path, required String uri}) {
+  if (!_isUnder(path, 'packages/app_core/')) return null;
+
+  final name = _packageNameOf(uri);
+  if (name == null || !forbiddenInCorePackage.contains(name)) return null;
+
+  // 中文句子在换行处本来就不加空格，这条规则的前提是英文长句
+  // ignore: missing_whitespace_between_adjacent_strings
+  return 'app_core 不得依赖 $name —— 它是与状态管理无关的共享基础设施，'
+      '这正是 signals 栈与 Riverpod 栈能共用它的前提';
+}
+
+/// 从 `package:xxx/yyy.dart` 取出 `xxx`；不是 package URI 时返回 null
+String? _packageNameOf(String uri) {
+  const prefix = 'package:';
+  if (!uri.startsWith(prefix)) return null;
+
+  final rest = uri.substring(prefix.length);
+  final slash = rest.indexOf('/');
+  return slash < 0 ? null : rest.substring(0, slash);
+}
+
 bool _isUnder(String path, String prefix) => path.startsWith(prefix);
 
 bool _isCompositionRoot(String path) =>
@@ -321,6 +384,9 @@ String? _layerOf(String path) {
 String? _resolveImport(String raw, String fromPath) {
   if (raw.startsWith('package:my_app/')) {
     return 'lib/${raw.substring('package:my_app/'.length)}';
+  }
+  if (raw.startsWith('package:app_core/')) {
+    return 'packages/app_core/lib/${raw.substring('package:app_core/'.length)}';
   }
   if (raw.startsWith('package:') || raw.startsWith('dart:')) return null;
   if (!raw.startsWith('.')) return null;

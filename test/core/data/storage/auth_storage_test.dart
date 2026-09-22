@@ -1,10 +1,10 @@
 import 'dart:convert';
 
+import 'package:app_core/models/token_set.dart';
+import 'package:app_core/models/user.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/models/token_set.dart';
-import 'package:my_app/core/models/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

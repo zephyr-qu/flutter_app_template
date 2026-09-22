@@ -1,5 +1,9 @@
 import 'dart:async';
 
+import 'package:app_core/base/result.dart';
+import 'package:app_core/models/token_set.dart';
+import 'package:app_core/models/user.dart';
+import 'package:app_core/theme/app_theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -9,12 +13,8 @@ import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:my_app/app/routing/auth_reevaluate.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/base/result.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/models/token_set.dart';
-import 'package:my_app/core/models/user.dart';
-import 'package:my_app/core/theme/app_theme.dart';
 import 'package:my_app/features/article/data/article_repository.dart';
 import 'package:my_app/features/article/data/models/article.dart';
 import 'package:my_app/features/article/logic/article_view_model.dart';

@@ -1,6 +1,7 @@
+import 'package:app_core/data/database/app_database.dart';
+import 'package:app_core/data/storage/file_storage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:injectable/injectable.dart';
-import 'package:my_app/core/data/database/app_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 @module
@@ -17,4 +18,9 @@ abstract class CoreModule {
 
   @singleton
   AppDatabase get database => AppDatabase();
+
+  /// [FileStorage] 来自 `app_core`，包内不带 DI 注解（包不依赖 injectable），
+  /// 所以由本装配层显式注册。见 design 6.3。
+  @singleton
+  FileStorage get fileStorage => FileStorage();
 }

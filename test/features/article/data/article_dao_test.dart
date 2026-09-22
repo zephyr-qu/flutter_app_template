@@ -1,6 +1,6 @@
+import 'package:app_core/data/database/app_database.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/data/database/app_database.dart';
 import 'package:my_app/features/article/data/article_dao.dart';
 
 /// 内存数据库供测试用，避免读写设备文件

@@ -16,7 +16,7 @@
 - **国际化** — `flutter_localizations` + ARB，内置中文/英文，设置里可切换并持久化
 - **通用组件** — Loading / Error / Empty 三态组件
 - **代码生成** — `freezed` / `json_serializable` / `retrofit_generator`
-- **架构边界检查** — `tool/check_boundaries.dart`（core 不得依赖上层、跨 feature 只共享 data 层、ViewModel 不得用 getIt、页面必须给可选注入点），跑在 pre-commit 与 CI
+- **架构边界检查** — `tool/check_boundaries.dart`（core 不得依赖上层、跨 feature 只共享 data 层、ViewModel 不得用 getIt、页面必须给可选注入点、`app_core` 不得依赖状态管理），跑在 pre-commit 与 CI
 - **代码形态约定** — `tool/check_conventions.dart`（禁用 `AsyncState.map`、注释块 ≤10 行），同样跑在 pre-commit 与 CI
 - **覆盖率门禁** — `tool/check_coverage.dart`，只统计手写代码、按行数加权，默认阈值 80%，同样是 pre-commit 与 CI 的一道门
 - **数据库** — `Drift`（SQLite ORM，可选按需使用）
@@ -56,31 +56,21 @@ lib/
 │       ├── splash_page.dart                # 启动页
 │       └── not_found_page.dart             # 404
 │
-├── core/                                   # 共享基础设施（精简克制）
+├── core/                                   # 只剩「状态耦合的适配层」（基础设施已抽到 packages/app_core）
 │   ├── base/                               # 基础抽象
-│   │   ├── result.dart                     # Result<T, E> 统一结果类型
-│   │   ├── failure.dart                    # Failure 密封类
-│   │   ├── run_async.dart                  # runAsync 三态助手
-│   │   └── run_catching.dart               # runCatching：异常 → Failure 兜底
+│   │   └── run_async.dart                  # runAsync 三态助手（依赖 signals，故留应用侧）
 │   ├── config/                             # 应用配置
-│   │   ├── network_config.dart             # 环境变量（只读值对象）
 │   │   └── user_preferences.dart           # 用户偏好（信号 + 持久化）
 │   ├── data/
-│   │   ├── database/                       # Drift 数据库连接
-│   │   ├── network/                        # Dio 客户端 + 拦截器
-│   │   └── storage/                        # 本地持久化信号
-│   ├── logging/                            # 日志封装
-│   ├── models/                             # 跨 feature 共享的数据模型（User 等）
-│   ├── ui/                                 # 共享 UI（与 theme/ 并列）
+│   │   ├── network/
+│   │   │   └── dio_client.dart             # Dio 的 DI 装配 + 应用专属 Mock 规则
+│   │   └── storage/
+│   │       └── auth_storage.dart           # 令牌/用户存储（实现 app_core 的 TokenStore）
+│   ├── ui/                                 # 共享 UI（读 l10n，故留应用侧）
 │   │   ├── async_view.dart                 # AsyncState → Widget（三态渲染入口）
 │   │   ├── failure_message.dart            # FailureCode → 用户文案
 │   │   ├── loading_indicator.dart          # LoadingIndicator / ScreenLoadingIndicator
-│   │   ├── error_text.dart                 # 错误 + 重试
-│   │   └── empty_widget.dart               # 空状态
-│   ├── theme/                              # 主题（色板 / 组装 / token）
-│   │   ├── app_color_scheme.dart           # 品牌色板 + 语义色覆盖
-│   │   ├── app_theme.dart                  # 组装 ThemeData（对外唯一入口）
-│   │   └── app_theme_extension.dart        # 设计 token（圆角/间距）
+│   │   └── error_text.dart                 # 错误 + 重试
 │   └── core_module.dart                    # 共享依赖的 DI 装配（@module）
 │
 ├── features/                               # 业务功能模块
@@ -100,6 +90,23 @@ lib/
 └── di/                                     # 依赖注入注册
     ├── service_locator.dart                 # configureDependencies() 入口
     └── service_locator.config.dart          # injectable 自动生成
+```
+
+与状态管理无关的基础设施抽到了本地包，由 signals 栈与 Riverpod 栈共用
+（拆分依据见 `.trellis/tasks/09-22-extract-app-core/design.md`）：
+
+```
+packages/app_core/lib/
+├── base/                               # Failure / Result / runCatching
+├── config/                             # NetworkConfig（环境变量值对象）
+├── data/
+│   ├── database/                       # Drift 连接 + schema + 表
+│   ├── network/                        # Dio 工厂 / 认证拦截器 / TokenStore 契约
+│   └── storage/                        # FileStorage
+├── logging/                            # 日志封装 + 调试日志脱敏
+├── models/                             # User / TokenSet
+├── theme/                              # 色板 / ThemeData 组装 / 设计 token
+└── ui/                                 # 无 l10n 依赖的共享组件（EmptyWidget）
 ```
 
 模块内部每层职责：
@@ -333,9 +340,13 @@ flutter test
 # 特定测试文件
 flutter test test/features/article/logic/article_view_model_test.dart
 
+# 共享包的测试（独立 package，必须进包目录跑）
+cd packages/app_core && flutter test
+
 # 覆盖率数据 + 门禁校验
 flutter test --coverage
-dart run tool/check_coverage.dart
+(cd packages/app_core && flutter test --coverage)
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
 ```
 
 测试原则：
@@ -354,16 +365,20 @@ dart run tool/check_coverage.dart
 - 默认阈值 80%，低于阈值退出码为 1；已接入 pre-commit 与 CI 的 `unit-test` job
 
 ```bash
-dart run tool/check_coverage.dart          # 默认 80%
+dart run tool/check_coverage.dart          # 默认 80%，只查 coverage/lcov.info
 dart run tool/check_coverage.dart --min=85
 ```
+
+**必须采集两份 lcov**：`app_core` 是独立 package，根工程跑 `--coverage` 时包内文件的命中不会被
+归集（根 lcov 里一条 `packages/` 记录都没有），只能在包目录里单独跑一次。两份**逐份独立校验、
+不合并**：路径都是相对各自包根的 `lib/...`，合并会搅在一起；包内的低覆盖也不该被 `lib/` 稀释。
 
 ## 🔍 架构边界检查
 
 边界规则由一个脚本执行（**不是** analyzer 插件——插件规则只在 IDE 生效，CLI/CI 跑不到）：
 
 ```bash
-dart run tool/check_boundaries.dart
+dart run tool/check_boundaries.dart          # 默认扫 lib 与 packages/app_core/lib
 ```
 
 已接入 pre-commit 与 CI 的 `analyze` job，`flutter test` 里也有一条针对真实仓库的回归测试。
@@ -374,9 +389,13 @@ dart run tool/check_boundaries.dart
 | 跨 feature 只共享 data 层 | 不能引用其他 feature 的 `page/` / `logic/` |
 | ViewModel 不得用 service locator | `features/*/logic/` 里不能出现 `getIt`，强制构造器注入 |
 | 页面必须给可选注入点 | 用 `getIt<*ViewModel>()` 的页面要同时给出 `final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
+| app_core 不得依赖状态管理 | `packages/app_core` 里不能出现 `signals_*` / `riverpod*` / `get_it` / `injectable` |
+
+**扫描根是两处**：`lib` 与 `packages/app_core/lib`。抽包之后只扫 `lib/` 的话，新包就成了边界真空。
+最后一条是共享包的**存在前提**——包里一旦出现 signals / Riverpod，另一个栈就用不了它。
 
 组合根（`lib/app/`）可以引用任何 feature——FSD 的 app 层负责装配。
-最后一条不是依赖方向，是可测性约定（[ADR-0001](docs/adr/ADR-0001.md) 的缓解措施）：页面仍从容器取 ViewModel，但必须给测试留一个注入口，否则页面测试只能装配全局容器。`home_page` / `profile_page` 直接取 `AuthStorage` / `UserPreferences`（不是 ViewModel），不在此列。
+倒数第二条不是依赖方向，是可测性约定（[ADR-0001](docs/adr/ADR-0001.md) 的缓解措施）：页面仍从容器取 ViewModel，但必须给测试留一个注入口，否则页面测试只能装配全局容器。`home_page` / `profile_page` 直接取 `AuthStorage` / `UserPreferences`（不是 ViewModel），不在此列。
 
 ## 📏 代码形态约定
 

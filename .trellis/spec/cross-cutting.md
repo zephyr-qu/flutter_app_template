@@ -11,9 +11,13 @@
 
 ```bash
 dart run tool/check_boundaries.dart     # 退出码 0 = 通过，1 = 有违规
+                                        # 默认扫 lib 与 packages/app_core/lib
 ```
 
 它跑在 pre-commit 与 CI（`analyze` job）里，`test/tool/check_boundaries_test.dart` 也会在 `flutter test` 时跑一遍真实仓库。
+
+**扫描根是两处，不是一处**：`lib` 与 `packages/app_core/lib`。抽包之后如果只扫 `lib/`，
+新包就成了**边界真空**——等于用一次重构把一道门禁换成没有门禁。
 
 **为什么不用 analyzer 插件**：`analysis_server_plugin` 规则只在 IDE 里生效，CLI 与 CI 不执行。历史教训——`features/profile/page` 引用过 `features/auth/logic`，而 `flutter analyze` 一直报告「No issues found」。声明成 `error` 却没有任何东西验证它会触发，比没有规则更糟（给人有门禁的错觉）。
 
@@ -23,8 +27,14 @@ dart run tool/check_boundaries.dart     # 退出码 0 = 通过，1 = 有违规
 | 跨 feature 只共享 `data/` | 不能引用其他 feature 的 `page/` / `logic/` |
 | ViewModel 不得用 service locator | `features/*/logic/` 里不得出现 `getIt` / `GetIt.I`（构造器注入，理由见 [ADR-0001](../../docs/adr/ADR-0001.md)） |
 | 页面必须给出可选注入点 | 用 `getIt<*ViewModel>()` 取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
+| `packages/app_core` 不得依赖状态管理 / DI | 包内不得出现 `signals_*` / `riverpod*` / `get_it` / `injectable` |
 
 前三条是依赖方向，第四条是可测性约定（[ADR-0001](../../docs/adr/ADR-0001.md) 的缓解措施）：页面仍从容器取 ViewModel，但必须留一个只有测试会用的注入口，否则页面测试会被推回 `setUpTestApp()` 装配全局容器——而且**没有任何编译器会提醒**，漏一个页面就少一处，所以用退出码兜住。
+
+第五条是共享基础设施包的**存在前提**：`packages/app_core` 要同时服务 signals 栈与 Riverpod 栈，
+包里一旦出现 `signals` / `riverpod`，另一个栈就用不了它，抽包的意义直接归零；
+`get_it` / `injectable` 同理——它们是装配方式，注册归各分支的装配层
+（拆分依据见 `.trellis/tasks/09-22-extract-app-core/design.md` 6.1 / 6.5）。
 
 ```dart
 // ✅ 页面取 ViewModel 的标准三行
@@ -98,7 +108,7 @@ dart run tool/check_conventions.dart     # 默认扫 lib/，退出码 0 = 通过
 
 **为什么这条用 `package:analyzer` 而不是正则**：`AsyncState.map` 的判据是**具名实参**（`data` + `error` 同时出现），正则分不清它和 `list.map(...)` —— 而误报会挡住提交。所以这个脚本用 `parseString` 拿 AST 判断；执行模型仍是 CI 里的 `dart run`，与 [architecture-review.md](../../docs/architecture-review.md) P4 说的「迁到 AST」是同一件事，只是先落在新增的规则上。
 
-**为什么注释也进门禁**：长解释留在代码里会和实现抢注意力，且改了一处、另一处就成了假信息（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)）。门禁只扫 `lib/`：`tool/` 脚本的头注释本身就是门禁的设计说明，`test/` 的说明性注释同理。
+**为什么注释也进门禁**：长解释留在代码里会和实现抢注意力，且改了一处、另一处就成了假信息（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)）。扫描根与边界脚本一致（`lib` + `packages/app_core/lib`）；`tool/` 脚本的头注释本身就是门禁的设计说明，`test/` 的说明性注释同理，都不扫。
 
 > 判据是纯形态的，不看类型：只要一个 `map` 同时带 `data` 与 `error` 就判违规，自定义的同名 API 会被误报。真遇到再加豁免，别提前放一个用不到的逃生口。
 
@@ -119,7 +129,16 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 
 「已展开」= 该目录下面还有缩进更深的条目。只写到目录名、不展开子项的（如 `features/article/`）视为刻意省略，不检查其内容；用模板占位符展开的（如 `features/{feature}/`）同样跳过。
 
-当前检查两份文档：`README.md` 与 [frontend/directory-structure.md](frontend/directory-structure.md)。新增第三份时把它加进脚本的 `targets` 常量。
+`targets` 是「文档 → 目录树根」**对**的列表（不是 doc → root 的映射），因为一个文档里可以有多棵树：
+
+| 文档 | 根 |
+|------|----|
+| `README.md` | `lib` |
+| `README.md` | `packages/app_core/lib` |
+| [frontend/directory-structure.md](frontend/directory-structure.md) | `lib` |
+
+包那棵树的根取 `packages/app_core/lib` 而不是 `packages/app_core`：后者的直接子项里有
+`.dart_tool` / `build` / `coverage` / `pubspec.lock` 这些产物，列进树里只会变成噪音。
 
 ---
 
@@ -128,20 +147,32 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 架构边界管「谁能依赖谁」，覆盖率管「有没有测过」，两者互补。
 
 ```bash
-flutter test --coverage                  # 生成 coverage/lcov.info
-dart run tool/check_coverage.dart        # 退出码 0 = 达标，1 = 低于阈值
-dart run tool/check_coverage.dart --min=85
+flutter test --coverage                                   # 根工程 → coverage/lcov.info
+(cd packages/app_core && flutter test --coverage)         # 包 → 包内 coverage/lcov.info
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
+dart run tool/check_coverage.dart --min=85                # 不传路径则只查 coverage/lcov.info
 ```
 
-- 跑在 pre-commit（紧跟 `flutter test --coverage` 之后）与 CI 的 `unit-test` job 里
+- 跑在 pre-commit 与 CI 的 `unit-test` job 里
 - **只统计手写代码**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` / `*.gen.dart` / `app_localizations*` 不计入。生成代码的行数不是人能守的，算进去只会稀释阈值
 - 判定复用 `tool/check_boundaries.dart` 的 `isGeneratedPath`，两处口径不会漂移
 - 按**行数加权**，不是按文件平均——500 行的文件与 5 行的文件不该等权
-- 阈值默认 80%。当前约 88%（`test/tool/check_coverage_test.dart` 覆盖脚本自身的解析逻辑）
+- 阈值默认 80%（`test/tool/check_coverage_test.dart` 覆盖脚本自身的解析逻辑）
+
+**为什么必须分两份 lcov**：`app_core` 是独立 package，根工程跑 `flutter test --coverage` 时，
+包内文件的命中**不会被归集**（根 lcov 里一条 `packages/` 记录都没有），只能在包目录里单独采集。
+两份 lcov **逐份独立校验，不合并**：它们的路径都是相对各自包根的 `lib/...`，合并会把命名空间
+搅在一起；而且包内的低覆盖不该被 `lib/` 的高覆盖稀释。
 
 > 门禁算的是「lcov 里出现的文件」的覆盖率。**一个从未被任何测试加载的文件不会出现在
 > lcov 里**，因此它的行数不进分母——新增一个完全没测的大文件不会让阈值下降。
-> 要补上这个口子，得拿 `lib/` 的文件清单去和 lcov 的 `SF:` 集合做差集，目前没做。
+> 要补上这个口子，得拿文件清单去和 lcov 的 `SF:` 集合做差集，目前没做。
+>
+> **抽包之后这个口子明显变大了**：`packages/app_core` 有 20 个手写文件，包内测试只加载了其中 8 个，
+> 于是包内 82.5% 这个数字**只覆盖 8 个文件**——`data/network/*`（认证拦截器、刷新器、Dio 工厂）
+> 与 `data/database/*`、`theme/*`、`ui/*` 共约 11 个文件仍在分母之外。
+> 把网络层的测试也迁进包（用假 `TokenStore` 替代 lib 的 `AuthStorage`，让它变成纯包测试）
+> 是下一步，见 `.trellis/tasks/09-22-extract-app-core/design.md` 7.3。
 
 ---
 

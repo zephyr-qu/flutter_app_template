@@ -16,7 +16,8 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
-import 'check_boundaries.dart' show BoundaryViolation, dartFiles, normalizePath;
+import 'check_boundaries.dart'
+    show BoundaryViolation, dartFiles, defaultRoots, normalizePath;
 
 /// 连续注释块的行数上限，超过就该把解释搬进 spec。
 const int maxCommentBlockLines = 10;
@@ -35,7 +36,7 @@ const String _commentBlockTail = '解释搬到 spec，代码里只留一行链�
 
 void main(List<String> args) {
   final roots = args.where((arg) => !arg.startsWith('-')).toList();
-  final targets = roots.isEmpty ? const ['lib'] : roots;
+  final targets = roots.isEmpty ? defaultRoots : roots;
   final violations = <BoundaryViolation>[];
 
   for (final root in targets) {

@@ -1,10 +1,10 @@
+import 'package:app_core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:my_app/app/routing/auth_reevaluate.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/core/theme/app_theme.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';

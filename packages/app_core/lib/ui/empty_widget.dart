@@ -1,5 +1,5 @@
+import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/app_theme_extension.dart';
 
 /// 统一空状态组件
 class EmptyWidget extends StatelessWidget {
