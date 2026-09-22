@@ -1,27 +1,28 @@
+import 'dart:async';
+
 import 'package:app_core/data/network/auth_extra_keys.dart';
 import 'package:app_core/data/network/auth_interceptor.dart';
-import 'package:app_core/data/network/token_refresher.dart';
+import 'package:app_core/models/token_set.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
 
-import '../../../support/scripted_http_adapter.dart';
+import '../../support/fake_token_refresher.dart';
+import '../../support/fake_token_store.dart';
+import '../../support/scripted_http_adapter.dart';
 
-class MockAuthStorage extends Mock implements AuthStorage;
-
-class MockTokenRefresher extends Mock implements TokenRefresher;
-
+/// `AuthInterceptor` 的**纯包测试**：不引用 lib 侧任何东西（`AuthStorage` /
+/// `SharedPreferences` / signals 都不在场），靠 [FakeTokenStore] 与
+/// [FakeTokenRefresher] 驱动。
+///
+/// 刷新流程「真跑一遍」的那部分（真 `TokenRefresher` + 真 Dio 管道）
+/// 在 `token_refresh_test.dart`。
 void main() {
-  late MockAuthStorage storage;
-  late MockTokenRefresher refresher;
+  late FakeTokenStore storage;
+  late FakeTokenRefresher refresher;
 
   setUp(() {
-    storage = MockAuthStorage();
-    refresher = MockTokenRefresher();
-    when(() => storage.ready).thenAnswer((_) async {});
-    // 默认「不过期」：主动刷新那条分支由下面的专门用例覆盖
-    when(() => storage.isAccessTokenExpiring()).thenReturn(false);
+    storage = FakeTokenStore();
+    refresher = FakeTokenRefresher();
   });
 
   /// 构造一个带拦截器、并把网络层换成假适配器的 Dio
@@ -34,7 +35,7 @@ void main() {
 
   group('AuthInterceptor — 附加访问令牌', () {
     test('持有访问令牌时带上 Authorization: Bearer', () async {
-      when(() => storage.getAccessToken()).thenReturn('access-123');
+      await storage.saveTokens(const TokenSet(accessToken: 'access-123'));
       final adapter = ScriptedHttpAdapter();
 
       await createDio(adapter).get<dynamic>('/articles');
@@ -46,7 +47,6 @@ void main() {
     });
 
     test('没有访问令牌时不带 Authorization 头', () async {
-      when(() => storage.getAccessToken()).thenReturn(null);
       final adapter = ScriptedHttpAdapter();
 
       await createDio(adapter).get<dynamic>('/articles');
@@ -58,7 +58,7 @@ void main() {
     });
 
     test('访问令牌为空字符串时不带 Authorization 头', () async {
-      when(() => storage.getAccessToken()).thenReturn('');
+      await storage.saveTokens(const TokenSet(accessToken: ''));
       final adapter = ScriptedHttpAdapter();
 
       await createDio(adapter).get<dynamic>('/articles');
@@ -70,7 +70,7 @@ void main() {
     });
 
     test('刷新请求本身不带过期的访问令牌', () async {
-      when(() => storage.getAccessToken()).thenReturn('expired-token');
+      await storage.saveTokens(const TokenSet(accessToken: 'expired-token'));
       final adapter = ScriptedHttpAdapter();
 
       await createDio(adapter).post<dynamic>(
@@ -84,20 +84,62 @@ void main() {
       );
     });
 
+    test('等待令牌从存储载入后才发出请求（冷启动首个请求不漏带）', () async {
+      final gate = Completer<void>();
+      storage.ready = gate.future;
+      await storage.saveTokens(const TokenSet(accessToken: 'loaded'));
+      final adapter = ScriptedHttpAdapter();
+
+      final pending = createDio(adapter).get<dynamic>('/articles');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      // 载入还没完成 → 请求还没发出去（发了就会漏带令牌，白撞一次 401）
+      expect(adapter.requests, isEmpty);
+
+      gate.complete();
+      await pending;
+
+      expect(adapter.requests.single.headers['Authorization'], 'Bearer loaded');
+    });
+
     test('令牌即将过期时先刷新，再用新令牌发请求', () async {
-      var token = 'about-to-expire';
-      when(() => storage.isAccessTokenExpiring()).thenReturn(true);
-      when(() => storage.getAccessToken()).thenAnswer((_) => token);
-      when(() => refresher.refresh()).thenAnswer((_) async {
-        token = 'fresh';
-        return 'fresh';
-      });
+      await storage.saveTokens(
+        TokenSet.withExpiresIn(
+          accessToken: 'about-to-expire',
+          refreshToken: 'refresh-1',
+          expiresIn: 10, // 落在默认 30s skew 之内
+        ),
+      );
+      refresher
+        ..result = 'fresh'
+        ..onRefresh = () =>
+            storage.saveTokens(const TokenSet(accessToken: 'fresh'));
       final adapter = ScriptedHttpAdapter();
 
       await createDio(adapter).get<dynamic>('/articles');
 
-      verify(() => refresher.refresh()).called(1);
+      expect(refresher.refreshCount, 1);
       expect(adapter.requests.single.headers['Authorization'], 'Bearer fresh');
+    });
+
+    test('主动刷新失败不阻塞本次请求，带着旧令牌发出去交给 401 兜底', () async {
+      await storage.saveTokens(
+        TokenSet.withExpiresIn(
+          accessToken: 'about-to-expire',
+          refreshToken: 'refresh-1',
+          expiresIn: 10,
+        ),
+      );
+      refresher.result = null; // 刷新失败
+      final adapter = ScriptedHttpAdapter();
+
+      await createDio(adapter).get<dynamic>('/articles');
+
+      expect(refresher.refreshCount, 1);
+      expect(
+        adapter.requests.single.headers['Authorization'],
+        'Bearer about-to-expire',
+      );
     });
   });
 
@@ -110,30 +152,30 @@ void main() {
         throwsA(isA<DioException>()),
       );
 
-      verifyNever(() => refresher.refresh());
-      verifyNever(() => storage.clearAuth());
+      expect(refresher.refreshCount, 0);
+      expect(storage.clearAuthCount, 0);
     });
 
     test('401 且刷新返回 null 时清除凭证', () async {
       final adapter = ScriptedHttpAdapter()..on('/articles', [401]);
-      when(() => refresher.refresh()).thenAnswer((_) async => null);
+      refresher.result = null;
 
       await expectLater(
         createDio(adapter).get<dynamic>('/articles'),
         throwsA(isA<DioException>()),
       );
 
-      verify(() => refresher.refresh()).called(1);
-      verify(() => storage.clearAuth()).called(1);
+      expect(refresher.refreshCount, 1);
+      expect(storage.clearAuthCount, 1);
     });
 
     // clearAuth 抛异常（安全存储不可用等）时，异常不能外抛到 onError：
     // dio 会把未完成 handler 的异常包成 DioException(type: unknown, response: null)
     // 传给调用方，原始的 401 就被替换成「未知错误」了
     test('clearAuth 抛异常时，调用方仍收到原始 401（不被替换成无关异常）', () async {
+      storage = FakeTokenStore(clearAuthError: Exception('安全存储不可用'));
       final adapter = ScriptedHttpAdapter()..on('/articles', [401]);
-      when(() => refresher.refresh()).thenAnswer((_) async => null);
-      when(() => storage.clearAuth()).thenThrow(StateError('安全存储不可用'));
+      refresher.result = null;
 
       await expectLater(
         createDio(adapter).get<dynamic>('/articles'),
@@ -144,7 +186,7 @@ void main() {
         ),
       );
 
-      verify(() => storage.clearAuth()).called(1);
+      expect(storage.clearAuthCount, 1);
     });
 
     test('已重放过的请求（kAuthRetried）不再刷新，直接清凭证', () async {
@@ -158,8 +200,8 @@ void main() {
         throwsA(isA<DioException>()),
       );
 
-      verifyNever(() => refresher.refresh());
-      verify(() => storage.clearAuth()).called(1);
+      expect(refresher.refreshCount, 0);
+      expect(storage.clearAuthCount, 1);
     });
 
     test('刷新请求自身 401（kSkipAuthRefresh）不再刷新，直接清凭证', () async {
@@ -173,8 +215,8 @@ void main() {
         throwsA(isA<DioException>()),
       );
 
-      verifyNever(() => refresher.refresh());
-      verify(() => storage.clearAuth()).called(1);
+      expect(refresher.refreshCount, 0);
+      expect(storage.clearAuthCount, 1);
     });
   });
 }

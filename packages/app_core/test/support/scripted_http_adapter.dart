@@ -8,10 +8,10 @@ import 'package:dio/dio.dart';
 ///
 /// 同一路径可依次给出多个响应（如「先 401、刷新后 200」）；只剩一项时会一直复用。
 ///
-/// 与 `packages/app_core/test/support/scripted_http_adapter.dart` 是**两份副本**：
-/// 这份给根侧测 `NetworkModule.dio()` 的装配，那份给包侧测 `createDio`。
-/// 测试辅助代码无法跨包共享（放进包的 `lib/` 会污染公开 API 并计入覆盖率），
-/// 所以接受这一处重复——改这里时同步改那一份，反之亦然。
+/// 与 `test/support/scripted_http_adapter.dart` 是**两份副本**：根侧测
+/// `NetworkModule.dio()` 的装配，包侧测 `createDio`。测试辅助代码无法跨包共享
+/// （放进包的 `lib/` 会污染公开 API 并计入覆盖率），所以接受这一处重复——
+/// 改这里时同步改那一份，反之亦然。
 class ScriptedHttpAdapter implements HttpClientAdapter {
   /// 按到达顺序记录所有请求，便于断言请求头与调用次数
   final List<RequestOptions> requests = [];

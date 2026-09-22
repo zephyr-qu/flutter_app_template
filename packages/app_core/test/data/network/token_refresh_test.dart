@@ -3,32 +3,25 @@ import 'dart:async';
 import 'package:app_core/data/network/auth_interceptor.dart';
 import 'package:app_core/data/network/token_refresher.dart';
 import 'package:app_core/models/token_set.dart';
-import 'package:app_core/models/user.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../support/scripted_http_adapter.dart';
+import '../../support/fake_token_store.dart';
+import '../../support/scripted_http_adapter.dart';
 
-/// 这里用**真实的** AuthStorage + TokenRefresher + AuthInterceptor 跑在真实的
-/// Dio 管道里，只有网络层被替换成脚本化适配器。刷新流程的坑几乎都在并发与
-/// 递归上，只有把这几层真正拼起来才验得出来。
+/// 这里用**真实的** `TokenRefresher` + `AuthInterceptor` 跑在真实的 Dio 管道里，
+/// 只有网络层被替换成脚本化适配器、存储换成 [FakeTokenStore]（内存版）。
+/// 刷新流程的坑几乎都在并发与递归上，只有把这几层真正拼起来才验得出来。
+///
+/// 存储适配层（`AuthStorage` ↔ `SharedPreferences` / `FlutterSecureStorage`）
+/// 是 lib 的事，由 `test/core/data/storage/auth_storage_test.dart` 覆盖。
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  late AuthStorage storage;
+  late FakeTokenStore storage;
   late ScriptedHttpAdapter adapter;
   late Dio dio;
 
-  setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    FlutterSecureStorage.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-
-    storage = AuthStorage(prefs, const FlutterSecureStorage());
-    await storage.ready;
+  setUp(() {
+    storage = FakeTokenStore();
 
     adapter = ScriptedHttpAdapter();
     dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
@@ -110,7 +103,6 @@ void main() {
     await storage.saveTokens(
       const TokenSet(accessToken: 'expired', refreshToken: 'refresh-1'),
     );
-    await storage.saveUser(const User(id: 1, name: '测试用户'));
     adapter
       ..on('/articles', [401])
       ..on('/refresh', [401]);
@@ -128,7 +120,10 @@ void main() {
 
     expect(storage.getAccessToken(), isNull);
     expect(storage.getRefreshToken(), isNull);
-    expect(storage.isLoggedIn, isFalse);
+    // 清理不是「只清一次」：刷新请求自身的 401 与随后的「刷新失败」各清一次。
+    // `_clearAuthInFlight` 只防**并发**重入（用户重新登录后仍须能再清），
+    // 而 clearAuth 本身是幂等的，所以这里只要求「清过」。
+    expect(storage.clearAuthCount, greaterThanOrEqualTo(1));
     // 刷新失败后不该继续重放
     expect(adapter.requestCount('/articles'), 1);
   });
@@ -239,7 +234,6 @@ void main() {
           expiresIn: 10,
         ),
       );
-      await storage.saveUser(const User(id: 1, name: '测试用户'));
       adapter
         ..on('/refresh', [500]) // 主动刷新失败
         ..on('/articles', [401]); // 过期令牌被拒
@@ -252,7 +246,7 @@ void main() {
       // 主动一次 + 401 之后被动一次，两次都失败 → 登出
       expect(adapter.requestCount('/refresh'), 2);
       expect(adapter.requestCount('/articles'), 1);
-      expect(storage.isLoggedIn, isFalse);
+      expect(storage.clearAuthCount, 1);
     });
   });
 }
