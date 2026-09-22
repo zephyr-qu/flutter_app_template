@@ -5,7 +5,10 @@
 *.swp
 .DS_Store
 .atom/
-.env
+# .env* 有意**不**忽略：它们是脚手架的非密钥配置（BASE_URL / USE_MOCK），
+# 会提交进 git，并由 pubspec.yaml 的 assets 声明打进产物。
+# 密钥一律走 --dart-define；不要把 .env* 加回这里 —— 那会让人以为本地改动
+# 不会被提交，与 README「环境配置与 release 构建」的说法互相矛盾。
 .build/
 .buildlog/
 .history
@@ -65,7 +68,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-# Windows 测试用 SQLite 原生库（sqlite3 3.x native assets 在 flutter test 不可用）
-# 下载: https://www.sqlite.org/download.html → sqlite-dll-win-x64-*.zip
-/sqlite3.dll
