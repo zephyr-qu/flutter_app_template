@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "核对六道门禁在抽包后是否仍然成立，以及扫描根是否已扩展"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "禁止/必须模式清单，确认包内 UI 组件不引入状态管理依赖"}
+{"file": ".trellis/spec/backend/network-guidelines.md", "reason": "回归核对：拦截器顺序与 401/重放语义必须与原实现完全一致"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Failure 语义分层，确认 failure_message 拆分没有破坏「code 与文案分离」"}

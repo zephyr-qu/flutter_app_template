@@ -1,0 +1,9 @@
+{"file": "docs/architecture-review.md", "reason": "P1/P5/P7 的结论建立在 signals 语义上，重写 spec 前必须先理解哪些判断会随换栈失效"}
+{"file": "docs/adr/ADR-0001.md", "reason": "ViewModel 构造器注入的决策与「页面层仍是 service locator」的已知代价，换 Riverpod 后需要重新表述"}
+{"file": "docs/adr/ADR-0002.md", "reason": "「不引入 ViewModel 基类、三态交给 runAsync」在 Riverpod 下不再成立，需标注适用范围"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "本次要重写的对象，需逐条对照哪些是 signals 特有、哪些是通用约定"}
+{"file": ".trellis/spec/frontend/hook-guidelines.md", "reason": "同上，hooks 范式要整体替换为 Consumer 范式"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "禁止/必须模式清单要按 Riverpod 改写"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "含被 check_readme_tree 校验的目录树，删 di/ 后必须同步"}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "六道门禁的口径与为什么用脚本而非 analyzer 插件，改门禁前必须读"}
+{"file": "tool/check_boundaries.dart", "reason": "规则 1 基于 getIt，需改为 ProviderContainer；新增 logic 不得引 material 的规则"}

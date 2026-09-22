@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "核对重写后的禁止/必须模式与代码一致，且没有残留 signals 时代的条目"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "核对 dispose 边界与刷新语义在 Riverpod 下的对应说法是否正确"}
+{"file": ".trellis/spec/backend/network-guidelines.md", "reason": "回归核对：换栈不得改变拦截器顺序与 401 重放语义"}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "六道门禁在改造后是否仍全部有效，尤其是被改写的边界规则"}
+{"file": ".trellis/spec/frontend/localization.md", "reason": "l10n 在本分支保留，确认 AsyncValue 化的页面没有破坏文案取值路径"}

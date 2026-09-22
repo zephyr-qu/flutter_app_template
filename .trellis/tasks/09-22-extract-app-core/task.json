@@ -1,0 +1,32 @@
+{
+  "id": "extract-app-core",
+  "name": "extract-app-core",
+  "title": "抽 packages/app_core 供 signals / Riverpod 双栈共用",
+  "description": "把不依赖状态管理的基础设施抽成本地包，让 master（signals）与 preset/ai-starter（Riverpod）共用一份，消除双栈同步成本。",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "zs",
+  "assignee": "zs",
+  "createdAt": "2026-09-22",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "master",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "09-22-scaffold-branch-strategy",
+  "relatedFiles": [
+    "packages/app_core/pubspec.yaml",
+    "packages/app_core/lib/",
+    "pubspec.yaml",
+    "tool/check_boundaries.dart",
+    "tool/check_readme_tree.dart"
+  ],
+  "notes": "必须先于 preset/ai-starter 完成，否则 ai-starter 迁移完再抽会返工两次。",
+  "meta": {}
+}
