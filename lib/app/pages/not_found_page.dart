@@ -1,15 +1,17 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/routing/router.dart';
+import 'package:my_app/app/routing/router.dart';
+import 'package:my_app/l10n/app_localizations.dart';
 
 /// 404 页面
 @RoutePage()
 class NotFoundPage extends StatelessWidget {
-  const NotFoundPage({super.key});
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: Center(
@@ -33,16 +35,19 @@ class NotFoundPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '页面未找到',
+                l10n.notFoundMessage,
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
               FilledButton.tonalIcon(
-                onPressed: () => context.replaceRoute(const HomeRoute()),
+                // 页面在 app 层，可以直接用路由类（不再依赖 '/' 这类字符串 path）
+                // 注意 replaceRoute 是挂在 BuildContext 上的扩展，不是
+                // StackRouter 的成员，所以不能写成 context.router.replaceRoute
+                onPressed: () => context.replaceRoute(const MainRoute()),
                 icon: const Icon(Icons.home_rounded),
-                label: const Text('返回首页'),
+                label: Text(l10n.backToHome),
               ),
             ],
           ),

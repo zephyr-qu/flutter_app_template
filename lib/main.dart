@@ -1,3 +1,3 @@
-import 'bootstrap.dart';
+import 'package:my_app/bootstrap.dart';
 
 Future<void> main() => bootstrap();

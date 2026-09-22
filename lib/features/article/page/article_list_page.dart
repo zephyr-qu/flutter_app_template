@@ -1,61 +1,85 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:my_app/core/config/theme_extension.dart';
-import 'package:my_app/core/presentation/widgets/empty_widget.dart';
-import 'package:my_app/core/presentation/widgets/error_text.dart';
-import 'package:my_app/core/presentation/widgets/loading_indicator.dart';
-import 'package:my_app/core/routing/router.dart';
+import 'package:my_app/app/routing/router.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
+import 'package:my_app/core/ui/async_view.dart';
+import 'package:my_app/core/ui/empty_widget.dart';
+import 'package:my_app/core/ui/error_text.dart';
+import 'package:my_app/core/ui/loading_indicator.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/article/data/models/article.dart';
 import 'package:my_app/features/article/logic/article_view_model.dart';
+import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 文章列表页——卡片式阅读列表
 @RoutePage()
 class ArticleListPage extends HookWidget {
-  const ArticleListPage({super.key});
+  const new({super.key, this.viewModel});
+
+  /// 可选注入点——只有测试会传值（说明见 `login_page.dart`）
+  final ArticleViewModel? viewModel;
 
   @override
   Widget build(BuildContext context) {
-    final vm = useMemoized(() => getIt<ArticleViewModel>());
+    final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
+    final l10n = AppLocalizations.of(context);
 
     useEffect(() {
-      vm.loadArticles();
+      unawaited(vm.loadArticles());
       return;
     }, []);
 
     final AsyncState<List<Article>> async = useSignalValue(vm.articles);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('文章'), centerTitle: false),
-      body: async.map(
+      appBar: AppBar(title: Text(l10n.navArticles), centerTitle: false),
+      // 走 AsyncView 而不是 AsyncState.map：回调是具名具类型的，error 与
+      // stackTrace 都会传进来（map 的运行期猜签名问题已收敛在 core 内部）
+      body: AsyncView<List<Article>>(
+        state: async,
         loading: () => const LoadingIndicator(),
-        error: (Object? error, StackTrace? _) =>
-            ErrorText(error: '$error', onRetry: () => vm.loadArticles()),
-        data: (List<Article> list) {
-          if (list.isEmpty) {
-            return const EmptyWidget(
-              icon: Icons.article_outlined,
-              message: '暂无文章',
-            );
-          }
+        error: (error, stackTrace) =>
+            ErrorText(error: error, onRetry: vm.loadArticles),
+        data: (list) {
+          // 两个分支都要能下拉刷新：显式给 AlwaysScrollableScrollPhysics，
+          // 空态也要包成可滚动的。见 frontend/state-management.md「刷新时保留旧数据」。
           return RefreshIndicator(
-            onRefresh: () => vm.loadArticles(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              itemCount: list.length,
-              itemBuilder: (BuildContext context, int index) {
-                final Article article = list[index];
-                return _ArticleCard(
-                  article: article,
-                  index: index,
-                  onTap: () => context.pushRoute(
-                    ArticleDetailRoute(articleId: article.id),
+            onRefresh: vm.loadArticles,
+            child: list.isEmpty
+                ? CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyWidget(
+                          icon: Icons.article_outlined,
+                          message: l10n.articlesEmpty,
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final article = list[index];
+                      return _ArticleCard(
+                        article: article,
+                        index: index,
+                        onTap: () => context.pushRoute(
+                          ArticleDetailRoute(articleId: article.id),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           );
         },
       ),
@@ -64,21 +88,17 @@ class ArticleListPage extends HookWidget {
 }
 
 class _ArticleCard extends StatelessWidget {
+  const new({required this.article, required this.index, required this.onTap});
   final Article article;
   final int index;
   final VoidCallback onTap;
-
-  const _ArticleCard({
-    required this.article,
-    required this.index,
-    required this.onTap,
-  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -129,9 +149,9 @@ class _ArticleCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '点击阅读更多...',
+                        l10n.articleReadMore,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: appTheme.textSubtle,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -146,7 +166,7 @@ class _ArticleCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '阅读',
+                            l10n.articleRead,
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: colorScheme.primary,
                               fontWeight: FontWeight.w600,

@@ -1,44 +1,56 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:my_app/core/config/theme_extension.dart';
-import 'package:my_app/core/presentation/widgets/error_text.dart';
-import 'package:my_app/core/presentation/widgets/loading_indicator.dart';
+import 'package:my_app/core/ui/async_view.dart';
+import 'package:my_app/core/ui/error_text.dart';
+import 'package:my_app/core/ui/loading_indicator.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/article/data/models/article.dart';
 import 'package:my_app/features/article/logic/article_view_model.dart';
+import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 文章详情页——沉浸式阅读体验
 @RoutePage()
 class ArticleDetailPage extends HookWidget {
+  const new({required this.articleId, super.key, this.viewModel});
   final int articleId;
 
-  const ArticleDetailPage({super.key, required this.articleId});
+  /// 可选注入点——只有测试会传值（说明见 `login_page.dart`）
+  final ArticleViewModel? viewModel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final appTheme = AppThemeExtension.of(context);
+    final l10n = AppLocalizations.of(context);
 
-    final vm = useMemoized(() => getIt<ArticleViewModel>());
+    final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
 
     useEffect(() {
-      vm.loadDetail(articleId);
-      return () => vm.clearSelected();
+      unawaited(vm.loadDetail(articleId));
+      return vm.clearSelected;
     }, [articleId]);
 
     final AsyncState<Article?> async = useSignalValue(vm.selectedArticle);
 
-    return async.map(
-      loading: () => Scaffold(appBar: AppBar(), body: const LoadingIndicator()),
-      error: (Object? e) => Scaffold(
+    // 整页 loading 的形态，被 loading 与「未选中文章」两处复用
+    Widget loadingScaffold() =>
+        Scaffold(appBar: AppBar(), body: const LoadingIndicator());
+
+    return AsyncView<Article?>(
+      state: async,
+      loading: loadingScaffold,
+      error: (e, stackTrace) => Scaffold(
         appBar: AppBar(),
-        body: ErrorText(error: '$e', onRetry: () => vm.loadDetail(articleId)),
+        body: ErrorText(error: e, onRetry: () => vm.loadDetail(articleId)),
       ),
-      data: (d) {
-        final article = d!;
+      // null 按 loading 渲染：`clearSelected()` 写入的就是 `data(null)`，
+      // 它同样走 data 分支，用 `!` 强解包会抛
+      data: (article) {
+        if (article == null) return loadingScaffold();
         return Scaffold(
           body: CustomScrollView(
             slivers: [
@@ -98,7 +110,7 @@ class ArticleDetailPage extends HookWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '技术',
+                              l10n.articleTag,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: colorScheme.onTertiaryContainer,
                                 fontWeight: FontWeight.w500,
@@ -109,13 +121,13 @@ class ArticleDetailPage extends HookWidget {
                           Icon(
                             Icons.access_time,
                             size: 14,
-                            color: appTheme.textSubtle,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '5 分钟阅读',
+                            l10n.articleReadingTime(5),
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: appTheme.textSubtle,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],

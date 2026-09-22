@@ -1,25 +1,36 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:my_app/core/base/run_async.dart';
-import 'package:my_app/core/config/theme_extension.dart';
-import 'package:my_app/core/routing/router.dart';
+import 'package:my_app/app/routing/router.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
+import 'package:my_app/core/ui/failure_message.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/auth/logic/auth_view_model.dart';
+import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 登录页——温暖极简的登录体验
 @RoutePage()
 class LoginPage extends HookWidget {
-  const LoginPage({super.key});
+  const new({super.key, this.viewModel});
+
+  /// 可选注入点——只有测试会传值。
+  ///
+  /// 生产环境由路由构建 `const LoginPage()`，走下面的 `getIt` 兜底；这样
+  /// 页面测试可以直接注入假 ViewModel，不必先装配全局容器，而路由依然
+  /// 不必感知 DI（代价与取舍见 ADR-0001）。
+  final AuthViewModel? viewModel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
+    final l10n = AppLocalizations.of(context);
 
-    final vm = useMemoized(() => getIt<AuthViewModel>());
+    final vm = useMemoized(() => viewModel ?? getIt<AuthViewModel>());
     final AsyncState<dynamic> userState = useSignalValue(vm.user);
     final bool canSubmit = useSignalValue(vm.canSubmit);
 
@@ -61,14 +72,14 @@ class LoginPage extends HookWidget {
                   const SizedBox(height: 24),
 
                   Text(
-                    '欢迎回来',
+                    l10n.loginWelcome,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '登录以继续使用',
+                    l10n.loginSubtitle,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -77,11 +88,11 @@ class LoginPage extends HookWidget {
 
                   // ── Email field ──
                   TextField(
-                    onChanged: (v) => vm.updateEmail(v),
+                    onChanged: vm.updateEmail,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
-                      labelText: '邮箱',
+                      labelText: l10n.emailLabel,
                       hintText: 'your@email.com',
                       prefixIcon: Icon(
                         Icons.email_outlined,
@@ -99,12 +110,12 @@ class LoginPage extends HookWidget {
 
                   // ── Password field ──
                   TextField(
-                    onChanged: (v) => vm.updatePassword(v),
+                    onChanged: vm.updatePassword,
                     obscureText: true,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
-                      labelText: '密码',
-                      hintText: '至少 6 位',
+                      labelText: l10n.passwordLabel,
+                      hintText: l10n.passwordHint,
                       prefixIcon: Icon(
                         Icons.lock_outlined,
                         color: colorScheme.onSurface.withValues(alpha: 0.4),
@@ -137,18 +148,23 @@ class LoginPage extends HookWidget {
                         : FilledButton(
                             onPressed: canSubmit
                                 ? () {
-                                    Future.microtask(() async {
-                                      final result = await vm.login();
-                                      result.when(
-                                        success: (_) => context.replaceRoute(
-                                          const HomeRoute(),
-                                        ),
-                                        failure: (error) => _showError(
-                                          context,
-                                          userErrorMessage(error),
-                                        ),
-                                      );
-                                    });
+                                    unawaited(
+                                      Future.microtask(() async {
+                                        final result = await vm.login();
+                                        if (!context.mounted) return;
+                                        result.when(
+                                          // 进 MainRoute（带底部导航的外壳），
+                                          // 而不是它的子路由 HomeRoute
+                                          success: (_) => context.replaceRoute(
+                                            const MainRoute(),
+                                          ),
+                                          failure: (error) => _showError(
+                                            context,
+                                            error.localizedMessage(l10n),
+                                          ),
+                                        );
+                                      }),
+                                    );
                                   }
                                 : null,
                             style: FilledButton.styleFrom(
@@ -159,9 +175,9 @@ class LoginPage extends HookWidget {
                               ),
                               elevation: 0,
                             ),
-                            child: const Text(
-                              '登录',
-                              style: TextStyle(
+                            child: Text(
+                              l10n.loginButton,
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),

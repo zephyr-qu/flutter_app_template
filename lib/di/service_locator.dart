@@ -1,9 +1,9 @@
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 
-import 'service_locator.config.dart';
+import 'package:my_app/di/service_locator.config.dart';
 
-final getIt = GetIt.instance;
+final GetIt getIt = GetIt.instance;
 
 @InjectableInit()
 Future<void> configureDependencies() => getIt.init();

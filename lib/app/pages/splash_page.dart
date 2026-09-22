@@ -1,14 +1,19 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/config/theme_extension.dart';
-import 'package:my_app/core/routing/router.dart';
+import 'package:my_app/app/routing/router.dart';
+import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
+import 'package:my_app/di/service_locator.dart';
+import 'package:my_app/l10n/app_localizations.dart';
 
-/// 启动页——带渐入动画的品牌页
+/// 启动页——带渐入动画的品牌页。
+///
+/// 不接收 `isAuthenticated` 这类构造参数（初始路由拿不到参数），登录态实时读。
 @RoutePage()
 class SplashPage extends StatefulWidget {
-  final bool isAuthenticated;
-
-  const SplashPage({super.key, required this.isAuthenticated});
+  const new({super.key});
 
   @override
   State<SplashPage> createState() => _SplashPageState();
@@ -32,7 +37,7 @@ class _SplashPageState extends State<SplashPage>
 
     _fadeIn = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+      curve: const Interval(0, 0.6, curve: Curves.easeOutCubic),
     );
 
     _slideUp = Tween<Offset>(begin: const Offset(0, 24), end: Offset.zero)
@@ -43,26 +48,28 @@ class _SplashPageState extends State<SplashPage>
           ),
         );
 
-    _scale = Tween<double>(begin: 0.85, end: 1.0).animate(
+    _scale = Tween<double>(begin: 0.85, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOutBack),
+        curve: const Interval(0, 0.7, curve: Curves.easeOutBack),
       ),
     );
 
     _controller.forward();
-    _redirect();
+    // 动画与跳转各走各的：这里不 await 跳转，动画不能被它阻塞
+    unawaited(_redirect());
   }
 
   Future<void> _redirect() async {
     await Future<void>.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
 
-    if (widget.isAuthenticated) {
-      await context.replaceRoute(const HomeRoute());
-    } else {
-      await context.replaceRoute(const LoginRoute());
-    }
+    // 页面在 app 层，可以直接用路由类（不再依赖 '/' / '/login' 这类字符串 path）
+    // 注意 replaceRoute 是挂在 BuildContext 上的扩展，不是 StackRouter 的成员
+    final isLoggedIn = getIt<AuthStorage>().isLoggedIn;
+    await context.replaceRoute(
+      isLoggedIn ? const MainRoute() : const LoginRoute(),
+    );
   }
 
   @override
@@ -76,6 +83,7 @@ class _SplashPageState extends State<SplashPage>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: Container(
@@ -134,7 +142,7 @@ class _SplashPageState extends State<SplashPage>
 
                     // ── Tagline ──
                     Text(
-                      '简洁 · 优雅 · 实用',
+                      l10n.splashTagline,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurface.withValues(alpha: 0.5),
                         letterSpacing: 4,

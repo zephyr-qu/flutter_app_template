@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/config/theme_extension.dart';
+import 'package:my_app/core/base/failure.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
+import 'package:my_app/core/ui/failure_message.dart';
+import 'package:my_app/l10n/app_localizations.dart';
 
-/// 统一错误状态组件
+/// 统一错误状态组件。
+///
+/// [error] 通常是 `runAsync` 放进 `AsyncState.error` 的 [Failure]，按当前语言翻译；
+/// 传别的对象显示通用文案。
 class ErrorText extends StatelessWidget {
-  const ErrorText({super.key, required this.error, this.onRetry, this.icon});
+  const new({required this.error, super.key, this.onRetry, this.icon});
 
-  final Object error;
+  final Object? error;
   final VoidCallback? onRetry;
   final IconData? icon;
 
@@ -14,6 +20,12 @@ class ErrorText extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    final message = switch (error) {
+      final Failure failure => failure.localizedMessage(l10n),
+      _ => l10n.errorUnknown,
+    };
 
     return Center(
       child: Padding(
@@ -37,7 +49,7 @@ class ErrorText extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              '出错了',
+              l10n.errorTitle,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
@@ -45,9 +57,9 @@ class ErrorText extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '$error',
+              message,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: appTheme.textSubtle,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
               maxLines: 3,
@@ -58,7 +70,7 @@ class ErrorText extends StatelessWidget {
               FilledButton.tonalIcon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('重试'),
+                label: Text(l10n.retry),
                 style: FilledButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(appTheme.radiusSm),

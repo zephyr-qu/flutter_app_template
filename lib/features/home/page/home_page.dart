@@ -1,24 +1,32 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/config/app_config.dart';
-import 'package:my_app/core/config/theme_extension.dart';
-import 'package:my_app/core/routing/router.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:my_app/app/routing/router.dart';
+import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/models/user.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
 import 'package:my_app/di/service_locator.dart';
+import 'package:my_app/l10n/app_localizations.dart';
+import 'package:signals_hooks/signals_hooks.dart';
 
 /// 首页仪表盘——温暖极简的个人总览
 @RoutePage()
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class HomePage extends HookWidget {
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final config = getIt<AppConfig>();
+    final l10n = AppLocalizations.of(context);
+    final auth = getIt<AuthStorage>();
+    // 订阅信号：直接读 .value 只在恰好重建时才更新（本页被主框架常驻，
+    // 用户变化时不会自己重建）
+    final User? user = useSignalValue(auth.currentUser);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('首页'), centerTitle: false),
+      appBar: AppBar(title: Text(l10n.navHome), centerTitle: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
         child: Column(
@@ -62,7 +70,7 @@ class HomePage extends StatelessWidget {
                         ),
                         child: Center(
                           child: Text(
-                            _userInitial(config),
+                            _userInitial(user),
                             style: theme.textTheme.titleLarge?.copyWith(
                               color: colorScheme.onPrimary,
                               fontWeight: FontWeight.w600,
@@ -76,7 +84,9 @@ class HomePage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '你好, ${config.auth.currentUser.value?.name ?? '用户'}',
+                              l10n.homeGreeting(
+                                user?.name ?? l10n.userFallback,
+                              ),
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: colorScheme.onPrimary,
                                 fontWeight: FontWeight.w600,
@@ -84,7 +94,7 @@ class HomePage extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '今天也是美好的一天',
+                              l10n.homeSubtitle,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onPrimary.withValues(
                                   alpha: 0.75,
@@ -103,7 +113,7 @@ class HomePage extends StatelessWidget {
 
             // ── Quick actions ──
             Text(
-              '快捷功能',
+              l10n.homeQuickActions,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
@@ -116,7 +126,7 @@ class HomePage extends StatelessWidget {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.article_outlined,
-                    label: '文章',
+                    label: l10n.navArticles,
                     color: colorScheme.tertiary,
                     gradientColors: [
                       colorScheme.tertiaryContainer,
@@ -130,7 +140,7 @@ class HomePage extends StatelessWidget {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.person_outlined,
-                    label: '个人',
+                    label: l10n.profileTitle,
                     color: colorScheme.secondary,
                     gradientColors: [
                       colorScheme.secondaryContainer,
@@ -144,14 +154,15 @@ class HomePage extends StatelessWidget {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.settings_outlined,
-                    label: '设置',
+                    label: l10n.settings,
                     color: colorScheme.primary,
                     gradientColors: [
                       colorScheme.primaryContainer,
                       colorScheme.primaryContainer.withValues(alpha: 0.6),
                     ],
                     iconColor: colorScheme.onPrimaryContainer,
-                    onTap: () {},
+                    // 设置区就在个人页，快捷入口直接跳过去，不留空手势
+                    onTap: () => context.pushRoute(const ProfileRoute()),
                   ),
                 ),
               ],
@@ -161,7 +172,7 @@ class HomePage extends StatelessWidget {
 
             // ── Recent activity placeholder ──
             Text(
-              '最近动态',
+              l10n.homeRecentActivity,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
@@ -185,7 +196,7 @@ class HomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '暂无最近动态',
+                    l10n.homeNoRecentActivity,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
@@ -201,22 +212,15 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  String _userInitial(AppConfig config) {
-    final name = config.auth.currentUser.value?.name;
+  String _userInitial(User? user) {
+    final name = user?.name;
     if (name == null || name.isEmpty) return '?';
     return name[0];
   }
 }
 
 class _QuickActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final List<Color> gradientColors;
-  final Color iconColor;
-  final VoidCallback? onTap;
-
-  const _QuickActionCard({
+  const new({
     required this.icon,
     required this.label,
     required this.color,
@@ -224,6 +228,12 @@ class _QuickActionCard extends StatelessWidget {
     required this.iconColor,
     this.onTap,
   });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final List<Color> gradientColors;
+  final Color iconColor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

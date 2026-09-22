@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/config/theme_extension.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
 
 /// 统一空状态组件
 class EmptyWidget extends StatelessWidget {
-  const EmptyWidget({
-    super.key,
+  const new({
     required this.message,
+    super.key,
     this.icon,
     this.actionLabel,
     this.onAction,
@@ -46,7 +46,7 @@ class EmptyWidget extends StatelessWidget {
             Text(
               message,
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: appTheme.textSubtle,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

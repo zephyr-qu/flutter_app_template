@@ -155,47 +155,32 @@ class ProfileRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [SplashPage]
-class SplashRoute extends PageRouteInfo<SplashRouteArgs> {
-  SplashRoute({
-    Key? key,
-    required bool isAuthenticated,
-    List<PageRouteInfo>? children,
-  }) : super(
-         SplashRoute.name,
-         args: SplashRouteArgs(key: key, isAuthenticated: isAuthenticated),
-         initialChildren: children,
-       );
+class SplashRoute extends PageRouteInfo<void> {
+  const SplashRoute({List<PageRouteInfo>? children})
+    : super(SplashRoute.name, initialChildren: children);
 
   static const String name = 'SplashRoute';
 
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<SplashRouteArgs>();
-      return SplashPage(key: args.key, isAuthenticated: args.isAuthenticated);
+      return const SplashPage();
     },
   );
 }
 
-class SplashRouteArgs {
-  const SplashRouteArgs({this.key, required this.isAuthenticated});
+/// generated route for
+/// [StorageDemoPage]
+class StorageDemoRoute extends PageRouteInfo<void> {
+  const StorageDemoRoute({List<PageRouteInfo>? children})
+    : super(StorageDemoRoute.name, initialChildren: children);
 
-  final Key? key;
+  static const String name = 'StorageDemoRoute';
 
-  final bool isAuthenticated;
-
-  @override
-  String toString() {
-    return 'SplashRouteArgs{key: $key, isAuthenticated: $isAuthenticated}';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! SplashRouteArgs) return false;
-    return key == other.key && isAuthenticated == other.isAuthenticated;
-  }
-
-  @override
-  int get hashCode => key.hashCode ^ isAuthenticated.hashCode;
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return const StorageDemoPage();
+    },
+  );
 }
