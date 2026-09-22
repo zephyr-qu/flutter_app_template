@@ -1,0 +1,29 @@
+# 统一换行符：仓库与工作区一律使用 LF。
+# 显式声明 `eol=lf` 后会覆盖 core.autocrlf，避免 Windows 上出现
+# "LF will be replaced by CRLF" 警告以及跨平台协作时的整文件 diff。
+* text=auto eol=lf
+
+# Windows 专用脚本必须保留 CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# 二进制文件：不做换行转换，不参与文本 diff
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+*.ttf     binary
+*.otf     binary
+*.woff    binary
+*.woff2   binary
+*.jar     binary
+*.zip     binary
+*.gz      binary
+*.so      binary
+*.dylib   binary
+*.dll     binary
+*.a       binary
+*.jks     binary
+*.keystore binary
