@@ -1,103 +1,46 @@
 # Directory Structure
 
-> How backend (data layer) code is organized in this project.
+> 数据层（`features/*/data/`）的角色与文件约定。
 
-> **Scaffold note**: This is a personal Flutter scaffold/template for medium-small apps. The Clean Architecture feature-first structure is lightweight — no UseCase layer (over-engineering for this scope). ViewModels communicate directly with Repository abstractions.
+> **The canonical layout lives in [`../frontend/directory-structure.md`](../frontend/directory-structure.md).**
+> `lib/` 的完整目录树、分层职责、命名约定表都在那里 —— 本文件**不重复**，只补数据层视角的两件事：数据怎么在层间走、数据层有哪几个文件角色。
+
+> **Scaffold note**: This is a personal Flutter scaffold/template for medium-small apps. The structure is **Feature-Sliced Design (FSD) 简化版** — no Clean Architecture layers, no UseCase layer (over-engineering for this scope). ViewModels talk directly to a feature's Service/Repository.
 
 ---
 
-## Overview
-
-This project follows **Clean Architecture** with a **feature-first** package structure. The `lib/` directory is organized into three top-level sections:
-
-- **`core/`** — Shared infrastructure and utilities (theme, routing, network, DI, error handling, config)
-- **`features/{feature}/`** — Feature modules following Clean Architecture layers
-- **`shared/`** — Shared base classes and utilities
-
-Each feature module is self-contained with its own layers:
+## Data flow
 
 ```
-lib/
-├── core/
-│   ├── config/               # App configuration, user preferences, network config
-│   ├── error/                # Failure types, Result type
-│   ├── local/                # File storage utilities
-│   ├── network/              # Dio client, interceptors, retry logic
-│   ├── presentation/
-│   │   ├── pages/            # Shared pages (splash, 404)
-│   │   └── widgets/          # Shared widgets (loading, empty, error)
-│   ├── routing/              # GoRouter setup, route constants, navigation extensions
-│   ├── storage/              # Auth storage (shared_preferences wrapper)
-│   ├── theme/                # AppThemes, design tokens, theme extensions
-│   └── utils/                # Utility classes (Logging)
-├── di/                       # GetIt + injectable setup
-├── features/
-│   ├── {feature}/
-│   │   ├── domain/           # Business logic layer (ABSTRACTIONS only)
-│   │   │   ├── models/       # Data models (freezed/json_annotation)
-│   │   │   ├── {feature}_repository.dart  # Abstract repository interface
-│   │   │   └── ...
-│   │   ├── data/             # Data layer (IMPLEMENTATIONS)
-│   │   │   ├── {feature}_api.dart        # Retrofit API definitions
-│   │   │   ├── {feature}_api.g.dart      # Generated (retrofit)
-│   │   │   ├── {feature}_service.dart    # Repository implementation
-│   │   │   └── {feature}_module.dart     # Injectable DI module
-│   │   ├── application/      # ViewModels (Signals-based state)
-│   │   │   └── {feature}_view_model.dart
-│   │   └── page/             # Flutter UI pages
-│   │       └── {feature}_page.dart
-│   └── ...
-├── gen/                      # Generated assets (flutter_gen)
-├── shared/
-│   └── view_models/
-│       └── base_view_model.dart  # BaseViewModel with signals lifecycle
-├── app.dart                  # MaterialApp.router setup
-├── bootstrap.dart            # App initialization
-└── main.dart                 # Entry point
+Page → ViewModel → Repository (接口) → Service (实现) → Api (Retrofit) → Dio
+                                          ↓
+                                     Dao (Drift)  ← 缓存旁路
 ```
 
----
-
-## Module Organization
-
-Each feature module follows strict Clean Architecture dependency rules:
-
-| Layer | Dependencies | Purpose |
-| ------- | ------------- | --------- |
-| `domain/` | No framework dependencies | Business interfaces, domain models |
-| `data/` | Depends on `domain/`, `core/error/`, `core/network/` | API calls, repository implementations |
-| `application/` | Depends on `domain/`, `core/error/`, `shared/` | ViewModels, state management |
-| `page/` | Depends on `application/` | Flutter UI pages |
-
-**Data flow**: `Page → ViewModel → Repository (interface) → Service (implementation) → API`
-
-- **Dependencies point inward**: outer layers depend on inner layers, never the reverse
-- **No cyclic dependencies**: a domain model never imports from data or page layers
-- **Generated code**: `.g.dart` files live alongside their source and are never edited manually
+- 依赖方向是 `page/ → logic/ → data/ → core/`，由 `tool/check_boundaries.dart` 强制（`core/` 不得 import 上层，跨 feature 只共享 `data/`）
+- `Dto / Model` 只在 `data/` 层转换：Retrofit 拿到 JSON → 模型（`@freezed`），Service 返回 `Result<T, Failure>`
+- **缓存旁路**：Service 同时消费网络与 DAO —— 网络成功就刷新缓存，网络失败就回退到缓存。见 [database-guidelines.md](./database-guidelines.md) 的「Drift」一节
 
 ---
 
-## Naming Conventions
+## 数据层的文件角色
 
-| Element | Convention | Example |
-| --------- | ----------- | --------- |
-| Feature directories | snake_case | `auth/`, `article/` |
-| Dart source files | snake_case | `auth_service.dart`, `article_repository.dart` |
-| Repository interface | `{feature}_repository.dart` | `auth_repository.dart` |
-| Repository impl | `{feature}_service.dart` | `auth_service.dart` |
-| API definition | `{feature}_api.dart` | `auth_api.dart` |
-| ViewModel | `{feature}_view_model.dart` | `auth_view_model.dart` |
-| DI module | `{feature}_module.dart` | `auth_module.dart` |
-| Page files | `{feature}_page.dart` | `login_page.dart` |
-| Model classes | PascalCase | `Article`, `User` |
-| Repository class | `{Feature}Repository` | `ArticleRepository` |
-| Service class | `{Feature}Service` | `ArticleService` |
-| API class | `{Feature}Api` | `AuthApi` |
-| ViewModel class | `{Feature}ViewModel` | `AuthViewModel` |
+文件名与类名的规则见 [../frontend/directory-structure.md](../frontend/directory-structure.md)「Naming Conventions」。这里只说各自**负责什么**：
+
+| 文件 | 角色 | 备注 |
+| ------- | ------ | ------ |
+| `{feature}_api.dart` | Retrofit 接口定义，只描述 HTTP 形状 | 不做错误映射，不碰缓存 |
+| `{feature}_service.dart` | 业务实现：调用 API、映射错误、读写缓存 | 返回 `Result<T, Failure>` |
+| `{feature}_repository.dart` | 抽象接口 | **按需**：有真实多实现需求（mock / 线上切换）才写 |
+| `{feature}_dao.dart` | Drift 查询 | 只碰行类 `DbArticle`，行↔模型转换留在 Service |
+| `{feature}_module.dart` | DI 装配 | 只提供依赖，不含业务逻辑 |
+| `models/` | `@freezed` 数据模型 | 见 [../frontend/type-safety.md](../frontend/type-safety.md) |
+
+Repository 接口与 Service 实现并存时，用例见 `lib/features/article/`（完整范例：API + DAO + Service + Repository + ViewModel + 页面）与 `lib/features/auth/`。
 
 ---
 
-## Examples
+## Generated Code
 
-- **Feature module**: `lib/features/article/` — complete example with API, service, repository, ViewModel, and pages
-- **Shared infrastructure**: `lib/core/` — contains `result.dart`, `failure.dart`, `dio_client.dart`, `app_theme.dart`
+- `.g.dart` / `.freezed.dart` / `.gr.dart` 与源文件同目录，**never edited manually**
+- `lib/di/service_locator.config.dart` 由 `injectable_generator` 生成 —— 改过构造器或注解后跑 `dart run build_runner build`

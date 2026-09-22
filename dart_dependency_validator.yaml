@@ -1,0 +1,12 @@
+# dependency_validator 的配置（`dart run dependency_validator`）
+#
+# 为什么不写在 pubspec.yaml：那个位置已废弃 —— `pub publish` 会对无法识别的键报警告。
+# 为什么不 `dart pub global activate`：作为 dev_dependency 声明后版本被锁进
+# pubspec.lock，CI 与本地跑的是同一份。
+
+# `@JsonKey` 只在 `features/auth/data/models/login_request.dart` 用到，而该符号经
+# freezed_annotation 的 `export 'package:json_annotation/json_annotation.dart'` 提供，
+# 所以源码里不会出现对 json_annotation 的 import。它确实是**直接使用**的依赖，
+# 不是冗余声明 —— 保留声明，这里忽略误报。
+ignore:
+  - json_annotation

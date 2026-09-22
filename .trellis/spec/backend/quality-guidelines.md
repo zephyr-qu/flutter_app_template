@@ -1,12 +1,18 @@
 # Quality Guidelines
 
-> Code quality standards for backend (data layer) development.
+> Code quality standards for the data and logic layers.
 
 ---
 
 ## Overview
 
-These guidelines apply to the data layer — all code under `lib/core/`, `lib/features/*/data/`, `lib/features/*/domain/`, and `lib/shared/`.
+These guidelines apply to:
+
+- `lib/core/` — shared infrastructure
+- `lib/features/*/data/` — API, service, repository, models
+- `lib/features/*/logic/` — ViewModels
+
+**架构边界**（`core/` 不得 import 上层、跨 feature 只共享 `data/`、ViewModel 不得用 service locator）以及所有门禁、测试基建与发布的约定，见 [../cross-cutting.md](../cross-cutting.md) —— 本文件不重复。
 
 ---
 
@@ -14,7 +20,7 @@ These guidelines apply to the data layer — all code under `lib/core/`, `lib/fe
 
 ❌ **Never use these patterns**:
 
-1. **Bare `try/catch` without `Result` type on public APIs** — All fallible repository/service methods must return `Result<T, Failure>`
+1. **Bare `try/catch` without a `Result` type on public APIs** — all fallible repository/service methods must return `Result<T, Failure>`
 
    ```dart
    // BAD
@@ -24,40 +30,30 @@ These guidelines apply to the data layer — all code under `lib/core/`, `lib/fe
    Future<Result<List<Article>, Failure>> getArticles() async { ... }
    ```
 
-2. **`print()` in production code** — Use `Logging.info()`, `Logging.debug()`, etc. The linter enforces `avoid_print`.
+2. **`print()` in production code** — use the `Logging` facade (`Logging.info/debug/warning/error`). (`avoid_print` is not currently enabled in `analysis_options.yaml`; this is a review convention, not a lint error.)
 
-3. **Raw `DioException` propagation to ViewModel** — Convert to typed `Failure` in the Service layer
+3. **Raw `DioException` propagation to the ViewModel** — convert to a typed `Failure` in the Service layer
 
    ```dart
    // BAD
-   throw e;  // Letting DioException escape
+   throw e;  // letting DioException escape
 
    // GOOD
-   return Result.failure(Failure.fromApiError(handleError(e)));
+   return Result.failure(handleDioError(e));
    ```
 
-4. **Cyclic imports between features** — Features should never import from other features
+4. **Cyclic imports between features** — a feature never imports another feature's `page/` or `logic/`
 
    ```dart
-   // BAD
-   import 'package:my_app/features/auth/domain/models/user.dart';  // in article feature
+   // BAD — article feature reaching into auth's UI/logic
+   import 'package:my_app/features/auth/page/login_page.dart';
    ```
 
-5. **Business logic in data layer classes** — Services only convert API to domain; ViewModels handle business logic
+5. **Business logic in the data layer** — 业务规则的**判断**（分支、阈值、策略）放 ViewModel；Service 只做转换与 I/O：调 API、读写缓存、把 `DioException` 映射成 `Failure`
 
-   ```dart
-   // BAD in Service
-   if (articles.isEmpty) { /* business decision */ }
+6. **`getOrThrow` in production code** — only in tests; use `when()` for exhaustive matching
 
-   // GOOD in ViewModel
-   ```
-
-6. **`getOrThrow` in production code** — Only use in tests; use `when()` for exhaustive matching
-
-   ```dart
-   // BAD
-   final user = result.getOrThrow;  // throws StateError on failure
-   ```
+7. **Calling `getIt()` from a ViewModel** — inject the dependency through the constructor instead
 
 ---
 
@@ -65,11 +61,16 @@ These guidelines apply to the data layer — all code under `lib/core/`, `lib/fe
 
 ✅ **Always use these patterns**:
 
-1. **`Result<T, Failure>`** for all fallible operations in Repository interfaces and Service implementations
+1. **`Result<T, Failure>`** for all fallible operations in repository interfaces and service implementations
 
-2. **Service class annotation**: `@LazySingleton(as: SomeRepository)` — register as singleton via interface
+2. **Service annotation**: `@LazySingleton(as: SomeRepository)` — register the implementation against its interface
 
-3. **DI Modules** for providing third-party/API dependencies:
+   ```dart
+   @LazySingleton(as: ArticleRepository)
+   class ArticleService implements ArticleRepository { ... }
+   ```
+
+3. **DI modules** for third-party/API dependencies:
 
    ```dart
    @module
@@ -79,39 +80,39 @@ These guidelines apply to the data layer — all code under `lib/core/`, `lib/fe
    }
    ```
 
-4. **Repository pattern**: Always define an abstract `{Feature}Repository` in `domain/` with `Future<Result<T, Failure>>` return types, then implement as `{Feature}Service` in `data/`
+4. **Repository abstraction is optional** — write `{Feature}Repository` only when there is a genuine multi-implementation need (mock / online switching). Simple features call the Service directly. When both exist, the interface is `{feature}_repository.dart` and the implementation `{feature}_service.dart` — both live in the feature's `data/` layer (there is no `domain/` layer).
 
-5. **Sealed Failure subtypes**: Use the factory constructors (`Failure.network()`, `.auth()`, `.server()`, `.unknown()`) — never instantiate subclasses directly
+5. **Sealed Failure subtypes**: 直接实例化子类并给出 `FailureCode`（`const NetworkFailure(code: FailureCode.timeout)`）。`Failure` 不携带用户可见文案——文案由展示层翻译，见 [error-handling.md](./error-handling.md)
 
-6. **Private fields prefixed with `_`**: Always prefix private class fields with `_`
+6. **Private fields prefixed with `_`**
 
-7. **Documentation comments on public APIs**: Use `///` doc comments on all repository methods and public service methods — include what the method does, `Result` variants, and error conditions
+7. **Doc comments on public APIs**: `///` on repository/service methods, stating what the method does and which `Result` variants it returns
+
+8. **Models**: annotate with `@freezed` (value semantics, `copyWith`, generated `fromJson`/`toJson`). 脚手架里所有模型都是 freezed（`Article` / `User` / `LoginRequest` / `LoginResponse`）。Never hand-edit the generated `*.g.dart` / `*.freezed.dart`
 
 ---
 
 ## Testing Requirements
 
 - **Unit tests required for**:
-  - All Repository interfaces should have corresponding mock tests
   - ViewModel state transitions (loading → data, loading → error)
-  - Failure path testing via `Result.failure()` mocks
-
+  - Failure paths, via `Result.failure()` mocks
+  - Repository/Service error mapping where non-trivial
 - **Test file location**: `test/features/{feature}/`
-
-- **Testing libraries**: `flutter_test` (included in `pubspec.yaml`)
+- **Testing libraries**: `flutter_test`, `mocktail`
 
 ---
 
 ## Code Review Checklist
 
-When reviewing data layer code, check:
+When reviewing data-layer code, check:
 
-- [ ] Does the method return `Result<T, Failure>` instead of bare exceptions?
-- [ ] Are all `DioException`s caught and converted via `handleError()`?
-- [ ] Is the `catch` ordering correct? (Specific → Generic)
-- [ ] Are DI annotations correct? (`@LazySingleton`, `@Singleton`, `@module`)
-- [ ] Is the model properly annotated with `@JsonSerializable()`?
-- [ ] Are generated files (`*.g.dart`) regenerated after model changes?
-- [ ] Are there no imports from other features?
+- [ ] Does the method return `Result<T, Failure>` instead of throwing?
+- [ ] Are all `DioException`s caught and converted via `handleDioError()`?
+- [ ] Is the `catch` ordering correct? (specific → generic)
+- [ ] Are DI annotations correct? (`@LazySingleton(as:)`, `@Singleton`, `@module`)
+- [ ] Does the ViewModel use constructor injection rather than `getIt()`?
+- [ ] Are generated files (`*.g.dart`) regenerated after model/annotation changes?
+- [ ] Is there no import of another feature's `page/` or `logic/`?
 - [ ] Does the module class only provide dependencies (no business logic)?
 - [ ] Are debug prints avoided in production paths?

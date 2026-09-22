@@ -1,6 +1,6 @@
 # Code Reuse Thinking Guide
 
-> **Purpose**: Stop and think before creating new code - does it already exist?
+> **Purpose**: Stop and think before creating new code — does it already exist?
 
 ---
 
@@ -9,6 +9,7 @@
 **Duplicated code is the #1 source of inconsistency bugs.**
 
 When you copy-paste or rewrite existing logic:
+
 - Bug fixes don't propagate
 - Behavior diverges over time
 - Codebase becomes harder to understand
@@ -20,11 +21,11 @@ When you copy-paste or rewrite existing logic:
 ### Step 1: Search First
 
 ```bash
-# Search for similar function names
-grep -r "functionName" .
+# 找同名 / 近名的定义
+grep -rn "getCachedArticle" lib/
 
-# Search for similar logic
-grep -r "keyword" .
+# 找相似逻辑（关键词选项目里独特的那类）
+grep -rn "MockRule" lib/
 ```
 
 ### Step 2: Ask These Questions
@@ -33,8 +34,8 @@ grep -r "keyword" .
 |----------|-----------|
 | Does a similar function exist? | Use or extend it |
 | Is this pattern used elsewhere? | Follow the existing pattern |
-| Could this be a shared utility? | Create it in the right place |
-| Am I copying code from another file? | **STOP** - extract to shared |
+| Could this be a shared utility? | 放 `core/` —— 但要先过下面「3 次」那道线 |
+| Am I copying code from another file? | **STOP** — extract to shared |
 
 ---
 
@@ -58,42 +59,31 @@ grep -r "keyword" .
 
 **Good**: Single source of truth, import everywhere
 
-### Pattern 4: Repeated Payload Field Extraction
+### Pattern 4: 同一个转换散落在各个消费者里
 
-**Bad**: Multiple consumers cast the same JSON/event fields locally:
+**Bad**：多个 Service 各自把 `DioException` 映射成 `Failure`，每个都维护一份「哪些状态码算超时」的判断。
 
-```typescript
-const description = (ev as { description?: string }).description;
-const context = (ev as { context?: ContextEntry[] }).context;
-```
+**Good**：转换只发生在数据拥有者旁边 —— `handleDioError()`（`core/base/failure.dart`）。
 
-This is duplicated contract logic even when the code is only two lines. Each
-consumer now has its own definition of what a valid payload means.
-
-**Good**: Put the decoder, type guard, or projection next to the data owner:
-
-```typescript
-if (isThreadEvent(ev)) {
-  renderThreadEvent(ev);
-}
-```
-
-**Rule**: If the same untyped payload field is read in 2+ places, create a
-shared type guard / normalizer / projection before adding a third reader.
+**Rule**：同一个转换/判断被写到**第 2 处**时就该抽出来，不要等到第 3 处 —— 那时两份已经不一致了。
 
 ---
 
 ## When to Abstract
 
 **Abstract when**:
+
 - Same code appears 3+ times
 - Logic is complex enough to have bugs
-- Multiple people might need this
+- Multiple features need it（提到 `core/` 的门槛是 2+ 个 feature 用它）
 
 **Don't abstract when**:
+
 - Only used once
 - Trivial one-liner
 - Abstraction would be more complex than duplication
+
+> ⚠️ **过早抽象是个人项目的头号杀手** —— 宁可重复写两次，也不要提前抽取不稳定的基类。见 [../frontend/directory-structure.md](../frontend/directory-structure.md) 的「共享层（core/）严格克制」。
 
 ---
 
@@ -105,31 +95,25 @@ When you've made similar changes to multiple files:
 2. **Search**: Run grep to find any missed
 3. **Consider**: Should this be abstracted?
 
-### Reducers Should Use Exhaustive Structure
+### 状态分支用穷尽 `switch`，不要散落 `if/else`
 
-When state is derived from action-like values (`action`, `kind`, `status`,
-`phase`), prefer a reducer with one `switch` over scattered `if/else` updates.
+「由某个值决定走哪条分支」的地方，都应该收敛成一处穷尽 `switch` —— Dart 的 sealed class + `switch` 会在漏掉分支时**编译报错**：
 
-```typescript
-// BAD - action-specific state transitions are hard to audit
-if (action === "opened") { ... }
-else if (action === "comment") { ... }
-else if (action === "status") { ... }
+```dart
+// BAD —— 新增一个 FailureCode 后，这里静默走 else
+if (code == FailureCode.timeout) { ... }
+else if (code == FailureCode.connection) { ... }
+else { ... }
 
-// GOOD - one reducer owns the transition table
-switch (event.action) {
-  case "opened":
-    ...
-    return;
-  case "comment":
-    ...
-    return;
+// GOOD —— 一处穷尽，漏了就编译不过
+switch (code) {
+  case FailureCode.timeout: ...
+  case FailureCode.connection: ...
+  // ...
 }
 ```
 
-This matters when the event log is the source of truth. A reducer is the
-documented replay model; display code and commands should not duplicate pieces
-of that replay model.
+`core/ui/failure_message.dart` 的 `localizedMessage` 与 `core/ui/async_view.dart` 的 `AsyncView` 都是这个形状：新增枚举值或状态子类型时，编译器会把你直接带到唯一需要改的地方。
 
 ---
 
@@ -137,87 +121,6 @@ of that replay model.
 
 - [ ] Searched for existing similar code
 - [ ] No copy-pasted logic that should be shared
-- [ ] No repeated untyped payload field extraction outside a shared decoder
-- [ ] Constants defined in one place
+- [ ] 常量只定义在一处
 - [ ] Similar patterns follow same structure
-- [ ] Reducer/action transitions live in one reducer or command dispatcher
-
----
-
-## Gotcha: Python if/elif/else Exhaustive Check
-
-**Problem**: Python's if/elif/else chains have no compile-time exhaustive check. When you add a new value to a `Literal` type (e.g., `Platform`), existing if/elif/else chains silently fall through to `else` with wrong defaults.
-
-**Symptom**: New platform works partially — some methods return Claude defaults instead of platform-specific values. No error is raised.
-
-**Example** (`cli_adapter.py`):
-```python
-# BAD: "gemini" falls through to else, returns "claude"
-@property
-def cli_name(self) -> str:
-    if self.platform == "opencode":
-        return "opencode"
-    else:
-        return "claude"  # gemini silently gets "claude"!
-
-# GOOD: explicit branch for every platform
-@property
-def cli_name(self) -> str:
-    if self.platform == "opencode":
-        return "opencode"
-    elif self.platform == "gemini":
-        return "gemini"
-    else:
-        return "claude"
-```
-
-**Prevention**: When adding a new value to a Python `Literal` type, search for ALL if/elif/else chains that switch on that type and add explicit branches. Don't rely on `else` being correct for new values.
-
----
-
-## Gotcha: Asymmetric Mechanisms Producing Same Output
-
-**Problem**: When two different mechanisms must produce the same file set (e.g., recursive directory copy for init vs. manual `files.set()` for update), structural changes (renaming, moving, adding subdirectories) only propagate through the automatic mechanism. The manual one silently drifts.
-
-**Symptom**: Init works perfectly, but update creates files at wrong paths or misses files entirely.
-
-**Prevention**:
-- **Best**: Eliminate the asymmetry — have the manual path call the automatic one (e.g., `collectTemplateFiles()` calls `getAllScripts()` instead of maintaining its own list)
-- **If asymmetry is unavoidable**: Add a regression test that compares outputs from both mechanisms
-- When migrating directory structures, search for ALL code paths that reference the old structure
-
-**Real example**: `trellis update` had a manual `files.set()` list for 11 scripts that `getAllScripts()` already tracked. Fix: replaced the manual list with a `for..of getAllScripts()` loop. See `update.ts` refactor in v0.4.0-beta.3.
-
----
-
-## Template File Registration (Trellis-specific)
-
-When adding new files to `src/templates/trellis/scripts/`:
-
-**Single registration point**: `src/templates/trellis/index.ts`
-
-1. Add `export const xxxScript = readTemplate("scripts/path/file.py");`
-2. Add to `getAllScripts()` Map
-
-That's it. `commands/update.ts` uses `getAllScripts()` directly — no manual sync needed.
-
-**Why this matters**: Without registration in `getAllScripts()`, `trellis update` won't sync the file to user projects. Bug fixes and features won't propagate.
-
-**History**: Before v0.4.0-beta.3, `update.ts` had its own hand-maintained file list that frequently fell out of sync with `getAllScripts()`. This caused 11 Python files to be silently skipped during `trellis update`. The fix was to eliminate the duplicate list and use `getAllScripts()` as the single source of truth.
-
-### Quick Checklist for New Scripts
-
-```bash
-# After adding a new .py file, verify it's in getAllScripts():
-grep -l "newFileName" src/templates/trellis/index.ts  # Should match
-```
-
-### Template Sync Convention
-
-`.trellis/scripts/` (dogfooded) and `packages/cli/src/templates/trellis/scripts/` (template) must stay identical. After editing `.trellis/scripts/`, always sync:
-
-```bash
-rsync -av --delete --exclude='__pycache__' .trellis/scripts/ packages/cli/src/templates/trellis/scripts/
-```
-
-**Gotcha**: Running rsync with wrong source/destination paths can create nested garbage directories (e.g., `.trellis/scripts/packages/cli/...`). Always double-check paths before running.
+- [ ] 新增枚举值后，所有 `switch` 都是穷尽的（让编译器告诉你，不要靠搜）

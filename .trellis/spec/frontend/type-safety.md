@@ -2,7 +2,7 @@
 
 > Type safety patterns in this project.
 
-> **Scaffold note**: This is a personal Flutter scaffold/template for medium-small apps. The type-safety patterns below (sealed Result, JsonSerializable models, route param extensions) are the standard for all features built from this scaffold.
+> **Scaffold note**: This is a personal Flutter scaffold/template for medium-small apps. The type-safety patterns below (sealed `Result` / `Failure`, `@freezed` models, typed route params) are the standard for all features built from this scaffold.
 
 ---
 
@@ -10,10 +10,9 @@
 
 This project is written in **Dart 3+** with full **null safety** enabled. Type safety is enforced through:
 
-- **Sealed classes** (`sealed class`) for exhaustive pattern matching
-- **`@JsonSerializable()`** for typed JSON serialization/deserialization
-- **`freezed_annotation`** available for complex data classes
-- **Strict linter rules** including `always_declare_return_types`, `type_annotate_public_apis`
+- **Sealed classes** (`sealed class`) for exhaustive pattern matching — `Result`, `Failure`, `AsyncState`
+- **`@freezed`** for every model: value semantics (`copyWith` / `==` / `hashCode`) + generated `fromJson` / `toJson`
+- **`strict-casts` / `strict-inference`** plus `always_declare_return_types`（见 `analysis_options.yaml`）
 - **Generic Result type** `Result<T, E>` for typed error handling
 
 ---
@@ -22,27 +21,30 @@ This project is written in **Dart 3+** with full **null safety** enabled. Type s
 
 ### Models (per feature, in `data/models/`)
 
-```dart
-@JsonSerializable()
-class Article {
-  final int id;
-  final String title;
-  final String body;
+脚手架里的模型**全部**用 `@freezed`（`Article` / `User` / `LoginRequest` / `LoginResponse`）——没有手写的，也没有直接用 `@JsonSerializable` 的：
 
-  Article({required this.id, required this.title, required this.body});
+```dart
+// lib/features/article/data/models/article.dart
+@freezed
+sealed class Article with _$Article {
+  const factory Article({
+    required int id,
+    required String title,
+    required String body,
+  }) = _Article;
 
   factory Article.fromJson(Map<String, dynamic> json) => _$ArticleFromJson(json);
-  Map<String, dynamic> toJson() => _$ArticleToJson(this);
 }
 ```
 
 **Rules**:
 
-- Model files end with `.dart` and have a `.g.dart` companion (generated)
+- `fromJson` / `toJson` 由 freezed 生成（内部走 `json_serializable`），**不要手写**
+- 后端字段名与 Dart 命名不一致时用 `@JsonKey(name: ...)`，例如登录请求体保持后端的 `pwd`（`features/auth/data/models/login_request.dart`）
+- **不要为了简单 DTO 换一套注解** —— 哪怕只有两个字段（`LoginRequest` 就是），也仍然用 `@freezed`。混进 `@JsonSerializable` 等于多出第二套生成流程和第二种 `fromJson` 写法，`build_runner` 与 review 都要记两份，而省下的只是一个 `const factory`
 - All fields are `final` and non-nullable (unless explicitly nullable)
 - Constructors use `required` named parameters
-- `@JsonSerializable()` is the standard annotation
-- For complex models (copyWith, equality), use `@freezed`
+- 生成物 `*.g.dart` / `*.freezed.dart` 与源文件同目录，**不要手改**
 
 ### Global types (`core/base/`)
 
@@ -53,11 +55,11 @@ sealed class Failure { ... }        // Error hierarchy
 
 ### Generated types
 
-- `*.g.dart` — JSON serialization, injectable, retrofit code generation
-- `*.freezed.dart` — Freezed-generated copyWith / == / hashCode
-- `*.config.dart` — injectable service locator
-- `lib/gen/assets.gen.dart` — Asset references (flutter_gen)
-- Never edit generated files manually
+- `*.g.dart` — JSON serialization、`@injectable`、Retrofit、Drift
+- `*.freezed.dart` — `copyWith` / `==` / `hashCode`
+- `*.gr.dart` — auto_route
+- `*.config.dart` — injectable service locator（`lib/di/service_locator.config.dart`）
+- 改完注解跑 `dart run build_runner build`；**never edit generated files manually**
 
 ---
 
@@ -66,12 +68,12 @@ sealed class Failure { ... }        // Error hierarchy
 Runtime validation follows **primitive validation at the boundary** pattern:
 
 ```dart
-// Login validation in ViewModel
+// ViewModel 侧：简单字段校验用 computed getter
 bool get canSubmit => email.value.isNotEmpty && password.value.length >= 6;
 
-// API validation — handled by backend
+// API 侧：Retrofit 定义。凭据只走请求体，不进 query（见 frontend/quality-guidelines.md）
 @POST('/login')
-Future<User> login(@Query('email') String email, @Query('pwd') String pwd);
+Future<LoginResponse> login(@Body() LoginRequest request);
 ```
 
 - Client-side: Simple field validation in ViewModel computed getters
@@ -86,34 +88,54 @@ Future<User> login(@Query('email') String email, @Query('pwd') String pwd);
 
 ```dart
 result.when(
-  success: (user) => context.router.replace(const HomeRoute()),
-  failure: (error) => _showError(context, error.message),
+  success: (user) => context.router.replaceRoute(const HomeRoute()),
+  failure: (failure) => _showError(context, failure),
 );
+```
+
+`Failure` **不携带用户可见文案**（只有 `code` 与可选 `statusCode`），文案在展示层按当前语言翻译：
+
+```dart
+final message = failure.localizedMessage(AppLocalizations.of(context));
 ```
 
 ### Signal state checking
 
+用 `AsyncView` 渲染，**不需要 `!` 强解包**——分支由 sealed class 的穷尽 `switch` 保证，`data` / `error` 回调拿到的都是非空类型：
+
 ```dart
 final async = useSignalValue(vm.articles);
-if (async.isLoading) return const LoadingIndicator();
-if (async.hasError) return ErrorText(error: async.error!);
-final data = async.value!; // Safe after checking loading + error
+
+AsyncView<List<Article>>(
+  state: async,
+  loading: () => const LoadingIndicator(),
+  error: (Object error, StackTrace stackTrace) => ErrorText(error: error),
+  data: (items) => ListView.builder(...), // items: List<Article>（非空）
+)
 ```
 
-### Exhaustive type preservation
+### Type-related lints actually enabled
 
-- **Always** annotate return types on public methods (`always_declare_return_types`)
-- **Always** annotate overrides (`annotate_overrides`)
-- Use `final` for locals where the value doesn't change (`prefer_final_locals`)
-- Let Dart infer local variable types where obvious (`omit_local_variable_types`)
+`analysis_options.yaml` 里与类型有关的规则只有这些（写新代码时按此预期，别假设有更多）：
+
+| 规则 | 作用 |
+| --- | --- |
+| `strict-casts` | 禁止隐式 `dynamic` 向下转型 |
+| `strict-inference` | 推断失败时报错，而不是退化成 `dynamic` |
+| `always_declare_return_types` | 方法必须写返回类型 |
+| `prefer_final_locals` | 不重新赋值的局部变量用 `final` |
+| `prefer_const_constructors_in_immutables` | 不可变类用 `const` 构造 |
 
 ---
 
 ## Forbidden Patterns
 
+以下大部分是 **review 约定**，不都是 lint error（想确认强度请对照 `analysis_options.yaml`）：
+
 - ❌ **`dynamic` type** — Use typed generics or `Object?` instead
 - ❌ **`as` casts without null checks** — Use pattern matching or `is` checks
 - ❌ **Raw `Map<String, dynamic>` as API response** — Always deserialize into typed models
-- ❌ **`print()` for debugging** — Use `Logging.debug()` or `Logging.error()`
-- ❌ **Manually written `fromJson`/`toJson`** — Use `@JsonSerializable()` code generation
+- ❌ **`print()` for debugging** — Use `Logging.debug()` or `Logging.error()`（`avoid_print` 未启用）
+- ❌ **Manually written `fromJson`/`toJson`** — 交给 `@freezed` 生成
 - ❌ **`!` null assertions without prior null check** — Use pattern matching or early returns
+- ❌ **给 `Failure` 加回 `message`** — 文案在展示层翻译，见 `backend/error-handling.md`

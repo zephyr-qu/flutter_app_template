@@ -6,7 +6,9 @@
 
 ## Overview
 
-This project uses the **`logger`** package with a custom `Logging` facade class. All logging goes through `Logging.info()`, `Logging.error()`, `Logging.debug()`, and `Logging.warning()` — never call the `logger` package directly or use `print()`.
+This project uses the **`logger`** package behind a custom `Logging` facade. All logging goes through `Logging.info()`, `Logging.debug()`, `Logging.warning()`, and `Logging.error()` — never call the `logger` package directly, and never use `print()`.
+
+The facade lives at **`lib/core/logging/logging.dart`**.
 
 ---
 
@@ -14,82 +16,83 @@ This project uses the **`logger`** package with a custom `Logging` facade class.
 
 ### `Logging.info(String message)`
 
-- **When to use**: Normal application flow events — user actions, page transitions, data loaded
-- **Example**: `Logging.info('User logged in: ${user.name}')`
+- **When to use**: normal application flow — startup, config loaded, environment selected
+- **Example**: `Logging.info('Environment: development (.env.development)')`
 
 ### `Logging.error(String message, {Object? exception, StackTrace? stackTrace})`
 
-- **When to use**: Operations that failed unexpectedly — API errors, unhandled states
-- **Example**: `Logging.error('Failed to load articles', exception: e, stackTrace: stackTrace)`
+- **When to use**: unexpected failures and error boundaries
+- **Example**: `Logging.error('Unhandled platform error', exception: e, stackTrace: stackTrace)`
 
 ### `Logging.debug(String message)`
 
-- **When to use**: Development-time debugging — state changes, computed values, temporary diagnostics
-- **Example**: `Logging.debug('ViewModel state: ${state}')`
+- **When to use**: development-time diagnostics — state changes, computed values
+- **Example**: `Logging.debug('articles loaded: ${articles.value}')`
 
 ### `Logging.warning(String message)`
 
-- **When to use**: Recoverable issues, deprecated usage, unusual conditions that aren't errors
-- **Example**: `Logging.warning('API returned empty response, using cache')`
+- **When to use**: recoverable / unexpected-but-handled conditions
+- **Example**: `Logging.warning('响应体不是合法 JSON，保留原始字符串: $e')`
 
 ---
 
 ## Logger Configuration
 
-Configured in `lib/core/utils/logging.dart`:
+Configured once inside the facade (`lib/core/logging/logging.dart`):
 
 ```dart
 class Logging {
   static final _logger = Logger(
     printer: PrettyPrinter(
-      methodCount: 0,       // Don't show method calls for info/warning
-      errorMethodCount: 8,  // Show stack trace depth for errors
-      lineLength: 120,       // Line width
-      colors: true,          // Colored output
-      printEmojis: true,     // Emoji prefixes
+      methodCount: 0,       // no method trace for info/warning
+      errorMethodCount: 8,  // stack depth shown for errors
+      lineLength: 120,
+      colors: true,
+      printEmojis: true,
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );
-  ...
+
+  static void info(String message) => _logger.i(message);
+  static void warning(String message) => _logger.w(message);
+  static void debug(String message) => _logger.d(message);
+  static void error(String message, {Object? exception, StackTrace? stackTrace}) { ... }
 }
 ```
 
----
-
-## Structured Logging
-
-- **Log format**: `[TIME] [EMOJI] [MESSAGE]`
-- Error logs include exception and stack trace for debugging
-- Not using JSON structured logging (this is a mobile/desktop client)
+The pretty-printer applies colours/emojis unconditionally. There is no tree-shaking wrapper, so do not log high-frequency events (per-frame, per-request bodies) in release builds.
 
 ---
 
-## What to Log
+## 日志写在哪里
 
-- **Data fetching results**: success/failure counts
-- **User authentication**: login, logout events
-- **ViewModel lifecycle**: `dispose()` calls
-- **API errors**: captured via `DioException` → `Failure` conversion
-- **Form input changes**: `Logging.debug()` in development only
+> 快照（2026-09）：改动相关代码时请同步本节。查全量：`grep -rn "Logging\." lib/`
 
-### Examples from codebase
+按「谁在兜底」分四类：
 
-```dart
-// ViewModel effects
-addEffect(() {
-  final state = articles.value;
-  if (state.hasValue) {
-    debugPrint('文章列表已加载：${state.value?.length} 篇');
-  } else if (state.hasError) {
-    debugPrint('文章列表加载错误：${state.error}');
-  }
-});
+| 位置 | 记什么 |
+| --- | --- |
+| `bootstrap.dart` | `PlatformDispatcher.instance.onError` 记一条 error；`FlutterError.onError` 保持默认的 `presentError`（不再重复记一遍） |
+| `run_async.dart` / `run_catching.dart` | 兜底 `catch` —— 原始异常只进日志，用户侧给一个可翻译的通用 code |
+| `failure.dart` / `auth_interceptor.dart` / `token_refresher.dart` | 网络与令牌刷新路径的 warning / info（刷新成功、没有可用刷新令牌、未映射的状态码等） |
+| `auth_storage.dart` / `article_service.dart` / `file_storage.dart` / `user_preferences.dart` | 存储与缓存失败 —— 读失败降级记 warning；写失败按各自的失败策略处理（见 [database-guidelines.md](./database-guidelines.md) 的「读要软，写要硬」） |
 
-// ViewModel disposal
-debugPrint('ArticleViewModel 已释放');
-```
+`dio_client.dart` 另外会在 `text/plain` 响应体解析 JSON 失败时记一条 warning。
 
-> **Note**: The codebase currently uses `debugPrint()` in ViewModel effects. For new code, prefer `Logging.debug()` for consistency.
+HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMode && preferences.enableDebugLogging`。
+
+它的 `logPrint` 串了 `lib/core/logging/log_redactor.dart`：请求 / 响应体在落控制台之前逐行过
+`LogRedactor.redact()`，`authorization` / `password` / `accessToken` / `refreshToken` 等字段的值
+换成 `***` —— 上面「What NOT to Log」里的密码与令牌因此不会被调试日志带出去。
+
+- 脱敏在**已成型的日志行**上做，是因为 `PrettyDioLogger` 只给了 `logPrint` 一个回调，
+  拿不到可替换的 `RequestOptions` / `Response`（理由写在 `log_redactor.dart` 的文件注释里）
+- 它是**跨行带状态**的：`PrettyDioLogger` 按 `maxWidth`（默认 90）给长值折行，只屏蔽命中那一行
+  会把剩下的令牌漏出去。所以同一个 `LogRedactor` 实例要贯穿整条日志流，别在回调里现建
+- 新增敏感字段时同步 `LogRedactor.sensitiveKeys`，并在 `test/core/logging/log_redactor_test.dart`
+  里补一条 —— 漏了不会报错，只会静默漏值。
+
+> **There is no per-ViewModel logging and no ViewModel `dispose()` lifecycle.** ViewModels are plain `@injectable` classes holding signals; they have no `addEffect`/`dispose` hooks, so do not document or call them. Async state errors surface through `AsyncState.error(...)` (set by `runAsync`), not through the logger.
 
 ---
 
@@ -97,15 +100,13 @@ debugPrint('ArticleViewModel 已释放');
 
 🚫 **Never log**:
 
-- User passwords or authentication tokens
-- Full API request/response bodies containing PII
-- Credit card numbers, national IDs, or sensitive personal data
-- Device-specific identifiers without anonymization
+- Passwords or authentication tokens
+- Full request/response bodies containing PII
+- Credit card numbers, national IDs, or other sensitive personal data
+- Device identifiers without anonymisation
 
 ✅ **Do log**:
 
-- User actions (without PII data)
-- API endpoint paths (without request body)
-- Error messages (without user credentials)
-- Performance metrics
-- Feature usage statistics (anonymized)
+- Lifecycle milestones (startup, environment, DI initialised)
+- Error messages without credentials
+- Recoverable anomalies (with `Logging.warning`)

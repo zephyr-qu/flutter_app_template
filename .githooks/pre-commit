@@ -14,25 +14,67 @@ echo "🔍 Running pre-commit checks..."
 STASH_NAME="pre-commit-$(date +%s)"
 git stash push -q --keep-index --include-untracked --message "$STASH_NAME" 2>/dev/null || true
 
+# ── Check formatting ──
+echo "🎨 Checking formatting..."
+dart format --output=none --set-exit-if-changed lib test tool
+FORMAT_EXIT=$?
+
+# ── Run architecture boundary check (FSD) ──
+echo "🧱 Checking architecture boundaries..."
+dart run tool/check_boundaries.dart
+BOUNDARY_EXIT=$?
+
+# ── Run code convention check (AsyncState.map / 注释块上限) ──
+echo "📏 Checking code conventions..."
+dart run tool/check_conventions.dart
+CONVENTION_EXIT=$?
+
+# ── Check documented directory trees against actual lib/ ──
+echo "🌳 Checking directory trees in docs..."
+dart run tool/check_readme_tree.dart
+TREE_EXIT=$?
+
+# ── Run dependency check (unused / undeclared) ──
+echo "📦 Checking dependencies..."
+dart run dependency_validator
+DEP_EXIT=$?
+
 # ── Run flutter analyze on lib/ and test/ ──
 echo "📐 Running flutter analyze..."
 flutter analyze lib/ test/
 ANALYZE_EXIT=$?
 
-# ── Run flutter test ──
+# ── Analyze tool scripts ──
+echo "📐 Running dart analyze on tool/..."
+dart analyze tool/
+TOOL_EXIT=$?
+
+# ── Run flutter test（带覆盖率，供下一步门禁使用）──
 echo "🧪 Running flutter test..."
-flutter test
+flutter test --coverage
 TEST_EXIT=$?
+
+# ── Check coverage threshold ──
+echo "📊 Checking coverage..."
+dart run tool/check_coverage.dart
+COVERAGE_EXIT=$?
 
 # Restore stashed changes
 git stash pop -q 2>/dev/null || true
 
 # ── Report results ──
-if [ $ANALYZE_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ]; then
+if [ $FORMAT_EXIT -ne 0 ] || [ $BOUNDARY_EXIT -ne 0 ] || [ $CONVENTION_EXIT -ne 0 ] || [ $TREE_EXIT -ne 0 ] || [ $DEP_EXIT -ne 0 ] || [ $ANALYZE_EXIT -ne 0 ] || [ $TOOL_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ] || [ $COVERAGE_EXIT -ne 0 ]; then
     echo ""
     echo "❌ Pre-commit checks failed!"
-    echo "   analyze: $([ $ANALYZE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   test:    $([ $TEST_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   format:     $([ $FORMAT_EXIT -eq 0 ] && echo '✅' || echo '❌')  (dart format lib test tool)"
+    echo "   boundaries: $([ $BOUNDARY_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   conventions:$([ $CONVENTION_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   docs tree:  $([ $TREE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   deps:       $([ $DEP_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   analyze:    $([ $ANALYZE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   tool:       $([ $TOOL_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   test:       $([ $TEST_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   coverage:   $([ $COVERAGE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo ""
     echo "To skip (emergency only): git commit --no-verify"
     exit 1

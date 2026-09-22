@@ -61,6 +61,12 @@
       "skillPath": "skills/dart-use-ffigen/SKILL.md",
       "computedHash": "688ec3e0218b3a96437916be5bdcaea87fe4f90ba869c3deec2f3392f1c6b626"
     },
+    "dart-use-path-package": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-use-path-package/SKILL.md",
+      "computedHash": "1cd9e7e21dcac7ace750cc46b42f82f9945dbddbde6b5a39c22017780c0bceb6"
+    },
     "dart-use-pattern-matching": {
       "source": "dart-lang/skills",
       "sourceType": "github",
