@@ -62,17 +62,33 @@
 
 ## Acceptance Criteria
 
-- [ ] `data/network/` 的 4 个手写文件（auth_extra_keys / auth_interceptor / token_refresher / token_store）出现在包 lcov 里
-- [ ] `dio_factory.dart` 出现在包 lcov 里
-- [ ] `theme/*`（3）与 `ui/empty_widget.dart` 出现在包 lcov 里
-- [ ] `check_coverage` 的差集检查已实现，并被 pre-commit + CI 执行
-- [ ] 包覆盖率的分母 ≈ 20（即全部手写文件），数字 ≥ 80%
-- [ ] 根工程与包的门禁全绿
+- [x] `data/network/` 的 4 个手写文件：`auth_interceptor` / `token_refresher` 进包 lcov；
+      `auth_extra_keys` / `token_store` **豁免**（编译期常量与纯接口，被 import 也不产生可执行行
+      —— 已实测：它们在 `auth_interceptor.dart` 的 import 链上，却仍不出现在 lcov 里）
+- [x] `dio_factory.dart` 出现在包 lcov 里
+- [x] `theme/*`（3）与 `ui/empty_widget.dart` 出现在包 lcov 里
+- [x] `check_coverage` 的差集检查已实现，并被 pre-commit + CI 执行
+- [x] 包覆盖率：20 个手写文件 = 18 进分母 + 2 豁免，**89.8%**（阈值 80% 不变）
+- [x] 根工程：39 个手写文件 = 33 进分母 + 6 豁免，**89.4%**（差集落地前的口径是 90.0%/33 文件）
+- [x] 根工程与包的门禁全绿（format / boundaries / conventions / readme-tree / deps / analyze×3 / test×2 / coverage）
+
+## 实测结果（2026-09-22）
+
+| | 手写文件 | 进分母 | 豁免 | 覆盖率 | 阈值 |
+|---|---|---|---|---|---|
+| 根 `lib/` | 39 | 33 | 6 | 89.4% | 80% |
+| `packages/app_core` | 20 | 18 | 2 | 89.8% | 80% |
+
+测试数：包内 44 → **104**；根 300 → 287（2 个网络测试文件 14 条用例迁入包，新增 `test/app/app_test.dart` 3 条）。
 
 ## Notes
 
 - 依赖 `09-22-extract-app-core` **已完成**（包与 `TokenStore` 接口均已就位，见其 design.md 8.3）
 - 混合测试的归属判据：**测试目标在包里 → 用假对象让它成为纯包测试；测试目标是 lib 的装配/适配层 → 留根**
-- 差集检查落地后会立刻暴露「根 `lib/` 里 6 个从未被加载的手写文件」这个**既有**问题
-  （基线时就存在，见 `cross-cutting.md` 覆盖率一节的说明）——先确认这 6 个是哪些，
-  再决定是补测试还是加显式豁免
+- 差集检查落地后暴露的实际是 **7 个**（不是 6 个）根 `lib/` 文件，逐个处置：
+  - `lib/app/app.dart` → **补测试**（`test/app/app_test.dart`，组合根冒烟：DI + 路由 + 主题信号）
+  - `main.dart` / `bootstrap.dart` → 豁免（只被 `integration_test` 执行，它不进覆盖率统计）
+  - 2 个 Retrofit 抽象接口 + 2 个纯抽象 repository → 豁免（无可执行行）
+- 两条副产品知识（已写进 spec）：
+  1. 「不在 lcov 里」有两种成因——没被加载、以及**没有可执行行**；差集只能看见前者
+  2. 断言拦截器清单不能直接数 `dio.interceptors.length`：Dio 自己会插 `ImplyContentTypeInterceptor`
