@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 3
-- **Last Active**: 2026-09-21
+- **Total Sessions**: 4
+- **Last Active**: 2026-09-22
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~161 | Active |
+| `journal-1.md` | ~198 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 4 | 2026-09-22 | 补齐 app_core 覆盖率分母（差集检查 + 纯包测试） | `163d2a1`, `f88f0b2`, `dd41ac8`, `8a3b6e4`, `4e68ee3` | `master` |
 | 3 | 2026-09-21 | Extract lib/app/ layer, flatten core/ui, record architecture review | - | `master` |
 | 2 | 2026-07-08 | Dependency upgrade: signals v7 + signals_lint | `0993b51` | `master` |
 | 1 | 2026-07-08 | P0 Scaffold Quality Audit and Fix | `3032915` | `master` |

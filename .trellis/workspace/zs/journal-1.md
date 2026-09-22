@@ -159,3 +159,40 @@ Extracted an explicit `lib/app/` application layer (composition root) and flatte
 
 - Run the four verification commands above and fix any import left behind
 - When conditional imports (`if (dart.library.…)`) are first used, migrate `check_boundaries.dart` to `package:analyzer`'s AST API
+
+
+## Session 4: 补齐 app_core 覆盖率分母（差集检查 + 纯包测试）
+
+**Date**: 2026-09-22
+**Task**: 补齐 app_core 覆盖率分母（差集检查 + 纯包测试）
+**Branch**: `master`
+
+### Summary
+
+给覆盖率门禁补上差集检查：扫描根下的手写文件减去 lcov 的 SF 集合，差集按 0 命中 / 非空行数计入分母，结构上无可执行行的走 loadingExemptions 并逐条写理由。网络层测试迁入 app_core 改成纯包测试（手写 FakeTokenStore / FakeTokenRefresher 替代 mocktail），并补 dio_factory / database / theme / ui / token_set 与根组件 test/app/app_test.dart。结果：根 89.4%（33 文件，6 豁免）、包 89.8%（18 文件，2 豁免），包内测试 44 -> 104。附带发现：pre-commit 钩子单次约 20 分钟，根因是每个 dart run 都触发 sqlite3 的 build hook。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `163d2a1` | (see git log) |
+| `f88f0b2` | (see git log) |
+| `dd41ac8` | (see git log) |
+| `8a3b6e4` | (see git log) |
+| `4e68ee3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
