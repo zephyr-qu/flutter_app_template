@@ -16,7 +16,7 @@ git stash push -q --keep-index --include-untracked --message "$STASH_NAME" 2>/de
 
 # ── Check formatting ──
 echo "🎨 Checking formatting..."
-dart format --output=none --set-exit-if-changed lib test tool
+dart format --output=none --set-exit-if-changed lib test tool packages
 FORMAT_EXIT=$?
 
 # ── Run architecture boundary check (FSD) ──
@@ -49,31 +49,45 @@ echo "📐 Running dart analyze on tool/..."
 dart analyze tool/
 TOOL_EXIT=$?
 
+# ── Analyze shared package ──
+echo "📐 Running dart analyze on packages/..."
+dart analyze packages/
+PKG_EXIT=$?
+
 # ── Run flutter test（带覆盖率，供下一步门禁使用）──
 echo "🧪 Running flutter test..."
 flutter test --coverage
 TEST_EXIT=$?
 
-# ── Check coverage threshold ──
+# ── app_core 的测试与覆盖率 ──
+# 它是独立 package：根工程跑 flutter test --coverage 时，包内文件的命中不会
+# 被归集（lcov 里一条 packages/ 记录都没有），只能在包目录里单独采集。
+echo "🧪 Running app_core tests..."
+(cd packages/app_core && flutter test --coverage)
+PKGTEST_EXIT=$?
+
+# ── Check coverage threshold（逐份 lcov 独立校验）──
 echo "📊 Checking coverage..."
-dart run tool/check_coverage.dart
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
 COVERAGE_EXIT=$?
 
 # Restore stashed changes
 git stash pop -q 2>/dev/null || true
 
 # ── Report results ──
-if [ $FORMAT_EXIT -ne 0 ] || [ $BOUNDARY_EXIT -ne 0 ] || [ $CONVENTION_EXIT -ne 0 ] || [ $TREE_EXIT -ne 0 ] || [ $DEP_EXIT -ne 0 ] || [ $ANALYZE_EXIT -ne 0 ] || [ $TOOL_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ] || [ $COVERAGE_EXIT -ne 0 ]; then
+if [ $FORMAT_EXIT -ne 0 ] || [ $BOUNDARY_EXIT -ne 0 ] || [ $CONVENTION_EXIT -ne 0 ] || [ $TREE_EXIT -ne 0 ] || [ $DEP_EXIT -ne 0 ] || [ $ANALYZE_EXIT -ne 0 ] || [ $TOOL_EXIT -ne 0 ] || [ $PKG_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ] || [ $PKGTEST_EXIT -ne 0 ] || [ $COVERAGE_EXIT -ne 0 ]; then
     echo ""
     echo "❌ Pre-commit checks failed!"
-    echo "   format:     $([ $FORMAT_EXIT -eq 0 ] && echo '✅' || echo '❌')  (dart format lib test tool)"
+    echo "   format:     $([ $FORMAT_EXIT -eq 0 ] && echo '✅' || echo '❌')  (dart format lib test tool packages)"
     echo "   boundaries: $([ $BOUNDARY_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   conventions:$([ $CONVENTION_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   docs tree:  $([ $TREE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   deps:       $([ $DEP_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   analyze:    $([ $ANALYZE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   tool:       $([ $TOOL_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   package:    $([ $PKG_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   test:       $([ $TEST_EXIT -eq 0 ] && echo '✅' || echo '❌')"
+    echo "   pkg test:   $([ $PKGTEST_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   coverage:   $([ $COVERAGE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo ""
     echo "To skip (emergency only): git commit --no-verify"

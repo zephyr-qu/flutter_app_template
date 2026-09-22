@@ -9,13 +9,6 @@ import 'package:flutter_test/flutter_test.dart';
 /// [FileStorage] 与任何走 `getApplicationDocumentsDirectory()` /
 /// `getTemporaryDirectory()` 的代码都靠它才能在没有设备的测试里跑起来。
 /// 用真实目录而不是内存假对象：路径拼接、父目录不存在这类问题只有真写入才暴露。
-///
-/// **本文件是副本**：`file_storage_test.dart` 已随 `app_core` 进包，包内那份在
-/// `packages/app_core/test/support/fake_path_provider.dart`。保留这份是因为
-/// `test/features/demo/logic/storage_demo_view_model_test.dart` 是**跨包**测试
-/// （`FileStorage` 在包里、demo ViewModel 在 lib 里），根侧仍需要它。测试辅助代码
-/// 没法跨包共享——放进包的 `lib/` 会污染公开 API 并计入覆盖率——所以接受这一处重复。
-/// 改任意一份时记得同步另一份。
 class FakePathProvider {
   /// 安装通道 mock 并创建两个空目录
   factory install() {

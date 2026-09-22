@@ -5,7 +5,11 @@
 // dart run tool/check_coverage.dart       # 默认阈值 80%
 // dart run tool/check_coverage.dart --min=85
 // dart run tool/check_coverage.dart path/to/lcov.info
+// dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
 // ```
+//
+// 传多份 lcov 时**逐份独立**校验（不合并）：两份的路径都是相对各自包根的
+// `lib/...`，合并会把命名空间搅在一起；而且包内的低覆盖不该被 lib/ 稀释。
 //
 // 只统计**手写**代码：`*.g.dart` / `*.freezed.dart` / DI 注册 / l10n 生成文件的
 // 行数不是人能守的，算进阈值只会稀释门禁。生成文件的判定复用
@@ -102,38 +106,46 @@ void main(List<String> args) {
     return;
   }
 
-  final input = args.firstWhere(
-    (arg) => !arg.startsWith('-'),
-    orElse: () => 'coverage/lcov.info',
-  );
+  final paths = args.where((arg) => !arg.startsWith('-')).toList();
+  final inputs = paths.isEmpty ? const ['coverage/lcov.info'] : paths;
   final min = _minFrom(args) ?? defaultMinCoverage;
 
-  final report = File(input);
-  if (!report.existsSync()) {
-    stderr.writeln('❌ 找不到 $input —— 先执行 `flutter test --coverage`');
-    exitCode = 1;
-    return;
+  var failed = false;
+
+  // 逐份独立校验，**不合并**：两份 lcov 的路径都是相对各自包根的 `lib/...`，
+  // 合并会让两个命名空间撞在一起。而且「每个包守自己的阈值」本来就比
+  // 「用一个加权数字盖住两套代码」更有意义——包内的低覆盖不该被 lib/ 的高覆盖稀释。
+  for (final input in inputs) {
+    final report = File(input);
+    if (!report.existsSync()) {
+      stderr.writeln('❌ 找不到 $input —— 先执行 `flutter test --coverage`');
+      failed = true;
+      continue;
+    }
+
+    final files = handwrittenOnly(parseLcov(report.readAsStringSync()));
+    final coverage = lineCoverage(files);
+
+    stdout.writeln(
+      '$input\n'
+      '  覆盖率（手写代码，${files.length} 个文件）: '
+      '${coverage.toStringAsFixed(1)}%'
+      '   阈值 ${min.toStringAsFixed(1)}%',
+    );
+
+    if (coverage + _epsilon >= min) {
+      stdout.writeln('  ✅ 达标');
+      continue;
+    }
+
+    stderr.writeln('  ❌ 低于阈值，最低的 5 个文件：');
+    for (final file in lowestCovered(files, 5)) {
+      stderr.writeln('    • $file');
+    }
+    failed = true;
   }
 
-  final files = handwrittenOnly(parseLcov(report.readAsStringSync()));
-  final coverage = lineCoverage(files);
-
-  stdout.writeln(
-    '覆盖率（手写代码，${files.length} 个文件）: '
-    '${coverage.toStringAsFixed(1)}%'
-    '   阈值 ${min.toStringAsFixed(1)}%',
-  );
-
-  if (coverage + _epsilon >= min) {
-    stdout.writeln('✅ 覆盖率达标');
-    return;
-  }
-
-  stderr.writeln('❌ 覆盖率低于阈值，最低的 5 个文件：');
-  for (final file in lowestCovered(files, 5)) {
-    stderr.writeln('  • $file');
-  }
-  exitCode = 1;
+  if (failed) exitCode = 1;
 }
 
 double? _minFrom(List<String> args) {
@@ -146,10 +158,12 @@ double? _minFrom(List<String> args) {
 }
 
 const String _usage = '''
-用法：dart run tool/check_coverage.dart [lcov 路径] [--min=80]
+用法：dart run tool/check_coverage.dart [lcov 路径 ...] [--min=80]
 
 先生成覆盖率数据：
-  flutter test --coverage
+  flutter test --coverage                          # 根工程 → coverage/lcov.info
+  (cd packages/app_core && flutter test --coverage) # 共享包 → 包内 coverage/lcov.info
 
 默认读取 coverage/lcov.info，默认阈值 80%（手写代码口径，剔除生成文件）。
+可传多份 lcov：每份**独立**校验，任一份不达标即失败。
 ''';

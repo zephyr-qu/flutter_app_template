@@ -129,7 +129,8 @@ dart run tool/check_conventions.dart    # 形态约定（AsyncState.map / 注释
 flutter analyze lib/ test/              # 静态分析
 dart analyze tool/                      # 工具脚本
 flutter test --coverage                 # 单元 + widget 测试（顺带产出覆盖率数据）
-dart run tool/check_coverage.dart       # 覆盖率门禁：手写代码 ≥ 80%
+(cd packages/app_core && flutter test --coverage)   # 共享包，必须在包目录里采集
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info  # 门禁：手写代码 ≥ 80%（逐份校验）
 flutter test integration_test/          # 端到端冒烟
 ```
 

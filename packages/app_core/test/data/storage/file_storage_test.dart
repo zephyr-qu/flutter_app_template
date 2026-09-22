@@ -4,7 +4,7 @@ import 'package:app_core/data/storage/file_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../../support/fake_path_provider.dart';
+import '../../support/fake_path_provider.dart';
 
 /// 在真实文件系统上验证 —— 用内存假对象就测不出「路径拼错」「目录不存在」
 /// 这类问题。
