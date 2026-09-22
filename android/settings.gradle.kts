@@ -27,8 +27,11 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.11.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    // 下面两个版本与 Flutter 3.47.x 的 Android 模板保持一致，也是 flutter_tools
+    // 的 maxKnownAgpVersionWithFullKotlinSupport / maxKnownAndSupportedKgpVersion 上限。
+    // AGP 9.1.x 要求 Gradle >= 9.3.1（见 gradle/wrapper/gradle-wrapper.properties），JDK >= 17。
+    id("com.android.application") version "9.1.0" apply false
+    id("org.jetbrains.kotlin.android") version "2.4.0" apply false
 }
 
 include(":app")
