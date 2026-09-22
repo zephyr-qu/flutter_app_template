@@ -6,9 +6,7 @@ import 'package:app_core/logging/logging.dart';
 import 'package:app_core/models/token_set.dart';
 import 'package:app_core/models/user.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:signals_flutter/signals_flutter.dart';
 
 /// 认证存储：用户信息走 [SharedPreferences]，令牌走 [FlutterSecureStorage]。
 ///
@@ -18,9 +16,12 @@ import 'package:signals_flutter/signals_flutter.dart';
 ///
 /// 存储划分与读写失败策略（读软写硬）见 backend/database-guidelines.md。
 ///
-/// 实现 [TokenStore] 供 `app_core` 的网络层使用；[currentUser] / [isLoggedInSignal]
-/// 是本分支自己的事——路由守卫据此重评登录态。
-@Singleton()
+/// 实现 [TokenStore] 供 `app_core` 的网络层使用（包不认识状态管理）。
+///
+/// **本类不含任何状态管理依赖**：登录态的响应式镜像由 `core/auth/session.dart` 的
+/// `Session` 负责，它订阅 [userChanges]。这样存储层能脱开 Riverpod 单测，
+/// 而 401 之后也有一条可用的回流通道 —— 拦截器只拿得到 `TokenStore`，
+/// 拿不到任何 provider（见 backend/error-handling.md「登出语义」）。
 class AuthStorage implements TokenStore {
   new(this._prefs, this._secure) {
     _loadUserFromStorage();
@@ -29,16 +30,32 @@ class AuthStorage implements TokenStore {
   final SharedPreferences _prefs;
   final FlutterSecureStorage _secure;
 
-  /// 当前用户信号
-  final FlutterSignal<User?> currentUser = signal<User?>(null);
-
-  /// 可被监听的登录态（路由守卫据此重评）；同步判断用 [isLoggedIn]
-  late final FlutterComputed<bool> isLoggedInSignal = computed(
-    () => currentUser.value != null,
-  );
+  /// 当前用户（同步真源；未登录为 null）
+  User? get currentUser => _currentUser;
+  User? _currentUser;
 
   /// 令牌的内存缓存；[ready] 完成后与安全存储一致
   TokenSet? _tokens;
+
+  final StreamController<User?> _changes = StreamController<User?>.broadcast();
+
+  /// 登录态变化流。**订阅时会立刻收到当前值**（对齐 signals 的「读即有值」），
+  /// 所以消费者不必先读 [currentUser] 再订阅。
+  Stream<User?> get userChanges async* {
+    yield _currentUser;
+    yield* _changes.stream;
+  }
+
+  /// 登录态变化（是否已登录）；不需要值、只想知道「变了」时用它
+  bool get isLoggedIn => _currentUser != null;
+
+  /// 关闭变化流（容器销毁时调用；App 生命周期内不会发生）
+  Future<void> dispose() => _changes.close();
+
+  void _notify() {
+    // 流已关闭说明容器已销毁，此时再写状态是无意义的
+    if (!_changes.isClosed) _changes.add(_currentUser);
+  }
 
   /// 令牌载入内存的完成信号；`AuthInterceptor` 附加 Authorization 前会 await 它
   @override
@@ -54,9 +71,8 @@ class AuthStorage implements TokenStore {
     if (userJson == null) return;
 
     try {
-      currentUser.value = User.fromJson(
-        jsonDecode(userJson) as Map<String, dynamic>,
-      );
+      final decoded = jsonDecode(userJson) as Map<String, dynamic>;
+      _currentUser = User.fromJson(decoded);
     } catch (e) {
       // 损坏的数据留着只会让每次启动都失败一次
       Logging.warning('本地用户数据损坏，已清理: $e');
@@ -75,9 +91,11 @@ class AuthStorage implements TokenStore {
     }
   }
 
-  /// 保存用户信息（prefs + 信号）
+  /// 保存用户信息（prefs + 通知订阅者）
   Future<void> saveUser(User? user) async {
-    currentUser.value = user;
+    _currentUser = user;
+    _notify();
+
     if (user != null) {
       await _prefs.setString(_keyUser, jsonEncode(user.toJson()));
     } else {
@@ -126,8 +144,10 @@ class AuthStorage implements TokenStore {
   /// 安全存储删除失败只记日志不外抛——本地登出必须成功。
   @override
   Future<void> clearAuth() async {
-    currentUser.value = null;
+    _currentUser = null;
     _tokens = null;
+    _notify();
+
     await _prefs.remove(_keyUser);
     try {
       await _secure.delete(key: _keyTokens);
@@ -136,9 +156,6 @@ class AuthStorage implements TokenStore {
     }
   }
 
-  /// 检查是否已登录
-  bool get isLoggedIn => currentUser.value != null;
-
   /// 获取当前用户 ID
-  int? get currentUserId => currentUser.value?.id;
+  int? get currentUserId => _currentUser?.id;
 }

@@ -1,43 +1,36 @@
 import 'package:app_core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:my_app/app/routing/auth_reevaluate.dart';
-import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/config/user_preferences.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/di/service_locator.dart';
-import 'package:signals_hooks/signals_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/app/providers.dart';
+import 'package:my_app/core/config/app_settings.dart';
 
 /// 应用根组件 —— **只做接线**：
-class MyApp extends HookWidget {
+/// 路由与重评估触发器来自 `app/providers.dart`，主题来自 `app_core`，
+/// 主题模式来自 `appSettingsProvider`（改设置立刻生效）。
+///
+/// 外层必须已经包好 `ProviderScope`（含 `prefsProvider` 的 override）——
+/// 那是 `bootstrap()` 的责任，见 lib/bootstrap.dart。
+class MyApp extends ConsumerWidget {
   const new({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final auth = getIt<AuthStorage>();
-    final preferences = getIt<UserPreferences>();
-
-    // 只创建一次：登录态由守卫在导航时实时读取，重建路由器会丢弃整个导航栈
-    final router = useMemoized(() => AppRouter(auth));
-
-    // 登录态变化（含 401 触发的登出）时让 auto_route 重新评估守卫
-    final reevaluate = useMemoized(
-      () => AuthReevaluateListenable(auth.isLoggedInSignal),
-    );
-    useEffect(() => reevaluate.dispose, [reevaluate]);
-
-    final themeLight = useMemoized(buildLightTheme);
-    final themeDark = useMemoized(buildDarkTheme);
-
-    // 必须用 useSignalValue 订阅；改读 getter 只会在恰好重建时更新
-    final ThemeMode themeMode = useSignalValue(preferences.themeMode);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
+    final reevaluate = ref.watch(authReevaluateProvider);
+    final themeMode = ref.watch(appSettingsProvider).themeMode;
 
     return MaterialApp.router(
       routerConfig: router.config(reevaluateListenable: reevaluate),
       debugShowCheckedModeBanner: false,
-      theme: themeLight,
-      darkTheme: themeDark,
+      theme: _lightTheme,
+      darkTheme: _darkTheme,
       themeMode: themeMode,
     );
   }
 }
+
+/// 主题只构建一次：`buildLightTheme()` 每次调用都会重建整份 `ThemeData`，
+/// 而在 build 里重建会让所有 `Theme.of(context)` 的消费者整树重建。
+/// 换主题靠 `themeMode`（亮 / 暗 / 跟随系统），不是靠换 `ThemeData`。
+final ThemeData _lightTheme = buildLightTheme();
+final ThemeData _darkTheme = buildDarkTheme();

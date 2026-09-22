@@ -27,8 +27,40 @@
 `cross-cutting.md`、`docs` 里都还在传它，并且 spec 里写着「不加它构建**直接失败**」——这句已经不成立。
 需要单独在 master 上修（改文档 + CI 命令），本分支的阶段 7 只负责自己这份 spec。
 
-**下一步**：阶段 1（删 `lib/di/`、`core_module` → providers、`bootstrap` 去 `configureDependencies()`、
-`app/app.dart` 接 `ProviderScope`）。
+**2026-09-22 · 阶段 1 + 2 完成（core 装配层，`flutter analyze lib/core lib/app ...` 零 issue）**
+
+阶段 1 与 2 是**咬合**的（`Dio` 需要 `AuthStorage`，而 `AuthStorage` 正在被改写），所以合并做：
+
+| 动作 | 文件 |
+|---|---|
+| 删 | `lib/di/service_locator.dart`、`service_locator.config.dart`、`core/core_module.dart`、`core/base/run_async.dart`、`features/{auth,article}/data/*_module.dart` |
+| 新增 | `core/providers.dart`（prefs/secureStorage/database/fileStorage/userPreferences/authStorage）、`core/auth/session.dart`、`core/config/app_settings.dart`、`app/providers.dart` |
+| 改写 | `core/data/storage/auth_storage.dart`（去 signals + 新增 `userChanges` 流）、`core/config/user_preferences.dart`（纯存储）、`core/data/network/dio_client.dart`（`@module` → provider，mock 端点改 `/sample-items`）、`app/routing/auth_reevaluate.dart`（信号 → 流）、`app/app.dart`（`ConsumerWidget`）、`bootstrap.dart`（`ProviderScope` + `prefs` override）、`core/ui/async_view.dart`（`AsyncState` → `AsyncValue`） |
+
+三个值得记的实现决定（阶段 7 要写进 spec）：
+
+1. **`prefsProvider` 用 override 注入，不用 `FutureProvider`**：`SharedPreferences.getInstance()`
+   是异步的，而消费者（`UserPreferences` / `AuthStorage`）都是同步构造的。做成 `FutureProvider`
+   会把 `AsyncValue` 一路传染到页面。所以 `bootstrap()` 先 await，再用
+   `ProviderScope(overrides: [prefsProvider.overrideWithValue(prefs)])` 注入；漏了 override
+   会当场抛（`UnimplementedError`），不静默降级。
+2. **登录态有两层，别把守卫改成读 provider**：真源是 `AuthStorage`（同步可读，`AppRouter`
+   的守卫直接用它，master 的 `router.dart` 因此**一行都不用改**）；`Session` provider 只是
+   它 `userChanges` 流的镜像，供 UI 订阅。改成守卫读 provider 会引入「状态还没 emit →
+   先判成未登录」的空窗。
+3. **`dioProvider` 读 `userPreferencesProvider` 而不是 `appSettingsProvider`**：后者一变
+   provider 就会重建，而「Dio 必须单例」优先（重建会丢掉在飞请求、重放状态与 mock 注册）。
+   代价是调试开关与 master 一致：**重启后生效**。
+
+⚠️ **新增一条 codegen 纪律（阶段的血泪，阶段 7 要进 spec）**：
+**不要在项目编译不过的时候跑 `build_runner`**。本次在「依赖已换、代码未迁」的红窗口里跑了一次全量构建，
+`auto_route` 因为解析不到 `Key` / `Widget` 类型，把 `router.gr.dart` 里的 `Key? key` 全部降级写成
+`dynamic key`，并**静默覆盖**了正确产物（`drift` 也丢了 3 行）。已用 `git restore` 回滚。
+换栈这种「必然有红窗口」的迁移里，正确做法是：先让 `flutter analyze` 收敛，再跑 codegen；
+或跑完立刻核对生成物 diff。
+
+**下一步**：阶段 3（7 个 page → `ConsumerWidget`、4 个 logic → `@riverpod` Notifier），
+再进阶段 4（`features/sample` 金标准 + 删 article/demo）。
 
 ---
 

@@ -258,3 +258,114 @@ final class FileStorageProvider
 }
 
 String _$fileStorageHash() => r'ed75a44f7bb651a3292256a720a17f0a20d9ed71';
+
+/// 用户偏好的持久化层（同步读）。
+///
+/// 页面要订阅的是它的**快照** `appSettingsProvider`，不是这一层：
+/// 每次偏好变更都重建存储对象没有意义（见 core/config/app_settings.dart）。
+
+@ProviderFor(userPreferences)
+final userPreferencesProvider = UserPreferencesProvider._();
+
+/// 用户偏好的持久化层（同步读）。
+///
+/// 页面要订阅的是它的**快照** `appSettingsProvider`，不是这一层：
+/// 每次偏好变更都重建存储对象没有意义（见 core/config/app_settings.dart）。
+
+final class UserPreferencesProvider
+    extends
+        $FunctionalProvider<UserPreferences, UserPreferences, UserPreferences>
+    with $Provider<UserPreferences> {
+  /// 用户偏好的持久化层（同步读）。
+  ///
+  /// 页面要订阅的是它的**快照** `appSettingsProvider`，不是这一层：
+  /// 每次偏好变更都重建存储对象没有意义（见 core/config/app_settings.dart）。
+  UserPreferencesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'userPreferencesProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$userPreferencesHash();
+
+  @$internal
+  @override
+  $ProviderElement<UserPreferences> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  UserPreferences create(Ref ref) {
+    return userPreferences(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UserPreferences value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UserPreferences>(value),
+    );
+  }
+}
+
+String _$userPreferencesHash() => r'f6398449cab22aa2003fdf229ab484af5751e799';
+
+/// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+///
+/// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
+/// 可订阅的镜像在 `core/auth/session.dart`。
+
+@ProviderFor(authStorage)
+final authStorageProvider = AuthStorageProvider._();
+
+/// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+///
+/// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
+/// 可订阅的镜像在 `core/auth/session.dart`。
+
+final class AuthStorageProvider
+    extends $FunctionalProvider<AuthStorage, AuthStorage, AuthStorage>
+    with $Provider<AuthStorage> {
+  /// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+  ///
+  /// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
+  /// 可订阅的镜像在 `core/auth/session.dart`。
+  AuthStorageProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'authStorageProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$authStorageHash();
+
+  @$internal
+  @override
+  $ProviderElement<AuthStorage> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  AuthStorage create(Ref ref) {
+    return authStorage(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AuthStorage value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AuthStorage>(value),
+    );
+  }
+}
+
+String _$authStorageHash() => r'63b681d7e3e7c800186f404106939ec809e27958';

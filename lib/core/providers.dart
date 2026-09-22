@@ -1,6 +1,8 @@
 import 'package:app_core/data/database/app_database.dart';
 import 'package:app_core/data/storage/file_storage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:my_app/core/config/user_preferences.dart';
+import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -42,3 +44,25 @@ AppDatabase database(Ref ref) => AppDatabase();
 /// 所以在这里显式建成 provider。
 @Riverpod(keepAlive: true)
 FileStorage fileStorage(Ref ref) => FileStorage();
+
+/// 用户偏好的持久化层（同步读）。
+///
+/// 页面要订阅的是它的**快照** `appSettingsProvider`，不是这一层：
+/// 每次偏好变更都重建存储对象没有意义（见 core/config/app_settings.dart）。
+@Riverpod(keepAlive: true)
+UserPreferences userPreferences(Ref ref) =>
+    UserPreferences(ref.watch(prefsProvider));
+
+/// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+///
+/// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
+/// 可订阅的镜像在 `core/auth/session.dart`。
+@Riverpod(keepAlive: true)
+AuthStorage authStorage(Ref ref) {
+  final storage = AuthStorage(
+    ref.watch(prefsProvider),
+    ref.watch(secureStorageProvider),
+  );
+  ref.onDispose(storage.dispose);
+  return storage;
+}

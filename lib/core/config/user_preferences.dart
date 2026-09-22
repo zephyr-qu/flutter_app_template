@@ -1,55 +1,43 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:signals_flutter/signals_flutter.dart';
 
-/// 用户偏好：每个偏好一个信号，写入时同步落盘（[SharedPreferences] 已由 DI 预初始化）。
-@Singleton()
+/// 用户偏好的**持久化**（每个偏好一个键）。
+///
+/// 本类不含任何状态管理依赖：读取是同步的（`SharedPreferences` 已由
+/// `bootstrap()` 预载），变更通知与内存快照由 `core/config/app_settings.dart`
+/// 的 `AppSettingsNotifier` 负责。分开的理由：
+///
+/// - 存储层能脱开 Riverpod 单测（喂一个 mock 过的 `SharedPreferences` 即可）
+/// - 页面需要的是「一份可订阅的快照」，而不是「每次读盘」
+///
+/// 读取时对越界值做回落（改过默认值 / 手工改过 prefs 时不该崩）。
 class UserPreferences {
-  new(this._prefs) {
-    _loadFromStorage();
-  }
+  new(this._prefs);
   final SharedPreferences _prefs;
-
-  final FlutterSignal<ThemeMode> themeMode = signal<ThemeMode>(
-    ThemeMode.system,
-  );
-  final FlutterSignal<bool> enableDebugLogging = signal<bool>(true);
-  final FlutterSignal<int> defaultPageSize = signal<int>(20);
-
-  ThemeMode get currentMode => themeMode.value;
 
   static const String _keyThemeMode = 'app.theme.mode';
   static const String _keyDebugLogging = 'app.debug.logging';
   static const String _keyDefaultPageSize = 'app.default.page.size';
 
-  void _loadFromStorage() {
-    final themeIndex = _prefs.getInt(_keyThemeMode) ?? ThemeMode.system.index;
-    final resolvedIndex =
-        themeIndex >= 0 && themeIndex < ThemeMode.values.length
-        ? themeIndex
-        : ThemeMode.system.index;
-    themeMode.value = ThemeMode.values[resolvedIndex];
-
-    enableDebugLogging.value = _prefs.getBool(_keyDebugLogging) ?? true;
-    defaultPageSize.value = _prefs.getInt(_keyDefaultPageSize) ?? 20;
+  /// 主题模式；存的 index 越界时回落到 [ThemeMode.system]
+  ThemeMode get themeMode {
+    final index = _prefs.getInt(_keyThemeMode) ?? ThemeMode.system.index;
+    if (index < 0 || index >= ThemeMode.values.length) return ThemeMode.system;
+    return ThemeMode.values[index];
   }
 
-  void setThemeMode(ThemeMode mode) {
-    themeMode.value = mode;
-    // 信号是同步的、落盘不是：写入结果这里用不到，但必须显式 unawaited
-    unawaited(_prefs.setInt(_keyThemeMode, mode.index));
-  }
+  /// 是否输出调试日志（只影响**下一次创建 Dio** 时的拦截器装配，见 network/dio_client.dart）
+  bool get enableDebugLogging => _prefs.getBool(_keyDebugLogging) ?? true;
 
-  void setDebugLogging({required bool enabled}) {
-    enableDebugLogging.value = enabled;
-    unawaited(_prefs.setBool(_keyDebugLogging, enabled));
-  }
+  /// 列表分页大小
+  int get defaultPageSize => _prefs.getInt(_keyDefaultPageSize) ?? 20;
 
-  void setDefaultPageSize(int size) {
-    defaultPageSize.value = size;
-    unawaited(_prefs.setInt(_keyDefaultPageSize, size));
-  }
+  Future<void> setThemeMode(ThemeMode mode) =>
+      _prefs.setInt(_keyThemeMode, mode.index);
+
+  Future<void> setDebugLogging({required bool enabled}) =>
+      _prefs.setBool(_keyDebugLogging, enabled);
+
+  Future<void> setDefaultPageSize(int size) =>
+      _prefs.setInt(_keyDefaultPageSize, size);
 }
