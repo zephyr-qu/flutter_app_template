@@ -1,44 +1,37 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
+import 'package:my_app/core/logging/logging.dart';
+import 'package:my_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// 用户偏好配置
-///
-/// 负责管理用户相关的配置和偏好设置，使用响应式信号实现状态更新
+/// 用户偏好：每个偏好一个信号，写入时同步落盘（[SharedPreferences] 已由 DI 预初始化）。
 @Singleton()
 class UserPreferences {
-  late final SharedPreferences _prefs;
+  new(this._prefs) {
+    _loadFromStorage();
+  }
+  final SharedPreferences _prefs;
 
-  UserPreferences();
+  final FlutterSignal<ThemeMode> themeMode = signal<ThemeMode>(
+    ThemeMode.system,
+  );
+  final FlutterSignal<bool> enableDebugLogging = signal<bool>(true);
+  final FlutterSignal<int> defaultPageSize = signal<int>(20);
 
-  // 主题模式
-  final themeMode = signal<ThemeMode>(ThemeMode.system);
-
-  // 调试日志开关
-  final enableDebugLogging = signal<bool>(true);
-
-  // API 超时时间（秒）
-  final apiTimeout = signal<int>(30);
-
-  // 默认分页大小
-  final defaultPageSize = signal<int>(20);
+  /// 应用语言；`null` 表示跟随系统
+  final FlutterSignal<Locale?> locale = signal<Locale?>(null);
 
   ThemeMode get currentMode => themeMode.value;
 
-  // 本地存储键名
   static const String _keyThemeMode = 'app.theme.mode';
   static const String _keyDebugLogging = 'app.debug.logging';
-  static const String _keyApiTimeout = 'app.api.timeout';
   static const String _keyDefaultPageSize = 'app.default.page.size';
-  Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-    _loadFromStorage();
-  }
+  static const String _keyLocale = 'app.locale';
 
-  /// 从本地存储加载用户偏好
   void _loadFromStorage() {
-    // 加载主题模式
     final themeIndex = _prefs.getInt(_keyThemeMode) ?? ThemeMode.system.index;
     final resolvedIndex =
         themeIndex >= 0 && themeIndex < ThemeMode.values.length
@@ -46,33 +39,49 @@ class UserPreferences {
         : ThemeMode.system.index;
     themeMode.value = ThemeMode.values[resolvedIndex];
 
-    // 加载其他偏好
-    enableDebugLogging.value = _prefs.getBool(_keyDebugLogging) ?? false;
-    apiTimeout.value = _prefs.getInt(_keyApiTimeout) ?? 30;
+    enableDebugLogging.value = _prefs.getBool(_keyDebugLogging) ?? true;
     defaultPageSize.value = _prefs.getInt(_keyDefaultPageSize) ?? 20;
+    _loadLocale();
   }
 
-  /// 设置主题模式
+  /// 只接受 `supportedLocales` 内的值，脏数据回退到跟随系统
+  void _loadLocale() {
+    final code = _prefs.getString(_keyLocale);
+    if (code == null) return;
+
+    final matches = AppLocalizations.supportedLocales.where(
+      (l) => l.languageCode == code,
+    );
+    if (matches.isNotEmpty) {
+      locale.value = matches.first;
+    } else {
+      Logging.warning('本地保存的语言「$code」不在支持范围内，已回退到跟随系统');
+    }
+  }
+
   void setThemeMode(ThemeMode mode) {
     themeMode.value = mode;
-    _prefs.setInt(_keyThemeMode, mode.index);
+    // 信号是同步的、落盘不是：写入结果这里用不到，但必须显式 unawaited
+    unawaited(_prefs.setInt(_keyThemeMode, mode.index));
   }
 
-  /// 设置调试日志开关
-  void setDebugLogging(bool enabled) {
+  void setDebugLogging({required bool enabled}) {
     enableDebugLogging.value = enabled;
-    _prefs.setBool(_keyDebugLogging, enabled);
+    unawaited(_prefs.setBool(_keyDebugLogging, enabled));
   }
 
-  /// 设置 API 超时时间
-  void setApiTimeout(int timeout) {
-    apiTimeout.value = timeout;
-    _prefs.setInt(_keyApiTimeout, timeout);
-  }
-
-  /// 设置默认分页大小
   void setDefaultPageSize(int size) {
     defaultPageSize.value = size;
-    _prefs.setInt(_keyDefaultPageSize, size);
+    unawaited(_prefs.setInt(_keyDefaultPageSize, size));
+  }
+
+  /// 传 `null` 表示跟随系统
+  void setLocale(Locale? value) {
+    locale.value = value;
+    if (value == null) {
+      unawaited(_prefs.remove(_keyLocale));
+    } else {
+      unawaited(_prefs.setString(_keyLocale, value.languageCode));
+    }
   }
 }
