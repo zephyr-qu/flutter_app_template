@@ -319,9 +319,7 @@ TokenStore）、`data/database/*`、`theme/*`、`ui/empty_widget.dart` 共约 11
 
 所以包内那个 82.5% **不代表包的覆盖率，只代表被加载的 8 个文件的覆盖率**。
 
-**下一步（独立任务）**：把 `test/core/data/network/` 的三个测试改成纯包测试——
-用假 `TokenStore` 替代 lib 的 `AuthStorage`，让它们测 `app_core` 的拦截器与刷新器；
-另外补 `theme` 与 `ui` 的包内测试。做完之后才有资格说「包的覆盖率」。
-
-同时建议补上 `check_coverage` 的差集检查（拿文件清单减 lcov 的 `SF:` 集合），
-否则这个口子会随着包的增长继续静默扩大。
+**下一步**：已开任务 **`09-22-app-core-coverage`** 跟踪——把
+`test/core/data/network/` 的三个测试改成纯包测试（用假 `TokenStore` 替代 lib 的
+`AuthStorage`），补 `theme` 与 `ui` 的包内测试，并给 `check_coverage` 加差集检查
+（拿文件清单减 lcov 的 `SF:` 集合）。做完之后才有资格说「包的覆盖率」。

@@ -21,6 +21,7 @@
   "children": [
     "09-22-prune-l10n",
     "09-22-extract-app-core",
+    "09-22-app-core-coverage",
     "09-22-preset-ai-starter"
   ],
   "parent": null,

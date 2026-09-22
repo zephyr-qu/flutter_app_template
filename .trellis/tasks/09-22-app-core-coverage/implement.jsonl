@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "覆盖率门禁与边界门禁的权威口径，含「从未被加载的文件不进分母」这条已知缺口的说明"}
+{"file": ".trellis/tasks/09-22-extract-app-core/design.md", "reason": "第 6 节记录了 TokenStore 反转与网络层为什么要独立；第 8.3 节是本任务的来源"}
+{"file": ".trellis/spec/backend/network-guidelines.md", "reason": "拦截器顺序与 401 重放语义——网络层测试改写成纯包测试时不能改变这些行为"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "TokenRefresher 的 single-flight 与防递归标记，是 token_refresh_test 的核心断言"}
+{"file": "tool/check_coverage.dart", "reason": "要改的文件：加差集检查，注意它同时被 check_boundaries.dart 的 isGeneratedPath 复用"}
