@@ -105,10 +105,12 @@ jobs:
       - name: Run app_core tests
         run: cd packages/app_core && flutter test --coverage
 
-      # 生成文件不计入阈值（口径与理由见 .trellis/spec/frontend/quality-guidelines.md）。
+      # 生成文件不计入阈值（口径与理由见 .trellis/spec/cross-cutting.md）。
       # 两份 lcov 逐份独立校验：包内的低覆盖不该被 lib/ 的高覆盖稀释。
+      # --src 与 lcov 按序配对，开启差集检查：扫描根下没被该 lcov 覆盖的手写文件
+      # 按 0 计入分母 —— 少了它，一个从没被加载过的新文件不会让阈值下降。
       - name: Check coverage threshold
-        run: dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info --min=80
+        run: dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info --src=lib --src=packages/app_core/lib --min=80
 
   integration-test:
     needs: analyze

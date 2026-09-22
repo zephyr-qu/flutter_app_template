@@ -113,4 +113,156 @@ end_of_record
       expect(lowest.map((f) => f.path), ['lib/zero.dart', 'lib/mid.dart']);
     });
   });
+
+  // ── 差集检查（--src）──
+  group('coversPath', () {
+    test('完全相同即覆盖', () {
+      expect(coversPath('lib/a.dart', 'lib/a.dart'), isTrue);
+    });
+
+    test('SF 是相对包根的路径：按完整路径段后缀匹配', () {
+      expect(
+        coversPath(
+          'packages/app_core/lib/data/token_store.dart',
+          'lib/data/token_store.dart',
+        ),
+        isTrue,
+      );
+    });
+
+    test('后缀必须落在路径段边界上', () {
+      // 少了这个边界，xlib/a.dart 会被 lib/a.dart 误判成已覆盖
+      expect(coversPath('xlib/a.dart', 'lib/a.dart'), isFalse);
+      expect(
+        coversPath('packages/app_core/xlib/a.dart', 'lib/a.dart'),
+        isFalse,
+      );
+    });
+
+    test('文件名相同但目录不同不算覆盖', () {
+      expect(coversPath('lib/other/a.dart', 'lib/a.dart'), isFalse);
+    });
+  });
+
+  group('missingFrom', () {
+    test('返回扫描到但没被 lcov 记录的文件', () {
+      final missing = missingFrom(
+        handwritten: ['lib/a.dart', 'lib/b.dart', 'lib/c.dart'],
+        covered: [
+          const FileCoverage(path: 'lib/a.dart', hit: 1, found: 1),
+          const FileCoverage(path: 'lib/c.dart', hit: 1, found: 1),
+        ],
+      );
+
+      expect(missing, ['lib/b.dart']);
+    });
+
+    test('结果排序，输出稳定', () {
+      final missing = missingFrom(
+        handwritten: ['lib/z.dart', 'lib/a.dart', 'lib/m.dart'],
+        covered: const <FileCoverage>[],
+      );
+
+      expect(missing, ['lib/a.dart', 'lib/m.dart', 'lib/z.dart']);
+    });
+
+    test('全部缺失时返回全部', () {
+      final missing = missingFrom(
+        handwritten: ['packages/app_core/lib/x.dart'],
+        covered: [const FileCoverage(path: 'lib/y.dart', hit: 0, found: 9)],
+      );
+
+      expect(missing, ['packages/app_core/lib/x.dart']);
+    });
+  });
+
+  group('nonBlankLines', () {
+    test('空行与纯空白行不计入', () {
+      const content = 'a\n\n   \nb\n\t\nc\n';
+
+      expect(nonBlankLines(content), 3);
+    });
+
+    test('空文件为 0', () {
+      expect(nonBlankLines(''), 0);
+    });
+  });
+
+  group('withUnloaded', () {
+    test('未加载文件按 0 命中并入，行数取代理值', () {
+      final files = withUnloaded(
+        files: [const FileCoverage(path: 'lib/covered.dart', hit: 5, found: 5)],
+        unloadedLines: {'lib/never_loaded.dart': 40},
+      );
+
+      expect(files, hasLength(2));
+      expect(files.last.path, 'lib/never_loaded.dart');
+      expect(files.last.hit, 0);
+      expect(files.last.found, 40);
+      // 分母涨了，比例必然被拉下来 —— 这正是差集检查的意义
+      expect(lineCoverage(files), moreOrLessEquals(5 * 100 / 45));
+    });
+
+    test('没有未加载文件时原样返回', () {
+      final files = withUnloaded(
+        files: [const FileCoverage(path: 'lib/a.dart', hit: 1, found: 1)],
+        unloadedLines: const {},
+      );
+
+      expect(lineCoverage(files), moreOrLessEquals(100));
+    });
+  });
+
+  group('unexemptedFiles / staleExemptions', () {
+    const exemptions = {'lib/main.dart': '入口，只被集成测试加载'};
+
+    test('豁免条目不进分母', () {
+      final unexempted = unexemptedFiles([
+        'lib/main.dart',
+        'lib/forgotten.dart',
+      ], exemptions: exemptions);
+
+      expect(unexempted, ['lib/forgotten.dart']);
+    });
+
+    test('挂在扫描根下、已不再缺失的豁免算过期', () {
+      final stale = staleExemptions(
+        missing: const ['lib/forgotten.dart'],
+        scanRoot: 'lib',
+        exemptions: exemptions,
+      );
+
+      expect(stale, ['lib/main.dart']);
+    });
+
+    test('别的扫描根下的豁免不算过期（否则每份 lcov 都会误报）', () {
+      final stale = staleExemptions(
+        missing: const <String>[],
+        scanRoot: 'packages/app_core/lib',
+        exemptions: exemptions,
+      );
+
+      expect(stale, isEmpty);
+    });
+
+    test('仍然缺失的豁免不算过期', () {
+      final stale = staleExemptions(
+        missing: const ['lib/main.dart'],
+        scanRoot: 'lib',
+        exemptions: exemptions,
+      );
+
+      expect(stale, isEmpty);
+    });
+
+    test('扫描根边界：lib 不该管到 libx/ 下的文件', () {
+      final stale = staleExemptions(
+        missing: const <String>[],
+        scanRoot: 'lib',
+        exemptions: const {'libx/a.dart': '无关'},
+      );
+
+      expect(stale, isEmpty);
+    });
+  });
 }

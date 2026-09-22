@@ -66,9 +66,11 @@ echo "🧪 Running app_core tests..."
 (cd packages/app_core && flutter test --coverage)
 PKGTEST_EXIT=$?
 
-# ── Check coverage threshold（逐份 lcov 独立校验）──
+# ── Check coverage threshold（逐份 lcov 独立校验 + 差集检查）──
+# --src 与 lcov 按序配对：扫描根下没有被该 lcov 覆盖的手写文件按 0 计入分母，
+# 否则「新增一个完全没测的文件」不会让阈值下降（口径见 .trellis/spec/cross-cutting.md）
 echo "📊 Checking coverage..."
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info --src=lib --src=packages/app_core/lib
 COVERAGE_EXIT=$?
 
 # Restore stashed changes
