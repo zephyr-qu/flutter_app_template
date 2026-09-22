@@ -149,7 +149,8 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 ```bash
 flutter test --coverage                                   # 根工程 → coverage/lcov.info
 (cd packages/app_core && flutter test --coverage)         # 包 → 包内 coverage/lcov.info
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
+  --src=lib --src=packages/app_core/lib
 dart run tool/check_coverage.dart --min=85                # 不传路径则只查 coverage/lcov.info
 ```
 
@@ -157,22 +158,56 @@ dart run tool/check_coverage.dart --min=85                # 不传路径则只�
 - **只统计手写代码**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` / `*.gen.dart` / `app_localizations*` 不计入。生成代码的行数不是人能守的，算进去只会稀释阈值
 - 判定复用 `tool/check_boundaries.dart` 的 `isGeneratedPath`，两处口径不会漂移
 - 按**行数加权**，不是按文件平均——500 行的文件与 5 行的文件不该等权
-- 阈值默认 80%（`test/tool/check_coverage_test.dart` 覆盖脚本自身的解析逻辑）
+- 阈值默认 80%（`test/tool/check_coverage_test.dart` 覆盖脚本自身的解析与差集逻辑）
 
 **为什么必须分两份 lcov**：`app_core` 是独立 package，根工程跑 `flutter test --coverage` 时，
 包内文件的命中**不会被归集**（根 lcov 里一条 `packages/` 记录都没有），只能在包目录里单独采集。
 两份 lcov **逐份独立校验，不合并**：它们的路径都是相对各自包根的 `lib/...`，合并会把命名空间
 搅在一起；而且包内的低覆盖不该被 `lib/` 的高覆盖稀释。
 
-> 门禁算的是「lcov 里出现的文件」的覆盖率。**一个从未被任何测试加载的文件不会出现在
-> lcov 里**，因此它的行数不进分母——新增一个完全没测的大文件不会让阈值下降。
-> 要补上这个口子，得拿文件清单去和 lcov 的 `SF:` 集合做差集，目前没做。
->
-> **抽包之后这个口子明显变大了**：`packages/app_core` 有 20 个手写文件，包内测试只加载了其中 8 个，
-> 于是包内 82.5% 这个数字**只覆盖 8 个文件**——`data/network/*`（认证拦截器、刷新器、Dio 工厂）
-> 与 `data/database/*`、`theme/*`、`ui/*` 共约 11 个文件仍在分母之外。
-> 把网络层的测试也迁进包（用假 `TokenStore` 替代 lib 的 `AuthStorage`，让它变成纯包测试）
-> 是下一步，见 `.trellis/tasks/09-22-extract-app-core/design.md` 7.3。
+### 差集检查（`--src`）
+
+`--src` 与位置参数的 lcov **按序配对**，开启差集检查：拿扫描根下（`dartFiles()`，与
+`handwrittenOnly()` 同一口径）的手写文件清单，减去该 lcov 的 `SF:` 集合。
+
+```bash
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
+  --src=lib --src=packages/app_core/lib
+```
+
+- 个数不匹配直接以非零退出码结束：按序配对的参数错位**不会报错、只会静默算错分母**，这是这里最坏的失败形态
+- 差集里的文件按 `0 命中 / 非空行数` **计入分母**（不是只报告）：没有豁免时门禁自动变严，
+  新增一个没测的大文件不必等谁记得加规则。行数是代理值——精确的可执行行数拿不到，
+  用非空行数刻意从严
+- 路径匹配是**边界感知的后缀**匹配：lcov 的 `SF:` 相对包根（`lib/data/network/token_store.dart`），
+  扫描根是仓库相对路径，用 `repoPath == sfPath || repoPath.endsWith('/$sfPath')` 对上，
+  不需要额外传「这个包的 lib 前缀」
+
+**豁免清单**（`tool/check_coverage.dart` 的 `loadingExemptions`）是唯一的逃生口，只放
+**结构上不可能被加载**的文件，每条必须写理由。这来自一个反例：`auth_extra_keys.dart`
+与 `token_store.dart` 被 `auth_interceptor.dart` 的 import 链加载了，却仍不出现在 lcov 里——
+它们只有 `const` 与声明，没有可执行行。所以「不在 lcov 里」有两种成因，**差集检查只能看见
+第一种**，第二种必须显式写进豁免（理由即证据）。过期豁免（已进分母）只打 warning，不拦提交。
+
+| 类别 | 例子 | 处理 |
+|---|---|---|
+| 抽象声明 / redirecting factory | `article_api.dart`、`article_repository.dart` | 豁免（无可执行行） |
+| 只有 `const` / 纯接口 | `auth_extra_keys.dart`、`token_store.dart` | 豁免（无可执行行） |
+| 只被 `integration_test` 执行的入口 | `main.dart`、`bootstrap.dart` | 豁免（`flutter test --coverage` 不含 `integration_test/`） |
+| **本该被测但没测** | —— | **补测试，不许豁免** |
+
+快照（2026-09-22，落这条门禁时的实测）：
+
+| | 手写文件 | 进分母 | 豁免 | 覆盖率 |
+|---|---|---|---|---|
+| 根 `lib/` | 39 | 33 | 6 | 89.4% |
+| `packages/app_core` | 20 | 18 | 2 | 89.8% |
+
+同一个快照里 `lib/app/app.dart` 从「差集里的一个文件」变成了
+`test/app/app_test.dart`：它是组合根，装配错了集成测试才会红，而集成测试不进覆盖率统计。
+
+> 加豁免时先问一句：这是「结构上不可能被加载」，还是「暂时来不及测」？
+> 后者要补测试。条目变多本身就是信号。
 
 ---
 

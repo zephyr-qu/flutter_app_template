@@ -2,7 +2,9 @@
 
 > How the HTTP layer is wired in this project.
 
-> **Scaffold note**: 网络能力收敛在 `lib/core/data/network/` 的四个文件 + 一个配置对象里。
+> **Scaffold note**: 网络能力分成两半 —— **与状态管理无关**的那半在
+> `packages/app_core/lib/data/network/`（两个栈共用，见 `app_core` 的抽包说明），
+> **装配**那半留在 `lib/core/data/network/dio_client.dart`。
 > 各 feature 只写 Retrofit 接口（`features/{feature}/data/{feature}_api.dart`），
 > 不接触 Dio、令牌、Mock。
 
@@ -12,11 +14,18 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `dio_client.dart` | `NetworkModule`：提供 `NetworkConfig` 与**唯一**的 `Dio`，装配拦截器栈与 Mock 规则 |
-| `auth_interceptor.dart` | 请求附加令牌；401 时刷新并重放；刷新用尽则清凭证 |
-| `token_refresher.dart` | single-flight 换令牌 |
-| `auth_extra_keys.dart` | `RequestOptions.extra` 的两个标记键 |
-| `core/config/network_config.dart` | 不可变的网络配置（超时、重试次数、mock 开关） |
+| `packages/app_core/lib/data/network/dio_factory.dart` | `createDio()`：拦截器栈 + 兜底解码 + Retry + Mock，**不知道 signals / Riverpod 的存在** |
+| `packages/app_core/lib/data/network/auth_interceptor.dart` | 请求附加令牌；401 时刷新并重放；刷新用尽则清凭证 |
+| `packages/app_core/lib/data/network/token_refresher.dart` | single-flight 换令牌 |
+| `packages/app_core/lib/data/network/token_store.dart` | 令牌存取的**能力契约**（`ready` / 读写 / 过期判断 / 清除），各栈自己实现 |
+| `packages/app_core/lib/data/network/auth_extra_keys.dart` | `RequestOptions.extra` 的两个标记键 |
+| `packages/app_core/lib/config/network_config.dart` | 不可变的网络配置（超时、重试次数、mock 开关） |
+| `lib/core/data/network/dio_client.dart` | `NetworkModule`：取 `dotenv` 配置、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
+
+`TokenStore` 是这层的反转点：网络层只依赖它，令牌存在哪里（安全存储 + 内存缓存）
+以及登录态用哪种状态管理暴露，都不是网络层该知道的事。signals 分支的实现是
+`lib/core/data/storage/auth_storage.dart`，Riverpod 分支会是另一个类。
+代价是纯包测试要用假 `TokenStore` 驱动（`packages/app_core/test/support/`）。
 
 401 刷新的完整约定在 [error-handling.md](./error-handling.md#401-与令牌刷新)，本页不重复。
 
@@ -56,11 +65,21 @@ Dio 对**请求**按添加顺序正向穿过，对**响应 / 错误**按相反�
 
 解码拦截器是给「后端以 `text/plain` 返回 JSON 字符串」兜底的，解析失败只记 warning、保留原始字符串。
 
-> 改拦截器顺序或增删拦截器前，先跑 `test/core/data/network/interceptor_stack_test.dart`：
-> 它用与线上**完全一致**的拦截器栈钉住了上述两条语义。
+> 改拦截器顺序或增删拦截器前，先跑这两个：
+>
+> - `packages/app_core/test/data/network/dio_factory_test.dart` —— 钉住 `createDio`
+>   装出来的栈（Auth → 解码 → Retry 的相对顺序、mock 开关、调试日志开关），
+>   以及「Retry 不吞 401 / 5xx 走重试」两条语义
+> - `test/core/data/network/interceptor_stack_test.dart` —— 钉住 lib 侧
+>   `NetworkModule.dio()` 的等价行为（同一套栈，另加 `UserPreferences` / `dotenv` 装配）
 >
 > 别拿 `token_refresh_test.dart` 当替代：它自建的 Dio 只挂了 `AuthInterceptor`，
 > 那条链上根本不存在 Retry，上面两点它验不到。
+>
+> 断言拦截器清单时**不要直接数 `dio.interceptors.length`**：`Dio` 自己会在最前面插一个
+> `ImplyContentTypeInterceptor`（`msw_dio_interceptor` 还会再加一个），数量断言会变成
+> 对 Dio 内部实现的测试。按类型过滤后再断言（见 `dio_factory_test.dart` 的
+> `appInterceptors()`）。
 
 ---
 
