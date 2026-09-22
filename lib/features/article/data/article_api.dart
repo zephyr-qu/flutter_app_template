@@ -6,7 +6,7 @@ part 'article_api.g.dart';
 
 @RestApi()
 abstract class ArticleApi {
-  factory ArticleApi(Dio dio) = _ArticleApi;
+  factory(Dio dio) = _ArticleApi;
 
   @GET('/articles')
   Future<List<Article>> getArticles();

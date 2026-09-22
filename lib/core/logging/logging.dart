@@ -3,11 +3,7 @@ import 'package:logger/logger.dart';
 class Logging {
   static final _logger = Logger(
     printer: PrettyPrinter(
-      methodCount: 0, // number of method calls to be displayed
-      errorMethodCount: 8, // number of method calls if stacktrace is provided
-      lineLength: 120, // width of the output
-      colors: true, // Colorful log messages
-      printEmojis: true, // Print an emoji for each log message
+      methodCount: 0, // 不打印调用栈（0 = 关闭）
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );

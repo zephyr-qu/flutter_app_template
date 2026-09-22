@@ -2,11 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:my_app/core/base/failure.dart';
 import 'package:my_app/core/base/result.dart';
-import 'package:my_app/features/auth/logic/auth_view_model.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:my_app/features/auth/data/models/user.dart';
+import 'package:my_app/features/auth/logic/auth_view_model.dart';
 
-class MockAuthRepository extends Mock implements AuthRepository {}
+class MockAuthRepository extends Mock implements AuthRepository;
 
 void main() {
   late MockAuthRepository mockRepo;
@@ -25,12 +25,11 @@ void main() {
     });
 
     group('login()', () {
-      final testUser = User(id: 1, name: '测试用户');
+      const testUser = User(id: 1, name: '测试用户');
 
       test('成功后更新 user 信号', () async {
-        when(
-          () => mockRepo.login(any(), any()),
-        ).thenAnswer((_) async => Result.success(testUser));
+        when(() => mockRepo.login(any(), any()))
+            .thenAnswer((_) async => const Result.success(testUser));
 
         final result = await vm.login();
 
@@ -42,7 +41,8 @@ void main() {
 
       test('失败后返回 Failure 并设置 error 状态', () async {
         when(() => mockRepo.login(any(), any())).thenAnswer(
-          (_) async => Result.failure(const Failure.auth('邮箱或密码错误')),
+          (_) async =>
+              const Result.failure(AuthFailure(code: FailureCode.unauthorized)),
         );
 
         final result = await vm.login();
@@ -56,7 +56,7 @@ void main() {
       test('登录中时 isLoading 为 true', () {
         when(() => mockRepo.login(any(), any())).thenAnswer((_) async {
           await Future<void>.delayed(const Duration(seconds: 1));
-          return Result.success(testUser);
+          return const Result.success(testUser);
         });
 
         final future = vm.login();
@@ -69,15 +69,14 @@ void main() {
     group('logout()', () {
       test('成功后清空 user 信号', () async {
         // 先登录
-        when(
-          () => mockRepo.login(any(), any()),
-        ).thenAnswer((_) async => Result.success(User(id: 1, name: '测试用户')));
+        when(() => mockRepo.login(any(), any())).thenAnswer(
+          (_) async => const Result.success(User(id: 1, name: '测试用户')),
+        );
         await vm.login();
 
         // 登出
-        when(
-          () => mockRepo.logout(),
-        ).thenAnswer((_) async => const Result.success(null));
+        when(() => mockRepo.logout())
+            .thenAnswer((_) async => const Result.success(null));
 
         final result = await vm.logout();
 
@@ -88,7 +87,9 @@ void main() {
 
       test('失败后返回 Failure', () async {
         when(() => mockRepo.logout()).thenAnswer(
-          (_) async => Result.failure(const Failure.server('服务器错误')),
+          (_) async => const Result.failure(
+            ServerFailure(code: FailureCode.serverError),
+          ),
         );
 
         final result = await vm.logout();
@@ -100,30 +101,33 @@ void main() {
 
     group('canSubmit', () {
       test('邮箱和密码都满足条件时为 true', () {
-        vm.updateEmail('test@example.com');
-        vm.updatePassword('password123');
+        vm
+          ..updateEmail('test@example.com')
+          ..updatePassword('password123');
         expect(vm.canSubmit.value, isTrue);
       });
 
       test('邮箱为空时为 false', () {
-        vm.updateEmail('');
-        vm.updatePassword('password123');
+        vm
+          ..updateEmail('')
+          ..updatePassword('password123');
         expect(vm.canSubmit.value, isFalse);
       });
 
       test('密码长度不足时为 false', () {
-        vm.updateEmail('test@example.com');
-        vm.updatePassword('12345');
+        vm
+          ..updateEmail('test@example.com')
+          ..updatePassword('12345');
         expect(vm.canSubmit.value, isFalse);
       });
     });
 
     group('resetForm()', () {
       test('清空邮箱和密码', () {
-        vm.updateEmail('test@example.com');
-        vm.updatePassword('password123');
-
-        vm.resetForm();
+        vm
+          ..updateEmail('test@example.com')
+          ..updatePassword('password123')
+          ..resetForm();
 
         expect(vm.email.value, isEmpty);
         expect(vm.password.value, isEmpty);

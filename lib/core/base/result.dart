@@ -1,40 +1,23 @@
-/// 统一结果类型
+/// 统一结果类型：所有可能失败的操作都返回它，而不是裸抛异常。
 ///
-/// 提供类型安全的结果处理，避免裸抛异常。
-/// 所有可能失败的操作都应返回此类型。
-///
-/// 使用示例：
-/// ```dart
-/// Future<Result<User, Failure>> login(String email, String password);
-///
-/// final result = await repo.login(email, password);
-/// result.when(
-///   success: (user) => print('欢迎 $user'),
-///   failure: (error) => print('登录失败: ${error.message}'),
-/// );
-/// ```
+/// 用法见 backend/error-handling.md。
 sealed class Result<T, E> {
-  const Result();
+  const new();
 
-  /// 创建成功结果
-  const factory Result.success(T data) = Ok<T, E>;
+  const factory success(T data) = Ok<T, E>;
 
-  /// 创建失败结果
-  const factory Result.failure(E error) = Err<T, E>;
+  const factory failure(E error) = Err<T, E>;
 
-  /// 模式匹配
   R when<R>({
     required R Function(T data) success,
     required R Function(E error) failure,
   });
 
-  /// 是否成功
   bool get isSuccess => this is Ok<T, E>;
 
-  /// 是否失败
   bool get isFailure => this is Err<T, E>;
 
-  /// 获取成功值（可能抛出 StateError）
+  /// 取成功值；在 [Err] 上会抛 [StateError]，只用于测试
   T get getOrThrow => switch (this) {
     Ok<T, E>(:final data) => data,
     Err<T, E>(:final error) => throw StateError(
@@ -42,7 +25,6 @@ sealed class Result<T, E> {
     ),
   };
 
-  /// 转换成功值
   Result<R, E> map<R>(R Function(T data) transform) {
     return switch (this) {
       Ok<T, E>(:final data) => Result.success(transform(data)),
@@ -50,7 +32,6 @@ sealed class Result<T, E> {
     };
   }
 
-  /// 转换错误
   Result<T, F> mapError<F>(F Function(E error) transform) {
     return switch (this) {
       Ok<T, E>(:final data) => Result.success(data),
@@ -58,7 +39,6 @@ sealed class Result<T, E> {
     };
   }
 
-  /// 链式操作
   Result<R, E> flatMap<R>(Result<R, E> Function(T data) transform) {
     return switch (this) {
       Ok<T, E>(:final data) => transform(data),
@@ -69,9 +49,8 @@ sealed class Result<T, E> {
 
 /// 成功结果
 class Ok<T, E> extends Result<T, E> {
+  const new(this.data);
   final T data;
-
-  const Ok(this.data);
 
   @override
   R when<R>({
@@ -85,9 +64,8 @@ class Ok<T, E> extends Result<T, E> {
 
 /// 失败结果
 class Err<T, E> extends Result<T, E> {
+  const new(this.error);
   final E error;
-
-  const Err(this.error);
 
   @override
   R when<R>({

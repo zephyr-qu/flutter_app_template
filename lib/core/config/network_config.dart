@@ -1,39 +1,41 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 
-/// 网络配置（纯静态类）
-///
-/// 负责管理网络相关的配置
-///
-/// 使用示例：
-/// ```dart
-/// final url = NetworkConfig.baseUrl;
-/// final timeout = NetworkConfig.connectTimeout;
-/// ```
+/// 网络配置。不可变值对象，由 `NetworkModule.networkConfig()` 注入
+/// （见 backend/network-guidelines.md「dotenv 只读一次」）。
+@immutable
 class NetworkConfig {
-  NetworkConfig._();
+  const new({
+    required this.baseUrl,
+    this.isMock = false,
+    this.connectTimeout = 10000,
+    this.receiveTimeout = 10000,
+    this.retries = 3,
+  });
 
-  /// API 基础 URL（从环境变量加载）
-  static String baseUrl = dotenv.env['BASE_URL'] ?? 'https://api.example.com';
+  /// 从环境变量构造。纯函数（不读全局 `dotenv`），可直接单测。
+  factory fromEnv(Map<String, String> env) => NetworkConfig(
+    baseUrl: env['BASE_URL'] ?? 'https://api.example.com',
+    isMock: (env['USE_MOCK'] ?? 'false').toLowerCase() == 'true',
+  );
+
+  /// API 基础 URL（来自 `BASE_URL`）
+  final String baseUrl;
+
+  /// 本地 Mock 开关（来自 `USE_MOCK`）；为 true 时不发真实请求，直接返回注册的 mock 响应
+  final bool isMock;
 
   /// 连接超时（毫秒）
-  static const int connectTimeout = 10000;
+  final int connectTimeout;
 
   /// 接收超时（毫秒）
-  static const int receiveTimeout = 10000;
-
-  /// 重试间隔（毫秒）
-  static const int retryDelaysTimeout = 500;
+  final int receiveTimeout;
 
   /// 最大重试次数
-  static const int retries = 3;
+  final int retries;
 
   /// 默认请求头
-  static Map<String, String> get defaultHeaders => {
+  Map<String, String> get defaultHeaders => const {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
-
-  /// 本地 Mock 开关
-  /// true = 不发起真实 HTTP 请求，从 /mock/ 读取 JSON 返回
-  static bool isMock = true;
 }

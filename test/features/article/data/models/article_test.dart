@@ -13,7 +13,7 @@ void main() {
     });
 
     test('toJson serializes correctly', () {
-      final article = Article(id: 1, title: '测试标题', body: '测试内容');
+      const article = Article(id: 1, title: '测试标题', body: '测试内容');
       final json = article.toJson();
 
       expect(json['id'], equals(1));
@@ -22,7 +22,7 @@ void main() {
     });
 
     test('toJson roundtrip produces same object', () {
-      final original = Article(id: 42, title: '标题', body: '内容');
+      const original = Article(id: 42, title: '标题', body: '内容');
       final json = original.toJson();
       final restored = Article.fromJson(json);
 
@@ -32,7 +32,7 @@ void main() {
     });
 
     test('freezed copyWith works', () {
-      final article = Article(id: 1, title: '原标题', body: '原内容');
+      const article = Article(id: 1, title: '原标题', body: '原内容');
       final updated = article.copyWith(title: '新标题');
 
       expect(updated.id, equals(1));

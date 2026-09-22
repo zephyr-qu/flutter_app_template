@@ -29,16 +29,21 @@ $ArticleCopyWith<Article> get copyWith => _$ArticleCopyWithImpl<Article>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Article&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body));
+  final _this = this as Article;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Article&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.body, _this.body) || other.body == _this.body));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,title,body);
+int get hashCode {
+  final _this = this as Article;
+  return Object.hash(runtimeType,_this.id,_this.title,_this.body);
+}
 
 @override
 String toString() {
-  return 'Article(id: $id, title: $title, body: $body)';
+  final _this = this as Article;
+  return 'Article(id: ${_this.id}, title: ${_this.title}, body: ${_this.body})';
 }
 
 
@@ -226,16 +231,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Article&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Article&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,title,body);
+int get hashCode {
+    return Object.hash(runtimeType,id,title,body);
+}
 
 @override
 String toString() {
-  return 'Article(id: $id, title: $title, body: $body)';
+    return 'Article(id: $id, title: $title, body: $body)';
 }
 
 

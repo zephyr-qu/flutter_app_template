@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// Tests for the core three-state rendering pattern (loading / data / error)
-/// using `SignalBuilder` + `asyncSignal`.
+/// 覆盖 `SignalBuilder` + `asyncSignal` 渲染 loading / data / error 三态。
 ///
-/// This validates that the project's standard state management approach
-/// works correctly in a widget context.
+/// 注意：**生产页面走的不是这条路**——页面统一是 `HookWidget` +
+/// `useSignalValue` + `AsyncView`（见 frontend/state-management.md）。
+/// 这里验证的是可选的 SignalBuilder 路线：需要把重建范围收缩到某棵子树时才用它。
 void main() {
   group('asyncSignal + SignalBuilder three-state rendering', () {
     /// Helper widget that renders the three states of an asyncSignal.
@@ -121,7 +121,7 @@ void main() {
 
     testWidgets('SignalBuilder rebuilds on signal change', (tester) async {
       final signal = asyncSignal<String>(AsyncState.data('initial'));
-      int rebuildCount = 0;
+      var rebuildCount = 0;
 
       await tester.pumpWidget(
         MaterialApp(
