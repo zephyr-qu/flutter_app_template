@@ -18,9 +18,6 @@ dependencies:
 
   flutter:
     sdk: flutter
-  # ── 国际化（l10n） ──
-  flutter_localizations:
-    sdk: flutter
 
   # ── State Management ──
   signals_flutter: ^7.1.0
@@ -52,7 +49,6 @@ dependencies:
   # ── Utils ──
   # logger 只被 app_core 的 logging 使用，声明在包里
   flutter_dotenv: ^6.0.0
-  intl: ^0.20.3
   leak_tracker: ^11.0.2 # 内存泄漏检测（debug 模式自动启用）
   flutter_secure_storage: ^11.2.0
 
@@ -108,8 +104,6 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
-  # 由 l10n.yaml 驱动，在 build / run 时生成 AppLocalizations
-  generate: true
   assets:
     - .env
     - .env.development

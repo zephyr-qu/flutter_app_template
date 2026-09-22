@@ -6,7 +6,6 @@ import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:my_app/di/service_locator.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 应用根组件 —— **只做接线**：
@@ -32,7 +31,6 @@ class MyApp extends HookWidget {
 
     // 必须用 useSignalValue 订阅；改读 getter 只会在恰好重建时更新
     final ThemeMode themeMode = useSignalValue(preferences.themeMode);
-    final Locale? locale = useSignalValue(preferences.locale);
 
     return MaterialApp.router(
       routerConfig: router.config(reevaluateListenable: reevaluate),
@@ -40,10 +38,6 @@ class MyApp extends HookWidget {
       theme: themeLight,
       darkTheme: themeDark,
       themeMode: themeMode,
-      // locale 为 null 时跟随系统
-      locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 }

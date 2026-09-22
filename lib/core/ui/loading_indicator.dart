@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 
 /// 统一加载指示器（零依赖，只用 SDK 自带的 [CircularProgressIndicator]）。
 ///
@@ -48,7 +47,7 @@ class ScreenLoadingIndicator extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              AppLocalizations.of(context).loading,
+              '加载中...',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurface.withValues(alpha: 0.4),
               ),

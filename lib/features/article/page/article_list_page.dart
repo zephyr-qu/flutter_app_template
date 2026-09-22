@@ -12,7 +12,6 @@ import 'package:my_app/core/ui/loading_indicator.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/article/data/models/article.dart';
 import 'package:my_app/features/article/logic/article_view_model.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 文章列表页——卡片式阅读列表
@@ -26,7 +25,6 @@ class ArticleListPage extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
-    final l10n = AppLocalizations.of(context);
 
     useEffect(() {
       unawaited(vm.loadArticles());
@@ -36,7 +34,7 @@ class ArticleListPage extends HookWidget {
     final AsyncState<List<Article>> async = useSignalValue(vm.articles);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navArticles), centerTitle: false),
+      appBar: AppBar(title: const Text('文章'), centerTitle: false),
       // 走 AsyncView 而不是 AsyncState.map：回调是具名具类型的，error 与
       // stackTrace 都会传进来（map 的运行期猜签名问题已收敛在 core 内部）
       body: AsyncView<List<Article>>(
@@ -50,14 +48,14 @@ class ArticleListPage extends HookWidget {
           return RefreshIndicator(
             onRefresh: vm.loadArticles,
             child: list.isEmpty
-                ? CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
+                ? const CustomScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: EmptyWidget(
                           icon: Icons.article_outlined,
-                          message: l10n.articlesEmpty,
+                          message: '暂无文章',
                         ),
                       ),
                     ],
@@ -98,7 +96,6 @@ class _ArticleCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -149,7 +146,7 @@ class _ArticleCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        l10n.articleReadMore,
+                        '点击阅读更多...',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -166,7 +163,7 @@ class _ArticleCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            l10n.articleRead,
+                            '阅读',
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: colorScheme.primary,
                               fontWeight: FontWeight.w600,

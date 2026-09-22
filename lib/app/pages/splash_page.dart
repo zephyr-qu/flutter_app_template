@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:my_app/di/service_locator.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 
 /// 启动页——带渐入动画的品牌页。
 ///
@@ -83,7 +82,6 @@ class _SplashPageState extends State<SplashPage>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: Container(
@@ -142,7 +140,7 @@ class _SplashPageState extends State<SplashPage>
 
                     // ── Tagline ──
                     Text(
-                      l10n.splashTagline,
+                      '简洁 · 优雅 · 实用',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurface.withValues(alpha: 0.5),
                         letterSpacing: 4,

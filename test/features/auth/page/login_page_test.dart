@@ -7,7 +7,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/auth/logic/auth_view_model.dart';
 import 'package:my_app/features/auth/page/login_page.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository;
 
@@ -29,13 +28,8 @@ void main() {
 
   group('LoginPage', () {
     /// 页面通过 AppLocalizations 取文案，所以必须挂上 delegate
-    Widget wrap(Widget child) => MaterialApp(
-      theme: buildLightTheme(),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('zh'),
-      home: child,
-    );
+    Widget wrap(Widget child) =>
+        MaterialApp(theme: buildLightTheme(), home: child);
 
     testWidgets('renders email and password fields', (tester) async {
       await tester.pumpWidget(wrap(LoginPage(viewModel: viewModel)));
@@ -59,23 +53,6 @@ void main() {
       await tester.pump();
       final button = tester.widget<FilledButton>(find.byType(FilledButton));
       expect(button.onPressed, isNotNull);
-    });
-
-    testWidgets('英文语言下显示英文文案', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: buildLightTheme(),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('en'),
-          home: LoginPage(viewModel: viewModel),
-        ),
-      );
-
-      expect(find.text('Email'), findsOneWidget);
-      expect(find.text('Password'), findsOneWidget);
-      expect(find.text('Sign in'), findsOneWidget);
-      expect(find.text('邮箱'), findsNothing);
     });
   });
 }

@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 
 /// 主框架页面——窄屏（< 800px）底部导航栏、宽屏侧边导航栏。
 ///
@@ -25,7 +24,6 @@ class MainPage extends StatelessWidget {
       builder: (context, child) {
         final tabsRouter = AutoTabsRouter.of(context);
         final colorScheme = Theme.of(context).colorScheme;
-        final l10n = AppLocalizations.of(context);
         final selected = tabsRouter.activeIndex;
 
         TextStyle labelStyle(int index) => TextStyle(
@@ -64,7 +62,7 @@ class MainPage extends StatelessWidget {
                             Icons.home,
                             color: colorScheme.primary,
                           ),
-                          label: Text(l10n.navHome, style: labelStyle(0)),
+                          label: Text('首页', style: labelStyle(0)),
                         ),
                         NavigationRailDestination(
                           icon: Icon(
@@ -75,7 +73,7 @@ class MainPage extends StatelessWidget {
                             Icons.article,
                             color: colorScheme.primary,
                           ),
-                          label: Text(l10n.navArticles, style: labelStyle(1)),
+                          label: Text('文章', style: labelStyle(1)),
                         ),
                         NavigationRailDestination(
                           icon: Icon(
@@ -86,7 +84,7 @@ class MainPage extends StatelessWidget {
                             Icons.person,
                             color: colorScheme.primary,
                           ),
-                          label: Text(l10n.navProfile, style: labelStyle(2)),
+                          label: Text('我的', style: labelStyle(2)),
                         ),
                       ],
                     ),
@@ -120,7 +118,7 @@ class MainPage extends StatelessWidget {
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                     selectedIcon: Icon(Icons.home, color: colorScheme.primary),
-                    label: l10n.navHome,
+                    label: '首页',
                   ),
                   NavigationDestination(
                     icon: Icon(
@@ -131,7 +129,7 @@ class MainPage extends StatelessWidget {
                       Icons.article,
                       color: colorScheme.primary,
                     ),
-                    label: l10n.navArticles,
+                    label: '文章',
                   ),
                   NavigationDestination(
                     icon: Icon(
@@ -142,7 +140,7 @@ class MainPage extends StatelessWidget {
                       Icons.person,
                       color: colorScheme.primary,
                     ),
-                    label: l10n.navProfile,
+                    label: '我的',
                   ),
                 ],
               ),

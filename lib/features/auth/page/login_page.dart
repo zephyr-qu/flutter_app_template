@@ -8,7 +8,6 @@ import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/ui/failure_message.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/auth/logic/auth_view_model.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 登录页——温暖极简的登录体验
@@ -28,7 +27,6 @@ class LoginPage extends HookWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final l10n = AppLocalizations.of(context);
 
     final vm = useMemoized(() => viewModel ?? getIt<AuthViewModel>());
     final AsyncState<dynamic> userState = useSignalValue(vm.user);
@@ -72,14 +70,14 @@ class LoginPage extends HookWidget {
                   const SizedBox(height: 24),
 
                   Text(
-                    l10n.loginWelcome,
+                    '欢迎回来',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    l10n.loginSubtitle,
+                    '登录以继续使用',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -92,7 +90,7 @@ class LoginPage extends HookWidget {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
-                      labelText: l10n.emailLabel,
+                      labelText: '邮箱',
                       hintText: 'your@email.com',
                       prefixIcon: Icon(
                         Icons.email_outlined,
@@ -114,8 +112,8 @@ class LoginPage extends HookWidget {
                     obscureText: true,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
-                      labelText: l10n.passwordLabel,
-                      hintText: l10n.passwordHint,
+                      labelText: '密码',
+                      hintText: '至少 6 位',
                       prefixIcon: Icon(
                         Icons.lock_outlined,
                         color: colorScheme.onSurface.withValues(alpha: 0.4),
@@ -160,7 +158,7 @@ class LoginPage extends HookWidget {
                                           ),
                                           failure: (error) => _showError(
                                             context,
-                                            error.localizedMessage(l10n),
+                                            error.localizedMessage(),
                                           ),
                                         );
                                       }),
@@ -175,9 +173,9 @@ class LoginPage extends HookWidget {
                               ),
                               elevation: 0,
                             ),
-                            child: Text(
-                              l10n.loginButton,
-                              style: const TextStyle(
+                            child: const Text(
+                              '登录',
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),

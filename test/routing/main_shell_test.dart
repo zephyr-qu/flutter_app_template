@@ -23,7 +23,6 @@ import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/auth/logic/auth_view_model.dart';
 import 'package:my_app/features/home/page/home_page.dart';
 import 'package:my_app/features/profile/page/profile_page.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository;
@@ -87,13 +86,7 @@ void main() {
     routerConfig = router.config(reevaluateListenable: reevaluate);
 
     await tester.pumpWidget(
-      MaterialApp.router(
-        theme: buildLightTheme(),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        routerConfig: routerConfig,
-      ),
+      MaterialApp.router(theme: buildLightTheme(), routerConfig: routerConfig),
     );
     await tester.pumpAndSettle();
     // 启动页 2.2s 品牌动画

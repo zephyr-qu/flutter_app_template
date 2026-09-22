@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/demo/logic/storage_demo_view_model.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 本地存储示例页：演示 `FileStorage`（应用/临时目录读写、占用统计）
@@ -25,7 +24,6 @@ class StorageDemoPage extends HookWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final l10n = AppLocalizations.of(context);
 
     final vm = useMemoized(() => viewModel ?? getIt<StorageDemoViewModel>());
     useEffect(() {
@@ -39,18 +37,18 @@ class StorageDemoPage extends HookWidget {
     final bool failed = useSignalValue(vm.lastActionFailed);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.storageDemoTitle), centerTitle: false),
+      appBar: AppBar(title: const Text('本地存储示例'), centerTitle: false),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
           _Section(
-            title: l10n.storageDemoFileSection,
-            description: l10n.storageDemoFileDescription,
+            title: '文件缓存',
+            description: '写入应用目录与临时目录，并统计占用空间',
             children: [
               TextField(
                 onChanged: vm.updateNote,
                 decoration: InputDecoration(
-                  labelText: l10n.storageDemoInputHint,
+                  labelText: '要保存的内容',
                   filled: true,
                   fillColor: colorScheme.surfaceContainerLow,
                   border: OutlineInputBorder(
@@ -64,37 +62,34 @@ class StorageDemoPage extends HookWidget {
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  FilledButton(
-                    onPressed: vm.saveNote,
-                    child: Text(l10n.storageDemoSave),
-                  ),
+                  FilledButton(onPressed: vm.saveNote, child: const Text('保存')),
                   OutlinedButton(
                     onPressed: vm.deleteNote,
-                    child: Text(l10n.storageDemoDelete),
+                    child: const Text('删除'),
                   ),
                   TextButton(
                     onPressed: vm.clearTemp,
-                    child: Text(l10n.storageDemoClearTemp),
+                    child: const Text('清空临时目录'),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
               Text(
-                l10n.storageDemoContentLabel,
+                '应用目录中的内容',
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                savedContent ?? l10n.storageDemoEmptyValue,
+                savedContent ?? '（无）',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                l10n.storageDemoUsage(usageKb),
+                '占用：$usageKb KB',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -102,11 +97,11 @@ class StorageDemoPage extends HookWidget {
             ],
           ),
           _Section(
-            title: l10n.storageDemoDbSection,
-            description: l10n.storageDemoDbDescription,
+            title: '数据库缓存',
+            description: '填充示例数据后，文章列表在离线时会回退到这份缓存',
             children: [
               Text(
-                l10n.storageDemoCachedCount(cachedCount),
+                '已缓存 $cachedCount 篇文章',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurface,
                 ),
@@ -118,11 +113,11 @@ class StorageDemoPage extends HookWidget {
                 children: [
                   FilledButton.tonal(
                     onPressed: vm.seedCache,
-                    child: Text(l10n.storageDemoSeed),
+                    child: const Text('填充示例数据'),
                   ),
                   OutlinedButton(
                     onPressed: vm.clearCache,
-                    child: Text(l10n.storageDemoClearCache),
+                    child: const Text('清空缓存'),
                   ),
                 ],
               ),
@@ -138,7 +133,7 @@ class StorageDemoPage extends HookWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  l10n.storageDemoFailed,
+                  '操作失败',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.error,
                   ),

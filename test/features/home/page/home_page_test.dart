@@ -1,5 +1,4 @@
 import 'package:app_core/models/user.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/features/home/page/home_page.dart';
 
@@ -27,14 +26,6 @@ void main() {
       await tester.pumpWidget(wrapPage(const HomePage()));
 
       expect(find.text('你好, 用户'), findsOneWidget);
-    });
-
-    testWidgets('英文下问候语与兜底称呼都变英文', (tester) async {
-      await tester.pumpWidget(
-        wrapPage(const HomePage(), locale: const Locale('en')),
-      );
-
-      expect(find.text('Hello, there'), findsOneWidget);
     });
 
     testWidgets('用户变化时问候语与头像首字跟着变（订阅信号，而不是只读一次）', (tester) async {
@@ -76,17 +67,6 @@ void main() {
       expect(find.text('文章'), findsOneWidget);
       expect(find.text('个人'), findsOneWidget);
       expect(find.text('设置'), findsOneWidget);
-    });
-
-    testWidgets('英文下这些区块也变英文', (tester) async {
-      await tester.pumpWidget(
-        wrapPage(const HomePage(), locale: const Locale('en')),
-      );
-
-      expect(find.text('Quick actions'), findsOneWidget);
-      expect(find.text('Recent activity'), findsOneWidget);
-      expect(find.text('No recent activity'), findsOneWidget);
-      expect(find.text('Settings'), findsOneWidget);
     });
   });
 }

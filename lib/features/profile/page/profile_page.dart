@@ -9,7 +9,6 @@ import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:my_app/core/ui/failure_message.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 个人中心页
@@ -22,16 +21,14 @@ class ProfilePage extends HookWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final l10n = AppLocalizations.of(context);
     final auth = getIt<AuthStorage>();
     final preferences = getIt<UserPreferences>();
     // 用 useSignalValue 订阅；读 .value 不会触发重绘
     final User? user = useSignalValue(auth.currentUser);
-    final Locale? locale = useSignalValue(preferences.locale);
     final ThemeMode themeMode = useSignalValue(preferences.themeMode);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.profileTitle), centerTitle: false),
+      appBar: AppBar(title: const Text('个人'), centerTitle: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
@@ -69,7 +66,7 @@ class ProfilePage extends HookWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user?.name ?? l10n.notLoggedIn,
+                    user?.name ?? '未登录',
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
@@ -78,7 +75,7 @@ class ProfilePage extends HookWidget {
                   if (user != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      l10n.welcomeUse,
+                      '欢迎使用',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -91,7 +88,7 @@ class ProfilePage extends HookWidget {
 
             // ── Settings section ──
             Text(
-              l10n.settings,
+              '设置',
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
@@ -102,15 +99,8 @@ class ProfilePage extends HookWidget {
             _SettingsCard(
               children: [
                 _SettingItem(
-                  icon: Icons.language_outlined,
-                  title: l10n.settingsLanguage,
-                  value: _languageLabel(context, locale),
-                  onTap: () => _pickLanguage(context),
-                ),
-                _Divider(colorScheme: colorScheme),
-                _SettingItem(
                   icon: Icons.palette_outlined,
-                  title: l10n.settingsAppearance,
+                  title: '外观',
                   value: _themeLabel(context, themeMode),
                   onTap: () => _pickThemeMode(context),
                 ),
@@ -120,21 +110,21 @@ class ProfilePage extends HookWidget {
                 //    整项删掉（连同紧跟其后的 _Divider）。 ──
                 _SettingItem(
                   icon: Icons.notifications_outlined,
-                  title: l10n.settingsNotifications,
+                  title: '通知',
                   // TODO(template): 接入通知设置页
                   onTap: () {},
                 ),
                 _Divider(colorScheme: colorScheme),
                 _SettingItem(
                   icon: Icons.lock_outlined,
-                  title: l10n.settingsPrivacy,
+                  title: '隐私',
                   // TODO(template): 接入隐私设置页
                   onTap: () {},
                 ),
                 _Divider(colorScheme: colorScheme),
                 _SettingItem(
                   icon: Icons.help_outline,
-                  title: l10n.settingsHelp,
+                  title: '帮助与支持',
                   // TODO(template): 接入帮助与支持页
                   onTap: () {},
                 ),
@@ -143,7 +133,7 @@ class ProfilePage extends HookWidget {
                 // 用不到这两个设施时，连同 features/demo/ 一起删掉即可。
                 _SettingItem(
                   icon: Icons.folder_outlined,
-                  title: l10n.storageDemoTitle,
+                  title: '本地存储示例',
                   onTap: () => context.pushRoute(const StorageDemoRoute()),
                 ),
               ],
@@ -166,7 +156,7 @@ class ProfilePage extends HookWidget {
                     borderRadius: BorderRadius.circular(appTheme.radiusSm),
                   ),
                 ),
-                child: Text(l10n.logout),
+                child: const Text('退出登录'),
               ),
             ),
             const SizedBox(height: 40),
@@ -193,7 +183,7 @@ class ProfilePage extends HookWidget {
       failure: (error) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error.localizedMessage(AppLocalizations.of(context))),
+            content: Text(error.localizedMessage()),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -202,90 +192,20 @@ class ProfilePage extends HookWidget {
     );
   }
 
-  /// 语言名用它自己的语言书写（见 frontend/localization.md）
-  String _languageLabel(BuildContext context, Locale? locale) {
-    return switch (locale?.languageCode) {
-      'zh' => '中文',
-      'en' => 'English',
-      _ => AppLocalizations.of(context).languageSystem,
-    };
-  }
-
-  /// 弹出语言选择，结果写入 UserPreferences（null = 跟随系统）
-  Future<void> _pickLanguage(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
-    final preferences = getIt<UserPreferences>();
-    final current = preferences.locale.value;
-
-    final choice = await showDialog<_LanguageChoice>(
-      context: context,
-      builder: (dialogContext) {
-        Widget option(
-          String label,
-          _LanguageChoice value, {
-          required bool selected,
-        }) {
-          return ListTile(
-            title: Text(label),
-            trailing: selected
-                ? Icon(
-                    Icons.check_rounded,
-                    color: Theme.of(dialogContext).colorScheme.primary,
-                  )
-                : null,
-            onTap: () => Navigator.of(dialogContext).pop(value),
-          );
-        }
-
-        return SimpleDialog(
-          title: Text(l10n.languageTitle),
-          children: [
-            option(
-              l10n.languageSystem,
-              _LanguageChoice.system,
-              selected: current == null,
-            ),
-            option(
-              '中文',
-              _LanguageChoice.chinese,
-              selected: current?.languageCode == 'zh',
-            ),
-            option(
-              'English',
-              _LanguageChoice.english,
-              selected: current?.languageCode == 'en',
-            ),
-          ],
-        );
-      },
-    );
-
-    // 用户点空白处关掉了对话框，不做任何修改
-    if (choice == null) return;
-
-    preferences.setLocale(switch (choice) {
-      _LanguageChoice.system => null,
-      _LanguageChoice.chinese => const Locale('zh'),
-      _LanguageChoice.english => const Locale('en'),
-    });
-  }
-
-  /// 与 [_languageLabel] 相反，主题名用当前界面语言书写（见 frontend/localization.md）
+  /// 主题名用当前界面语言书写（见 frontend/localization.md）
   String _themeLabel(BuildContext context, ThemeMode mode) {
-    final l10n = AppLocalizations.of(context);
     return switch (mode) {
-      ThemeMode.system => l10n.themeSystem,
-      ThemeMode.light => l10n.themeLight,
-      ThemeMode.dark => l10n.themeDark,
+      ThemeMode.system => '跟随系统',
+      ThemeMode.light => '浅色',
+      ThemeMode.dark => '深色',
     };
   }
 
   /// 弹出主题选择，结果写入 UserPreferences（null = 取消）。
   ///
   /// 这里能直接用 `ThemeMode?`：`system` 本身就是枚举值，不必像语言选择器
-  /// 那样另立枚举把 null 让给「跟随系统」（见 [_LanguageChoice]）。
+  /// 那样另立枚举把 null 让给「跟随系统」。
   Future<void> _pickThemeMode(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final preferences = getIt<UserPreferences>();
     final current = preferences.themeMode.value;
 
@@ -306,11 +226,11 @@ class ProfilePage extends HookWidget {
         }
 
         return SimpleDialog(
-          title: Text(l10n.themeTitle),
+          title: const Text('选择主题'),
           children: [
-            option(l10n.themeSystem, ThemeMode.system),
-            option(l10n.themeLight, ThemeMode.light),
-            option(l10n.themeDark, ThemeMode.dark),
+            option('跟随系统', ThemeMode.system),
+            option('浅色', ThemeMode.light),
+            option('深色', ThemeMode.dark),
           ],
         );
       },
@@ -322,10 +242,6 @@ class ProfilePage extends HookWidget {
     preferences.setThemeMode(choice);
   }
 }
-
-/// 语言选择项。不用 `null` 表示「跟随系统」——`showDialog` 的 `null` 是「取消」
-/// （见 frontend/localization.md）。
-enum _LanguageChoice { system, chinese, english }
 
 class _SettingsCard extends StatelessWidget {
   const new({required this.children});

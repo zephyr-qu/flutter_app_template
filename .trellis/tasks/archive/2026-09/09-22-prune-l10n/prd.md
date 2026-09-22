@@ -28,11 +28,11 @@
 
 ## Acceptance Criteria
 
-- [ ] 在干净的 `master` 上一条命令完成裁剪
-- [ ] 裁剪后六道门禁全绿：format / check_boundaries / check_conventions / dependency_validator / analyze / check_coverage
-- [ ] 重复执行不产生差异（幂等）
-- [ ] `tool/prune.dart` 自带测试（沿用仓库「门禁脚本自带测试」的惯例：`test/tool/prune_test.dart`）
-- [ ] 传未实现的轴（如 `--theme=default`）时报错退出，退出码非 0
+- [x] 在干净的 `master` 上一条命令完成裁剪
+- [x] 裁剪后六道门禁全绿：format / check_boundaries / check_conventions / dependency_validator / analyze / check_coverage
+- [x] 重复执行不产生差异（幂等）
+- [x] `tool/prune.dart` 自带测试（沿用仓库「门禁脚本自带测试」的惯例：`test/tool/prune_test.dart`）
+- [x] 传未实现的轴（如 `--theme=default`）时报错退出，退出码非 0
 
 ## Notes
 

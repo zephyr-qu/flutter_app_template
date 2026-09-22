@@ -89,25 +89,6 @@ void main() {
       expect(find.text('网络连接失败'), findsOneWidget);
     });
 
-    testWidgets('英文下显示英文错误文案（同一个 Failure）', (tester) async {
-      when(() => repo.getArticles()).thenAnswer(
-        (_) async =>
-            const Result.failure(NetworkFailure(code: FailureCode.connection)),
-      );
-
-      await tester.pumpWidget(
-        wrapPage(
-          ArticleListPage(viewModel: viewModel),
-          locale: const Locale('en'),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Connection failed'), findsOneWidget);
-      expect(find.text('网络连接失败'), findsNothing);
-    });
-
     testWidgets('404 显示「资源不存在」', (tester) async {
       when(() => repo.getArticles()).thenAnswer(
         (_) async =>

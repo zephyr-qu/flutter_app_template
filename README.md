@@ -83,10 +83,6 @@ lib/
 │   ├── home/                               # 首页
 │   └── profile/                            # 个人中心
 │
-├── l10n/                                   # 国际化文案（ARB + 生成物）
-│   ├── app_zh.arb                          #   模板语言：中文
-│   └── app_en.arb                          #   第二语言：英文
-│
 └── di/                                     # 依赖注入注册
     ├── service_locator.dart                 # configureDependencies() 入口
     └── service_locator.config.dart          # injectable 自动生成

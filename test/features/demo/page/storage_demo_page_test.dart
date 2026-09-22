@@ -40,19 +40,14 @@ void main() {
     when(() => vm.refresh()).thenAnswer((_) async {});
   });
 
-  Future<void> pumpPage(
-    WidgetTester tester, {
-    Locale locale = const Locale('zh'),
-  }) async {
+  Future<void> pumpPage(WidgetTester tester) async {
     // 页面比默认测试视口（800x600）高，放大一点：ListView 只布局可视区内的
     // 子节点，视口外的内容 finder 找不到
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(
-      wrapPage(StorageDemoPage(viewModel: vm), locale: locale),
-    );
+    await tester.pumpWidget(wrapPage(StorageDemoPage(viewModel: vm)));
     await tester.pumpAndSettle();
   }
 
@@ -98,17 +93,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('操作失败'), findsOneWidget);
-    });
-
-    testWidgets('英文语言下整页都是英文', (tester) async {
-      await pumpPage(tester, locale: const Locale('en'));
-
-      expect(find.text('Local storage demo'), findsOneWidget);
-      expect(find.text('File cache'), findsOneWidget);
-      expect(find.text('Save'), findsOneWidget);
-      expect(find.text('(empty)'), findsOneWidget);
-      expect(find.text('0 cached articles'), findsOneWidget);
-      expect(find.text('本地存储示例'), findsNothing);
     });
   });
 

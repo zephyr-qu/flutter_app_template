@@ -9,7 +9,6 @@ import 'package:my_app/core/ui/loading_indicator.dart';
 import 'package:my_app/di/service_locator.dart';
 import 'package:my_app/features/article/data/models/article.dart';
 import 'package:my_app/features/article/logic/article_view_model.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 文章详情页——沉浸式阅读体验
@@ -25,7 +24,6 @@ class ArticleDetailPage extends HookWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final l10n = AppLocalizations.of(context);
 
     final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
 
@@ -110,7 +108,7 @@ class ArticleDetailPage extends HookWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              l10n.articleTag,
+                              '技术',
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: colorScheme.onTertiaryContainer,
                                 fontWeight: FontWeight.w500,
@@ -125,7 +123,7 @@ class ArticleDetailPage extends HookWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            l10n.articleReadingTime(5),
+                            '${5} 分钟阅读',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),

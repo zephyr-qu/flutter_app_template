@@ -43,10 +43,6 @@ lib/
 │   现有 feature：auth（认证）、article（文章）、home（首页 + 主框架）、
 │   profile（个人中心）、demo（本地存储示例 —— 纯示例，可整目录删除）
 │
-├── l10n/                      # 国际化（见 localization.md）
-│   ├── app_zh.arb             #   模板语言：中文
-│   └── app_en.arb             #   第二语言：英文
-│
 └── di/                        # 依赖注入注册
     ├── service_locator.dart         # configureDependencies() 入口
     └── service_locator.config.dart  # 自动生成

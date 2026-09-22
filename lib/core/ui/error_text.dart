@@ -2,7 +2,6 @@ import 'package:app_core/base/failure.dart';
 import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/core/ui/failure_message.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 
 /// 统一错误状态组件。
 ///
@@ -20,11 +19,10 @@ class ErrorText extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final l10n = AppLocalizations.of(context);
 
     final message = switch (error) {
-      final Failure failure => failure.localizedMessage(l10n),
-      _ => l10n.errorUnknown,
+      final Failure failure => failure.localizedMessage(),
+      _ => '未知错误',
     };
 
     return Center(
@@ -49,7 +47,7 @@ class ErrorText extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              l10n.errorTitle,
+              '出错了',
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
@@ -70,7 +68,7 @@ class ErrorText extends StatelessWidget {
               FilledButton.tonalIcon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: Text(l10n.retry),
+                label: const Text('重试'),
                 style: FilledButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(appTheme.radiusSm),

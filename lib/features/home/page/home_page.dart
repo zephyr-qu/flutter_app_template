@@ -6,7 +6,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:my_app/di/service_locator.dart';
-import 'package:my_app/l10n/app_localizations.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 
 /// 首页仪表盘——温暖极简的个人总览
@@ -19,14 +18,13 @@ class HomePage extends HookWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final l10n = AppLocalizations.of(context);
     final auth = getIt<AuthStorage>();
     // 订阅信号：直接读 .value 只在恰好重建时才更新（本页被主框架常驻，
     // 用户变化时不会自己重建）
     final User? user = useSignalValue(auth.currentUser);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navHome), centerTitle: false),
+      appBar: AppBar(title: const Text('首页'), centerTitle: false),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
         child: Column(
@@ -84,9 +82,7 @@ class HomePage extends HookWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              l10n.homeGreeting(
-                                user?.name ?? l10n.userFallback,
-                              ),
+                              '你好, ${user?.name ?? '用户'}',
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: colorScheme.onPrimary,
                                 fontWeight: FontWeight.w600,
@@ -94,7 +90,7 @@ class HomePage extends HookWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              l10n.homeSubtitle,
+                              '今天也是美好的一天',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onPrimary.withValues(
                                   alpha: 0.75,
@@ -113,7 +109,7 @@ class HomePage extends HookWidget {
 
             // ── Quick actions ──
             Text(
-              l10n.homeQuickActions,
+              '快捷功能',
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
@@ -126,7 +122,7 @@ class HomePage extends HookWidget {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.article_outlined,
-                    label: l10n.navArticles,
+                    label: '文章',
                     color: colorScheme.tertiary,
                     gradientColors: [
                       colorScheme.tertiaryContainer,
@@ -140,7 +136,7 @@ class HomePage extends HookWidget {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.person_outlined,
-                    label: l10n.profileTitle,
+                    label: '个人',
                     color: colorScheme.secondary,
                     gradientColors: [
                       colorScheme.secondaryContainer,
@@ -154,7 +150,7 @@ class HomePage extends HookWidget {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.settings_outlined,
-                    label: l10n.settings,
+                    label: '设置',
                     color: colorScheme.primary,
                     gradientColors: [
                       colorScheme.primaryContainer,
@@ -172,7 +168,7 @@ class HomePage extends HookWidget {
 
             // ── Recent activity placeholder ──
             Text(
-              l10n.homeRecentActivity,
+              '最近动态',
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
@@ -196,7 +192,7 @@ class HomePage extends HookWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    l10n.homeNoRecentActivity,
+                    '暂无最近动态',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.3),
                     ),

@@ -60,47 +60,6 @@ void main() {
     });
   });
 
-  group('UserPreferences — 语言', () {
-    test('默认为跟随系统（null）', () {
-      expect(preferences.locale.value, isNull);
-    });
-
-    test('setLocale 更新信号并持久化语言代码', () {
-      preferences.setLocale(const Locale('en'));
-
-      expect(preferences.locale.value, const Locale('en'));
-      expect(prefs.getString('app.locale'), 'en');
-    });
-
-    test('setLocale(null) 回到跟随系统并清掉持久化', () {
-      preferences.setLocale(const Locale('zh'));
-      expect(prefs.getString('app.locale'), 'zh');
-
-      preferences.setLocale(null);
-
-      expect(preferences.locale.value, isNull);
-      expect(prefs.getString('app.locale'), isNull);
-    });
-
-    test('构造时读取已保存的语言', () async {
-      SharedPreferences.setMockInitialValues({'app.locale': 'en'});
-      prefs = await SharedPreferences.getInstance();
-
-      final loaded = UserPreferences(prefs);
-
-      expect(loaded.locale.value, const Locale('en'));
-    });
-
-    test('本地保存的语言不在支持范围时回退到跟随系统', () async {
-      SharedPreferences.setMockInitialValues({'app.locale': 'xx'});
-      prefs = await SharedPreferences.getInstance();
-
-      final loaded = UserPreferences(prefs);
-
-      expect(loaded.locale.value, isNull);
-    });
-  });
-
   group('UserPreferences — 写入', () {
     test('setThemeMode 同时更新信号与持久化', () {
       preferences.setThemeMode(ThemeMode.light);
