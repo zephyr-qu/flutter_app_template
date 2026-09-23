@@ -8,12 +8,12 @@ These instructions are for AI assistants working in this project.
 This project is a **personal Flutter scaffold/template** for medium-small apps, not a production application. It provides a clean starting point with:
 
 - **Feature-Sliced Design (FSD 简化版)** feature-first structure
-- **Signals + ViewModel** state management
+- **Riverpod 3** state management（provider + `ConsumerWidget`；没有 signals / ViewModel）
 - **auto_route** declarative routing
-- **Injectable + GetIt** dependency injection
+- **Riverpod provider** dependency injection（没有 DI 容器，`lib/di/` 已删除）
 - **Material Design 3** theming
 - **Retrofit + Dio** API client pattern
-- **Chinese-first UI**（用户可见文案走 l10n，模板语言中文，另有英文）+ **English identifiers**、**Chinese comments**
+- **Chinese-first UI**（用户可见文案直接写中文，单语言，没有 l10n）+ **English identifiers**、**Chinese comments**
 
 ### Starting a New Project From This Scaffold
 
@@ -93,3 +93,98 @@ If you're using an agent-capable tool, additional project-scoped helpers live in
 Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
 
 <!-- TRELLIS:END -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     以下内容由 preset/ai-starter 分支维护，**不在 Trellis 托管块内**，
+     `trellis update` 不会覆盖它。改动时只维护这一段。
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+# AI 协作契约（preset/ai-starter）
+
+本仓库是 `preset/ai-starter` 分支：状态管理 / 依赖注入 / 页面组合已从
+**signals + get_it + flutter_hooks 换成 Riverpod 3**。分支基线、换掉了什么、
+明确**不换**什么、以及为什么不回流 master，见 [`BRANCH.md`](./BRANCH.md)。
+
+## 开工前必读三份
+
+| 要做什么 | 先读 |
+|---|---|
+| 写页面 / provider / Notifier，或动 `core/` 的状态适配层 | [`.trellis/spec/frontend/state-management.md`](.trellis/spec/frontend/state-management.md) |
+| 新增或改动 UI、组件、主题 | [`.trellis/spec/frontend/quality-guidelines.md`](.trellis/spec/frontend/quality-guidelines.md) |
+| 新建 feature、增删文件、判断某文件该放哪 | [`.trellis/spec/frontend/directory-structure.md`](.trellis/spec/frontend/directory-structure.md) |
+
+跨层的事（门禁、覆盖率、codegen、集成测试、环境配置）看
+[`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)；
+数据层与网络看 [`.trellis/spec/backend/index.md`](.trellis/spec/backend/index.md)。
+
+## 照抄对象：`lib/features/sample/`
+
+新增 feature 时**先读 `features/sample/`**，按它的形状写。它覆盖了三种 data 形态
+（Retrofit API / Drift DAO / `Result` 包装的 Service）与三种 provider 形态：
+
+| 想看什么 | 文件 |
+|---|---|
+| Retrofit API 定义 | `lib/features/sample/data/sample_api.dart` |
+| Drift 查询（**不用** `@DriftAccessor`，见 `database-guidelines.md`） | `lib/features/sample/data/sample_dao.dart` |
+| Service（`Result` + 错误映射） | `lib/features/sample/data/sample_service.dart` |
+| Repository 抽象 + provider 装配 | `lib/features/sample/data/sample_repository.dart`、`sample_providers.dart` |
+| `@freezed` 模型 | `lib/features/sample/data/models/sample_item.dart` |
+| `AsyncNotifier` + `AsyncView` 页面 | `lib/features/sample/logic/sample_list_notifier.dart`、`page/sample_list_page.dart` |
+| 对应的四类测试 | `test/features/sample/**` |
+
+## 禁止模式速查（Riverpod 版）
+
+上一代（master 的 signals + get_it 栈）的这些写法在本分支**都不存在**，
+看到它们等于看到 bug：
+
+| ❌ 不要写 | ✅ 本分支的写法 |
+|---|---|
+| `signal(...)` / `computed(...)` / `effect(...)` | `@riverpod` 顶层 provider、`Notifier`、`AsyncNotifier` |
+| `asyncSignal<T>(AsyncState.data(...))` | `AsyncNotifier` 的 `Future<T> build()` → `AsyncValue<T>` |
+| `AsyncState` / `AsyncState.map` | `AsyncValue` + `AsyncView`（**不要**用 `AsyncValue.when`） |
+| `runAsync` / `runAsyncVoid` / `core/base/run_async.dart` | 框架内建：刷新 `ref.refresh(p.future)`、重试 `ref.invalidate(p)` |
+| `getIt<Xxx>()` / `GetIt.I` / `@injectable` / `@LazySingleton` / `@module` / `*.config.dart` | provider + `ProviderScope(overrides:)` |
+| `HookWidget` / `useMemoized` / `useEffect` / `useSignalValue` | `ConsumerWidget` / `ConsumerStatefulWidget` + `ref.watch` / `ref.listen` |
+| `final VM? viewModel;` 这类可选注入点参数 | 不需要：注入口就是 `ProviderScope(overrides:)` |
+| 业务代码里 `ProviderContainer(...)` | `ref`；容器只属于测试与 `bootstrap()`（`check_boundaries` 拦） |
+| `build` 里 `ref.read(p)` 取**值** | `ref.watch(p)`；`ref.read(p.notifier)` 取实例是允许的（`check_conventions` 拦） |
+| `AppLocalizations.of(context)` / ARB / `l10n.x` | 用户可见文案**直接写中文**（本分支已裁剪 l10n） |
+| 手写 `fromJson` / `toJson` | `@freezed` + `json_serializable` 生成 |
+| `features/*/logic/` 里 `import 'package:flutter/material.dart'` | logic 层不认识 widget 层（`check_boundaries` 拦） |
+
+## `## 改完必跑`
+
+```bash
+dart format lib test tool packages
+dart run tool/check_boundaries.dart
+dart run tool/check_conventions.dart
+dart run tool/check_readme_tree.dart
+dart run dependency_validator
+flutter analyze lib/ test/
+dart analyze tool/ && dart analyze packages/
+flutter test --coverage
+(cd packages/app_core && flutter test --coverage)
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
+  --src=lib --src=packages/app_core/lib
+```
+
+两条容易漏的：
+
+- 增删了 `lib/` 下的文件或目录后，`README.md` 与 `frontend/directory-structure.md`
+  里的目录树要同步，否则 `check_readme_tree` 会红；
+- 改了注解 / 模型 / 文件增删后要重跑 codegen（`packages/app_core` 需在包目录内跑），
+  并把生成物一起提交 —— CI 会比对这份 diff。
+
+## 完成定义（DoD）
+
+一项改动算完成，必须同时满足：
+
+1. 上面那套命令**全部**退出码 0 —— 阈值与规则不许为了「让门禁变绿」而下调；
+2. 新增 / 改动的用户可见代码有测试，且覆盖**错误分支**（只测 happy path 不算）；
+3. 结构与 `lib/features/sample/` 一致；
+4. 文档与代码一致：改了行为就同步 `.trellis/spec/` 或 `README.md`，
+   **不留「照原文做会出错」的说明**。
+
+> 本分支的提交约定是 `git commit --no-verify` + **手工跑完上面那套命令**（本地 pre-commit
+> 在 Windows 上单次约 20 分钟，每次 `dart run` 都被 sqlite3 的 build hook 拖住）。
+> 关掉钩子换来的是「必须自己跑并报出结果」的义务，**不是「可以不跑」**。
