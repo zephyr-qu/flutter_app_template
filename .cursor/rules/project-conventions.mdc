@@ -1,63 +1,80 @@
 ---
-description: 项目性质、语言政策、目录地图与硬性总纲（所有会话默认生效）
+description: 项目性质、技术栈、语言政策、目录地图与硬性总纲（所有会话默认生效）
 alwaysApply: true
 ---
 
 # 项目硬约束 · 总纲
 
 个人 Flutter 脚手架（包名 `my_app`），面向中小型 App 的起点，不是生产应用。
-技术栈已定，不要替换或「顺手升级」选型：FSD 简化版目录 + signals/ViewModel + auto_route
-+ injectable/GetIt + Material 3 + Retrofit/Dio + Drift/SharedPreferences/flutter_secure_storage
-+ l10n（模板语言为中文）。
 
-本文件只做拦截；**权威规范在 `.trellis/spec/`**，写某层代码前先读对应 index：
+本文件只做拦截，**权威规范在 `.trellis/spec/`**。写某层代码前先读对应索引：
 `.trellis/spec/frontend/index.md`、`.trellis/spec/backend/index.md`、`.trellis/spec/cross-cutting.md`。
+更完整、可照抄的版本见仓库根的 `AGENTS.md`。
+
+## 技术栈（已定，不要替换、也不要「顺手升级」选型）
+
+FSD 简化版目录 + **Riverpod 3**（provider + `ConsumerWidget`）+ auto_route +
+**Material 3**（`flex_color_scheme`，只在 `packages/app_core`）+ Retrofit/Dio +
+Drift / SharedPreferences / flutter_secure_storage + **单语言中文**（没有 l10n）。
+
+> 本分支是 `preset/ai-starter`：从 master 的 signals + get_it + flutter_hooks 换到 Riverpod。
+> 仓库里**已经不存在** `signal*` / `get_it` / `injectable` / `flutter_hooks` / l10n。
+> 凡是拿它们当现状的说明（`docs/` 下的历史文档、`docs/adr/` 里未标注适用范围的段落）
+> 一律先当作过期，换栈前后对照见仓库根 `BRANCH.md`。
 
 ## 硬约束清单
 
 1. **架构边界**：改完 `lib/` 必须 `dart run tool/check_boundaries.dart`（退出码 0）。
-   见 `architecture-boundaries` 规则。
-2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze tool/` 必须干净；
-   依赖「声明与使用」必须一致（`dart run dependency_validator`）。
-3. **覆盖率门禁**：`flutter test --coverage` 后 `dart run tool/check_coverage.dart`，阈值 80%。
-4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案一律走 l10n，
-   widget 里**禁止**硬编码字符串。
-5. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` /
-   `lib/l10n/app_localizations*.dart`。改注解或模型后 `dart run build_runner build`；
-   改 ARB 后 `flutter gen-l10n`。
+2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze tool/ packages/` 必须干净；
+   依赖的「声明与使用」必须一致（`dart run dependency_validator`）。
+3. **覆盖率门禁**：阈值 80%，两份 lcov **逐份独立**校验（根 `lib/` 与 `packages/app_core/lib`），
+   校验时带 `--src`。
+4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**
+   （单语言脚手架，不走 ARB、不引入 `intl`）。
+5. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart`。
+   改注解或模型后 `dart run build_runner build`（`packages/app_core` 需在包目录内跑），
+   并把生成物一起提交 —— CI 会比对这个 diff。
 6. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
-   设计取舍、踩坑、验证命令、对照表格写 `.trellis/spec/`，不要塞进代码。
-7. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、
-   崩溃上报）不是待办，除非用户明确要求。
+   设计取舍、踩坑、对照表格写 `.trellis/spec/`；连续注释块上限 10 行（门禁强制）。
+7. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、崩溃上报）
+   不是待办，除非用户明确要求。
 
 ## 目录地图（唯一合法布局）
 
 ```
 lib/
-├── app/          # 组合根：app.dart / routing/ / pages/（可 import 任何东西）
-├── core/         # 共享基础设施，严格克制；不得 import features/ 或 app/
-│   ├── base/ config/ data/{database,network,storage}/ logging/ models/ ui/ theme/
-├── features/{feature}/
-│   ├── logic/    # ViewModel + signals
-│   ├── data/     # api / dao / service / repository（按需）/ models / module
-│   └── page/     # 页面
-├── l10n/         # app_zh.arb（模板语言） + app_en.arb
-└── di/           # service_locator.config.dart（生成）
+├── main.dart                # 入口
+├── bootstrap.dart           # 环境加载 + 异常兜底 + ProviderScope
+├── app/                     # 组合根（可 import 任何东西）
+│   ├── app.dart  providers.dart
+│   ├── routing/             #   AppRouter + 守卫 + 登录态桥接（含生成物）
+│   └── pages/               #   全局页面：启动页、404
+├── core/                    # 状态耦合的适配层；基础设施在 packages/app_core
+│   ├── auth/ config/ data/{network,storage}/ ui/
+│   └── providers.dart
+└── features/{feature}/
+    ├── logic/               # @riverpod Notifier / AsyncNotifier
+    ├── data/                # api / dao / service / repository（按需）/ models / providers
+    └── page/                # ConsumerWidget / ConsumerStatefulWidget
 ```
 
 依赖方向：`app → features → core`，由 `tool/check_boundaries.dart` 强制。
+现有 feature：`auth`（认证）、`home`（首页 + 主框架）、`profile`（个人中心）、
+**`sample`（示例，唯一照抄对象：data 三形态 + logic + page + 对应测试）**。
 
-## 命名（权威见 frontend/directory-structure.md「Naming Conventions」）
+## 命名（权威见 `.trellis/spec/frontend/directory-structure.md`）
 
-- 目录/文件 snake_case；`{feature}_api.dart` / `_service.dart` / `_dao.dart` / `_module.dart` /
-  `_repository.dart` / `_view_model.dart` / `_page.dart`
-- 类名 `{Feature}Api` / `Service` / `Dao` / `Module` / `Repository` / `ViewModel` / `Page`
-- Drift 表类 `Db` + PascalCase 复数（`DbArticles`），行类与 SQL 表名由 drift 派生
-- ViewModel 是 `factory`（`@injectable`），页面用 `useMemoized` 取，每页一个实例
+- 目录 / 文件 snake_case；`{feature}_{api,dao,service,repository,providers,notifier,page}.dart`
+- 类名 `{Feature}{Api,Dao,Service,Repository,Notifier,Page}`
+- Drift 表类 `Db` + PascalCase 复数（`DbArticle`），行类与 SQL 表名由 drift 派生
+- `riverpod_generator` 把 `XxxNotifier` 的 provider 命名成 `xxxProvider`
+  （**不是** `xxxNotifierProvider`）—— 没有 lint 兜，写错了要自己发现
 
 ## 不存在的东西（不要「补回来」）
 
-- 没有 `domain/` `application/` `shared/` `core/error/` `core/local/`（旧 Clean Architecture 布局）
-- 没有 BaseViewModel、没有 ViewModel 的 `dispose()` 生命周期、没有 per-ViewModel 日志
-- 没有事件总线；feature 间通信**只能**通过 `core/` 全局信号
+- 没有 `domain/` `application/` `shared/` `lib/di/` `lib/l10n/`（旧 Clean Architecture 或 master 的遗留）
+- 没有 signals、没有 `get_it` / `injectable` / `@LazySingleton` / `@module` / `*.config.dart`
+- 没有 `flutter_hooks`：`HookWidget` / `useMemoized` / `useEffect` / `useSignalValue` 都不存在
+- 没有 ViewModel 类、没有 `runAsync`、没有 `AsyncState`、没有 `runZonedGuarded`
+- 没有事件总线；feature 间通信**只能**通过 `core/` 暴露的 provider
 - 没有崩溃上报（Sentry / Crashlytics）

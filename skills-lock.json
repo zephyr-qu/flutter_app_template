@@ -109,65 +109,143 @@
       "skillPath": "skills/flutter-fix-layout-issues/SKILL.md",
       "computedHash": "1aaba922c951159118f9b141788f7bb7b8167bdc0bd5c6f0738ebb90c29b9532"
     },
-    "flutter-implement-json-serialization": {
-      "source": "flutter/skills",
+    "riverpod-3-0-migration": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/flutter-implement-json-serialization/SKILL.md",
-      "computedHash": "0eed26f25308d78c6a9036ec936db93342f064d64f2cbac5e0e8648ba6b9db3f"
+      "skillPath": "skills/riverpod/riverpod-3-0-migration/SKILL.md",
+      "computedHash": "46f8f756aad7f11ef63459cf6342d53ac4913d54c2a1014983735da41ae142b6"
     },
-    "flutter-setup-declarative-routing": {
-      "source": "flutter/skills",
+    "riverpod-auto-dispose": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/flutter-setup-declarative-routing/SKILL.md",
-      "computedHash": "2341440c8bce0f176663695eaa71f9f7d7c967772a1dcd0d833c9778504b227e"
+      "skillPath": "skills/riverpod/riverpod-auto-dispose/SKILL.md",
+      "computedHash": "d745582fb5dc5fce317ad5d87c75cb183d652859f9f151af1cb92c8145fab03e"
     },
-    "flutter-setup-localization": {
-      "source": "flutter/skills",
+    "riverpod-cancel": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/flutter-setup-localization/SKILL.md",
-      "computedHash": "671bf254ca8f3172b6bda5287d9e756e9fd5b49165a815f710c5b707ebaa38f8"
+      "skillPath": "skills/riverpod/riverpod-cancel/SKILL.md",
+      "computedHash": "ed93432d74c601cb58538b6e53364f2f2599a2a89ff6433e458cf5f5405a006d"
     },
-    "flutter-use-http-package": {
-      "source": "flutter/skills",
+    "riverpod-codegen-and-hooks": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/flutter-use-http-package/SKILL.md",
-      "computedHash": "17efcf4da9933afaf9c1d41940bd6b92f1ae73dcae4bf6c59cfe24f7e487ee9f"
+      "skillPath": "skills/riverpod/riverpod-codegen-and-hooks/SKILL.md",
+      "computedHash": "116f890bbd8bb43c15caca263fe581ba261418ed99b3a5f80a27d6938e26200c"
     },
-    "signals-dart": {
-      "source": "rodydavis/signals.dart",
+    "riverpod-consumers": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/signals-dart/SKILL.md",
-      "computedHash": "48a655c59acad45b30f520e66f5f0cb5056e1b16b39b3be9553b73d402491943"
+      "skillPath": "skills/riverpod/riverpod-consumers/SKILL.md",
+      "computedHash": "cdf42b96a8767b7893bb815d79a245c3933b945548ff9c66d39d38c07c2c231c"
     },
-    "signals-flutter": {
-      "source": "rodydavis/signals.dart",
+    "riverpod-containers": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/signals-flutter/SKILL.md",
-      "computedHash": "dd242d260f773e5f9aed495bf713a65228328c439f69a318a3bb699db256ab73"
+      "skillPath": "skills/riverpod/riverpod-containers/SKILL.md",
+      "computedHash": "a2eae99c4e7a88b30d3865a85c25de122c2ef0e61b79805c07adf522dcc18686"
     },
-    "signals-hooks": {
-      "source": "rodydavis/signals.dart",
+    "riverpod-eager-initialization": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/signals-hooks/SKILL.md",
-      "computedHash": "0142f2f6e5dd016b83138ed403af54576d70cce301581ad0e5fb0b3176a49282"
+      "skillPath": "skills/riverpod/riverpod-eager-initialization/SKILL.md",
+      "computedHash": "caa0db6a0af71284316d02f1267252ee8423c98c9e92749a7f147dafb67b5d4e"
     },
-    "signals-lint": {
-      "source": "rodydavis/signals.dart",
+    "riverpod-family": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/signals-lint/SKILL.md",
-      "computedHash": "55b1fe9b695be019eb5a3e07eb488adb6448d0de5eb790a3861ba086fb5bc001"
+      "skillPath": "skills/riverpod/riverpod-family/SKILL.md",
+      "computedHash": "823e3be454e2398cd67eb46480b44ca74b45ba9c11b2eaad2d09ffcb3b81f3df"
     },
-    "signals-migration-6-to-7": {
-      "source": "rodydavis/signals.dart",
+    "riverpod-faq-and-practices": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": "skills/signals-migration-6-to-7/SKILL.md",
-      "computedHash": "193e9ca2f44f4d80d0c5708fb081379b12afdd09193bbe742ea456b9f98a0e56"
+      "skillPath": "skills/riverpod/riverpod-faq-and-practices/SKILL.md",
+      "computedHash": "aecb79c113c55f9a62c15144e0e1ddc6340e2cbf2bed42698bd48b49cc86f391"
     },
-    "signals_hooks": {
-      "source": "rodydavis/signals.dart",
+    "riverpod-from-provider": {
+      "source": "serverpod/skills-registry",
       "sourceType": "github",
-      "skillPath": ".agents/skills/signals_hooks/SKILL.md",
-      "computedHash": "f110452cee1f2436d98042ed7bda9c53b8d71b372564f2321ec16d6db29298b9"
+      "skillPath": "skills/riverpod/riverpod-from-provider/SKILL.md",
+      "computedHash": "22a8b08c1a2e7c2660cdaa48b6e4e5bdaab19627e4cf385cda76516e8a4fc2ee"
+    },
+    "riverpod-getting-started": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-getting-started/SKILL.md",
+      "computedHash": "94d44b497c61bd001b414cf854c4f9f836bfb4a3cae886792effa3d3b18e64bd"
+    },
+    "riverpod-migration": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-migration/SKILL.md",
+      "computedHash": "ac28681f1e43809591655409334c8d7cf5766f61fc11939454c1b427c5202ac6"
+    },
+    "riverpod-mutations": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-mutations/SKILL.md",
+      "computedHash": "8902fc71150d4d5e3e72806c19698db3ca49b0ed7ead7799b416b254083ad654"
+    },
+    "riverpod-observers": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-observers/SKILL.md",
+      "computedHash": "b9b5f902f797e845c8b0b4c6f4a91d3263302f40fcd0fd97cc03a2e5f4301593"
+    },
+    "riverpod-offline": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-offline/SKILL.md",
+      "computedHash": "d0cb60bb0b2b0ec684e949e8f41fe8819fe5385832f3d820349cd2b7b544fec7"
+    },
+    "riverpod-overrides": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-overrides/SKILL.md",
+      "computedHash": "fe1abc5a327356fa818a243812d1f5e5f17fa5bc418244904b87a7a8dd516ab2"
+    },
+    "riverpod-providers": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-providers/SKILL.md",
+      "computedHash": "9299c534b2eaed9d26028f1442d9d5f53b6657b7916fadfddd02e53190ad1bcb"
+    },
+    "riverpod-pull-to-refresh": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-pull-to-refresh/SKILL.md",
+      "computedHash": "04cb9fde40db8dea904924ec581c1a3980641204b6b0a214a4bd9811136e9284"
+    },
+    "riverpod-refs": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-refs/SKILL.md",
+      "computedHash": "7a77a36b64c4961126c72296c77247b8d4fb1ef511dc855fec5aae8745e3f910"
+    },
+    "riverpod-retry": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-retry/SKILL.md",
+      "computedHash": "278e890014c9b6e4cfa5d4a3a604f5af9283811b9fa96c1eb518dbe12185551b"
+    },
+    "riverpod-scoping": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-scoping/SKILL.md",
+      "computedHash": "9e5384a53c1e9eccdc367e382c40ab2283d8e675a955171bb06cb5a9b5d07d02"
+    },
+    "riverpod-select": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-select/SKILL.md",
+      "computedHash": "5222bfd336c2d0d645476ce703be7afa0b0e4b5878b2b9e5e86eca254d1a56df"
+    },
+    "riverpod-testing": {
+      "source": "serverpod/skills-registry",
+      "sourceType": "github",
+      "skillPath": "skills/riverpod/riverpod-testing/SKILL.md",
+      "computedHash": "2185761ef2bac1a3ef687fffaf9ae45393157c2622e10fd92d0660012ffb6e76"
     }
   }
 }
