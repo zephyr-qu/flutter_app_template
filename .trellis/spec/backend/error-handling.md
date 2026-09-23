@@ -14,7 +14,7 @@ This project uses a **typed Result pattern** instead of bare exceptions for all 
 
 ## Error Types
 
-### Result Type (`packages/app_core/lib/base/result.dart`)
+### Result Type (`lib/core/base/result.dart`)
 
 ```dart
 sealed class Result<T, E> {
@@ -40,7 +40,7 @@ sealed class Result<T, E> {
 
 **Always use `Result.when()`** for exhaustive pattern matching. `getOrThrow` is for tests only.
 
-### Failure Hierarchy (`packages/app_core/lib/base/failure.dart`)
+### Failure Hierarchy (`lib/core/base/failure.dart`)
 
 ```dart
 sealed class Failure implements Exception {
@@ -73,7 +73,7 @@ class UnknownFailure extends Failure { ... }
 
 已逐一映射的状态码：400 → `invalidRequest`、401 → `unauthorized`、403 → `forbidden`、404 → `notFound`、408 → `timeout`、409 → `conflict`、422 → `invalidPayload`、429 → `tooManyRequests`；其余 5xx → `serverError`（带状态码），其余 4xx → `requestFailed`（带状态码，文案里会显示它）。
 
-### Dio Error Handling (`packages/app_core/lib/base/failure.dart`)
+### Dio Error Handling (`lib/core/base/failure.dart`)
 
 `handleDioError()` converts a `DioException` to the appropriate `Failure` subtype. Services call it directly — there is no alias and no `Failure.fromApiError` factory.
 
@@ -151,7 +151,7 @@ SnackBar 之类的场景直接 `error.localizedMessage()`。**新代码不要**�
 - **重放必须走同一个 Dio**，否则 mock / 日志 / 重试拦截器会被绕过——mock 模式下重放会直接打到真实网络。
 - **刷新请求不携带访问令牌**：部分后端会因为无效的 `Authorization` 直接拒绝整个请求，连刷新都做不了。
 
-以上行为由 `packages/app_core/test/data/network/token_refresh_test.dart` 覆盖（真实 `TokenRefresher` + `AuthInterceptor` 跑在真实 Dio 管道里，`TokenStore` 与网络适配器换成测试替身）。
+以上行为由 `test/core/data/network/token_refresh_test.dart` 覆盖（真实 `TokenRefresher` + `AuthInterceptor` 跑在真实 Dio 管道里，`TokenStore` 与网络适配器换成测试替身）。
 
 ### 登出语义
 

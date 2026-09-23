@@ -13,13 +13,12 @@
 | 基点 | `master` @ `4150ee6`（2026-09-22） |
 | 目的 | 把状态管理 / 依赖注入 / 页面组合换成 **AI 语料最丰富的主流栈**，并让仓库对 AI 自足——任何 AI 工具打开即可在边界内产出符合规范的代码 |
 | 与 `master` 的关系 | 兄弟分支。两个栈无法互相合并，强行回流会互相覆盖 |
-| 共用资产 | `packages/app_core`（两栈**完全一致**，见下） |
+| 结构 | **单包**（`lib/`）。`master` 的 `packages/app_core` 共享包在本分支已拍平回 `lib/core/`（见下） |
 
 重新量差异规模：
 
 ```bash
 git diff master --shortstat                 # 文件 / 行数
-git diff master --stat -- packages/         # 应为空：共享包零改动
 git rev-list --count master..HEAD           # 提交数
 ```
 
@@ -49,6 +48,11 @@ git rev-list --count master..HEAD           # 提交数
   换成 `riverpod-*` 系列（来源 `serverpod/skills-registry`，记录在 `skills-lock.json`）。
 - `.cursor/rules/` 只留 `project-conventions.mdc`（总纲 + 指路），
   其余 5 个规则文件是 spec 的复制品且已整份过期，随本次换栈删掉。
+- **`packages/app_core` 拍平回 `lib/core/`**（2026-09-23）：抽包的原始理由是「signals /
+  Riverpod 双栈共用」，但本仓库是**脚手架**、不会长期演化，双栈同步的前提不成立；且抽包已经
+  产生实际代价——`drift#3669` 让 Drift 表跨 package 解析不到，`SampleDao` 被迫放弃
+  idiomatic 的 `@DriftAccessor`。拍平后本分支回到单包结构，`SampleDao` 恢复 `@DriftAccessor`。
+  （`master` 仍是双包结构，不动。）
 
 ---
 
@@ -56,21 +60,20 @@ git rev-list --count master..HEAD           # 提交数
 
 | 项 | 状态 | 理由 |
 |---|---|---|
-| 主题 `flex_color_scheme` | **保留** | 它只存在于 `packages/app_core`（pubspec + `theme/`），根工程一处都没引用。换它等于改共享包，而「共享包两栈完全一致」正是抽包换来的东西；为一件与状态管理正交的事拆掉它，收益为负 |
+| 主题 `flex_color_scheme` | **保留** | 它只在 `lib/core/theme/` 用（抽包时曾随共享包走，拍平后回到 `lib/core/`）。与状态管理正交，换它是独立议题，收益为负 |
 | `auto_route` | 保留 | 本身已是主流，换 `go_router` 要重写路由 + 守卫 + 全部 `@RoutePage`，收益不足 |
 | `dio` + `retrofit` | 保留 | 同上 |
 | `freezed` + `json_serializable` | 保留 | 同上 |
 | `drift` / `shared_preferences` / `flutter_secure_storage` | 保留 | 同上 |
 | l10n | **不涉及** | 基线（`master`）就已经没有 l10n —— 它被 `09-22-prune-l10n` 裁掉了。本分支的换栈范围里从来没有这一项，别把它当成「砍掉了」 |
-| `packages/app_core` | **零改动** | 它是两栈共用的基础设施包。`tool/check_boundaries.dart` 里有一条专门的门禁：「包内不得出现 `signals_*` / `riverpod*` / `get_it` / `injectable`」——这条同时服务两个栈，也保证了两个分支的这个包永远一致 |
 
 ---
 
 ## 为什么不回流 `master`
 
 `signals` 与 Riverpod 的写法没有一一对应的机械映射（`signal`/`computed`/`effect` 与
-`Ref`/`Notifier`/`AsyncValue` 是两套模型），强行合并只会两边互相覆盖。所以两条分支各自
-背负一套栈，靠**共享包 + 门禁规则**维持「基础设施只有一份」。
+`Ref`/`Notifier`/`AsyncValue` 是两套模型），强行合并只会两边互相覆盖。所以两条分支
+各自背负一套栈。
 
 ---
 
@@ -96,17 +99,15 @@ git rev-list --count master..HEAD           # 提交数
 ## 六道门禁（脚本，不是 IDE 插件）
 
 ```bash
-dart format --output=none --set-exit-if-changed lib test tool packages
-dart run tool/check_boundaries.dart        # 架构边界（lib + packages/app_core/lib）
+dart format --output=none --set-exit-if-changed lib test tool
+dart run tool/check_boundaries.dart        # 架构边界（lib）
 dart run tool/check_conventions.dart       # build 里禁 ref.read 取值 / 注释块上限
-dart run tool/check_readme_tree.dart       # README ×2 + spec 的目录树
+dart run tool/check_readme_tree.dart       # README + spec 的目录树
 dart run dependency_validator              # 声明与使用一致
 flutter analyze lib/ test/
-dart analyze tool/ && dart analyze packages/
+dart analyze tool/
 flutter test --coverage
-(cd packages/app_core && flutter test --coverage)
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
-  --src=lib --src=packages/app_core/lib   # 阈值 80%，两份 lcov 各自校验
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib   # 阈值 80%
 ```
 
 规则语义、阈值与「为什么这么做」都在

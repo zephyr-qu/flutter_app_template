@@ -19,7 +19,7 @@
    ```dart
    /// 示例缓存的读写（只碰行类 `DbArticle`，行↔模型转换在 `SampleService`）。
    ///
-   /// 为什么在 feature 而不是共享包，见 backend/database-guidelines.md「分工」。
+   /// 为什么在 feature 而不是 core，见 backend/database-guidelines.md「分工」。
    ```
 
 3. **示例可以留** —— 调用方要照着写的形状（JSON 形状、一行用法）留在代码里，其余删掉。

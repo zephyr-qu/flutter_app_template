@@ -118,7 +118,7 @@ Text(item.title, style: TextStyle(fontSize: 18, color: Colors.black)),
 
 ## Theme Layer
 
-主题拆成三个文件（`packages/app_core/lib/theme/`），**各有唯一职责**：
+主题拆成三个文件（`lib/core/theme/`），**各有唯一职责**：
 
 | 文件 | 职责 |
 |---|---|
@@ -139,16 +139,16 @@ Text(item.title, style: TextStyle(fontSize: 18, color: Colors.black)),
 **规则 1 —— token 不放颜色。** `app_theme_extension.dart` 只放 `ColorScheme` 表达不了的东西（圆角、间距），**不出现任何 `Color` 字段**：能用「语义角色」表达的东西就不该另造一个 token，否则换主题时会漏掉它。
 
 ```bash
-grep -n "Color" packages/app_core/lib/theme/app_theme_extension.dart   # 期望：无输出
+grep -n "Color" lib/core/theme/app_theme_extension.dart   # 期望：无输出
 ```
 
-**规则 2 —— `flex_color_scheme` 只允许出现在共享包的 `theme/`。** 页面与组件不得 import 它，配色只在 `app_color_scheme.dart` 里定义。
+**规则 2 —— `flex_color_scheme` 只允许出现在 `lib/core/theme/`。** 页面与组件不得 import 它，配色只在 `app_color_scheme.dart` 里定义。
 
 ```bash
-grep -rln "flex_color_scheme" lib/ packages/app_core/lib/   # 期望：只命中 packages/app_core/lib/theme/app_color_scheme.dart
+grep -rln "flex_color_scheme" lib/   # 期望：只命中 lib/core/theme/app_color_scheme.dart
 ```
 
-第三档之后共享包里不再有 `flex_color_scheme`，规则 2 的 `grep` 验证会变成「无输出」——
+第三档之后 `lib/core/theme/` 里不再有 `flex_color_scheme`，规则 2 的 `grep` 验证会变成「无输出」——
 这也是它可被验证的意义：边界会不会破，一条命令就能看出来。
 
 **主题入口只有两个函数，不内联在 `lib/app/app.dart`。**
@@ -166,7 +166,7 @@ ThemeData buildDarkTheme();
 
 ## Shared Widgets
 
-共享组件分两处（可复用的放共享包里，需要项目文案或主题的在应用侧）：
+共享组件都在 `lib/core/ui/`（其中 `EmptyWidget` 不读项目文案，其余会用到文案 / 主题）：
 
 | Widget | 位置 | Purpose | Props |
 | -------- | ------ | --------- | ------- |
@@ -174,7 +174,7 @@ ThemeData buildDarkTheme();
 | `LoadingIndicator` | `lib/core/ui/` | 居中转圈（`CircularProgressIndicator`，零依赖） | `size` |
 | `ScreenLoadingIndicator` | `lib/core/ui/` | 全屏加载态（转圈 + 一行 `加载中...`） | — |
 | `ErrorText` | `lib/core/ui/` | Error with retry；靠 `Failure` 的错误码翻译文案 | `error`, `onRetry?`, `icon?` |
-| `EmptyWidget` | `packages/app_core/lib/ui/` | Empty state placeholder（不读文案，文案由调用方给） | `message`, `icon?`, `actionLabel?`, `onAction?` |
+| `EmptyWidget` | `lib/core/ui/` | Empty state placeholder（不读文案，文案由调用方给） | `message`, `icon?`, `actionLabel?`, `onAction?` |
 
 ---
 

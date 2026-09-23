@@ -14,7 +14,7 @@ alwaysApply: true
 ## 技术栈（已定，不要替换、也不要「顺手升级」选型）
 
 FSD 简化版目录 + **Riverpod 3**（provider + `ConsumerWidget`）+ auto_route +
-**Material 3**（`flex_color_scheme`，只在 `packages/app_core`）+ Retrofit/Dio +
+**Material 3**（`flex_color_scheme`，只在 `lib/core/theme/`）+ Retrofit/Dio +
 Drift / SharedPreferences / flutter_secure_storage + **单语言中文**（没有 l10n）。
 
 > 本分支是 `preset/ai-starter`：从 master 的 signals + get_it + flutter_hooks 换到 Riverpod。
@@ -25,15 +25,14 @@ Drift / SharedPreferences / flutter_secure_storage + **单语言中文**（没�
 ## 硬约束清单
 
 1. **架构边界**：改完 `lib/` 必须 `dart run tool/check_boundaries.dart`（退出码 0）。
-2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze tool/ packages/` 必须干净；
+2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze tool/` 必须干净；
    依赖的「声明与使用」必须一致（`dart run dependency_validator`）。
-3. **覆盖率门禁**：阈值 80%，两份 lcov **逐份独立**校验（根 `lib/` 与 `packages/app_core/lib`），
-   校验时带 `--src`。
+3. **覆盖率门禁**：阈值 80%，`flutter test --coverage` 后
+   `dart run tool/check_coverage.dart coverage/lcov.info --src=lib`。
 4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**
    （单语言脚手架，不走 ARB、不引入 `intl`）。
 5. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart`。
-   改注解或模型后 `dart run build_runner build`（`packages/app_core` 需在包目录内跑），
-   并把生成物一起提交 —— CI 会比对这个 diff。
+   改注解或模型后 `dart run build_runner build`，并把生成物一起提交 —— CI 会比对这个 diff。
 6. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
    设计取舍、踩坑、对照表格写 `.trellis/spec/`；连续注释块上限 10 行（门禁强制）。
 7. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、崩溃上报）
@@ -49,8 +48,8 @@ lib/
 │   ├── app.dart  providers.dart
 │   ├── routing/             #   AppRouter + 守卫 + 登录态桥接（含生成物）
 │   └── pages/               #   全局页面：启动页、404
-├── core/                    # 状态耦合的适配层；基础设施在 packages/app_core
-│   ├── auth/ config/ data/{network,storage}/ ui/
+├── core/                    # 基础设施 + 状态耦合的适配层
+│   ├── auth/ base/ config/ data/{database,network,storage}/ logging/ models/ theme/ ui/
 │   └── providers.dart
 └── features/{feature}/
     ├── logic/               # @riverpod Notifier / AsyncNotifier

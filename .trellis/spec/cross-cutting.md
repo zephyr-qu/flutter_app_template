@@ -11,13 +11,12 @@
 
 ```bash
 dart run tool/check_boundaries.dart     # 退出码 0 = 通过，1 = 有违规
-                                        # 默认扫 lib 与 packages/app_core/lib
+                                        # 默认扫 lib
 ```
 
 它跑在 pre-commit 与 CI（`analyze` job）里，`test/tool/check_boundaries_test.dart` 也会在 `flutter test` 时跑一遍真实仓库。
 
-**扫描根是两处，不是一处**：`lib` 与 `packages/app_core/lib`。抽包之后如果只扫 `lib/`，
-新包就成了**边界真空**——等于用一次重构把一道门禁换成没有门禁。
+**扫描根是 `lib`。**（`master` 是双包结构，那里还要扫 `packages/app_core/lib`——不扫它新包就成了**边界真空**。本分支已单包化。）
 
 **为什么不用 analyzer 插件**：`analysis_server_plugin` 规则只在 IDE 里生效，CLI 与 CI 不执行。历史教训——`features/profile/page` 引用过 `features/auth/logic`，而 `flutter analyze` 一直报告「No issues found」。声明成 `error` 却没有任何东西验证它会触发，比没有规则更糟（给人有门禁的错觉）。
 
@@ -27,15 +26,9 @@ dart run tool/check_boundaries.dart     # 退出码 0 = 通过，1 = 有违规
 | 跨 feature 只共享 `data/` | 不能引用其他 feature 的 `page/` / `logic/` |
 | `features/*/logic/` 不得手动建容器 | logic 层里不得出现 `ProviderContainer(...)` / `ProviderContainer.test(...)`——依赖从 `ref` 或构造器取 |
 | `features/*/logic/` 不得依赖 Flutter UI | logic 层不得 `import 'package:flutter/material.dart'` |
-| `packages/app_core` 不得依赖状态管理 / DI | 包内不得出现 `signals_*` / `riverpod*` / `get_it` / `injectable` |
 
-前两条是依赖方向；中间两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`），
+前两条是依赖方向；后两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`），
 而不是自己建容器、或伸手进 widget 层去拿 `BuildContext`。
-
-最后一条是共享基础设施包的**存在前提**：`packages/app_core` 要同时服务 signals 栈与 Riverpod 栈，
-包里一旦出现 `signals` / `riverpod`，另一个栈就用不了它，抽包的意义直接归零；
-`get_it` / `injectable` 同理——它们是装配方式，注册归各分支的装配层
-（拆分依据见 `.trellis/tasks/09-22-extract-app-core/design.md` 6.1 / 6.5）。
 
 ```dart
 // ✅ 依赖从 provider / 构造器进来：logic 层既不认识容器，也不认识 widget
@@ -85,7 +78,7 @@ import 'package:my_app/features/auth/page/login_page.dart';
 import 'package:my_app/features/auth/logic/login_notifier.dart';
 
 // ✅ 允许：引用 core，或另一个 feature 的 data 层
-import 'package:app_core/models/user.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';  // data 层可共享
 import 'package:my_app/app/routing/router.dart';
 ```
@@ -113,7 +106,7 @@ dart run tool/check_conventions.dart     # 默认扫 lib/，退出码 0 = 通过
 
 > 退役记录：`avoid_async_state_map` 随 signals 栈一起退役。它的前提是 `AsyncState.map` 的回调签名（`error` 收到一个还是两个参数）运行期才校验；`AsyncValue.when` 的回调具名且具类型，配错在编译期就是 error。三态渲染仍然统一走 `AsyncView`，但那已是约定而不是门禁。
 
-**为什么注释也进门禁**：长解释留在代码里会和实现抢注意力，且改了一处、另一处就成了假信息（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)）。扫描根与边界脚本一致（`lib` + `packages/app_core/lib`）；`tool/` 脚本的头注释本身就是门禁的设计说明，`test/` 的说明性注释同理，都不扫。
+**为什么注释也进门禁**：长解释留在代码里会和实现抢注意力，且改了一处、另一处就成了假信息（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)）。扫描根与边界脚本一致（`lib`）；`tool/` 脚本的头注释本身就是门禁的设计说明，`test/` 的说明性注释同理，都不扫。
 
 ---
 
@@ -137,11 +130,7 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 | 文档 | 根 |
 |------|----|
 | `README.md` | `lib` |
-| `README.md` | `packages/app_core/lib` |
 | [frontend/directory-structure.md](frontend/directory-structure.md) | `lib` |
-
-包那棵树的根取 `packages/app_core/lib` 而不是 `packages/app_core`：后者的直接子项里有
-`.dart_tool` / `build` / `coverage` / `pubspec.lock` 这些产物，列进树里只会变成噪音。
 
 ---
 
@@ -150,11 +139,9 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 架构边界管「谁能依赖谁」，覆盖率管「有没有测过」，两者互补。
 
 ```bash
-flutter test --coverage                                   # 根工程 → coverage/lcov.info
-(cd packages/app_core && flutter test --coverage)         # 包 → 包内 coverage/lcov.info
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
-  --src=lib --src=packages/app_core/lib
-dart run tool/check_coverage.dart --min=85                # 不传路径则只查 coverage/lcov.info
+flutter test --coverage                         # → coverage/lcov.info
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib
+dart run tool/check_coverage.dart --min=85      # 不传路径则只查 coverage/lcov.info
 ```
 
 - 跑在 pre-commit 与 CI 的 `unit-test` job 里
@@ -163,28 +150,25 @@ dart run tool/check_coverage.dart --min=85                # 不传路径则只�
 - 按**行数加权**，不是按文件平均——500 行的文件与 5 行的文件不该等权
 - 阈值默认 80%（`test/tool/check_coverage_test.dart` 覆盖脚本自身的解析与差集逻辑）
 
-**为什么必须分两份 lcov**：`app_core` 是独立 package，根工程跑 `flutter test --coverage` 时，
-包内文件的命中**不会被归集**（根 lcov 里一条 `packages/` 记录都没有），只能在包目录里单独采集。
-两份 lcov **逐份独立校验，不合并**：它们的路径都是相对各自包根的 `lib/...`，合并会把命名空间
-搅在一起；而且包内的低覆盖不该被 `lib/` 的高覆盖稀释。
+**本分支是单包结构**，一份 `coverage/lcov.info` 覆盖全部 `lib/`。
+（`master` 是双包：`app_core` 是独立 package，根工程跑 `flutter test --coverage` 时包内文件的
+命中不会被归集，只能在包目录里单独采集，两份 lcov 逐份独立校验、不合并。）
 
 ### 差集检查（`--src`）
 
-`--src` 与位置参数的 lcov **按序配对**，开启差集检查：拿扫描根下（`dartFiles()`，与
+`--src` 指定扫描根（多份时与位置参数的 lcov **按序配对**），开启差集检查：拿扫描根下（`dartFiles()`，与
 `handwrittenOnly()` 同一口径）的手写文件清单，减去该 lcov 的 `SF:` 集合。
 
 ```bash
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
-  --src=lib --src=packages/app_core/lib
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib
 ```
 
-- 个数不匹配直接以非零退出码结束：按序配对的参数错位**不会报错、只会静默算错分母**，这是这里最坏的失败形态
+- 多个 `--src` 与多份 lcov 按序配对；个数不匹配直接以非零退出码结束——错位**不会报错、只会静默算错分母**，这是这里最坏的失败形态
 - 差集里的文件按 `0 命中 / 非空行数` **计入分母**（不是只报告）：没有豁免时门禁自动变严，
   新增一个没测的大文件不必等谁记得加规则。行数是代理值——精确的可执行行数拿不到，
   用非空行数刻意从严
-- 路径匹配是**边界感知的后缀**匹配：lcov 的 `SF:` 相对包根（`lib/data/network/token_store.dart`），
-  扫描根是仓库相对路径，用 `repoPath == sfPath || repoPath.endsWith('/$sfPath')` 对上，
-  不需要额外传「这个包的 lib 前缀」
+- 路径匹配是**边界感知的后缀**匹配：lcov 的 `SF:` 与扫描根路径的基准可能不同，用
+  `repoPath == sfPath || repoPath.endsWith('/$sfPath')` 对上，不需要额外传前缀
 
 **豁免清单**（`tool/check_coverage.dart` 的 `loadingExemptions`）是唯一的逃生口，只放
 **结构上不可能被加载**的文件，每条必须写理由。这来自一个反例：`auth_extra_keys.dart`
@@ -199,12 +183,13 @@ dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/
 | 只被 `integration_test` 执行的入口 | `main.dart`、`bootstrap.dart` | 豁免（`flutter test --coverage` 不含 `integration_test/`） |
 | **本该被测但没测** | —— | **补测试，不许豁免** |
 
-快照（2026-09-23，AI 栈换血收尾时实测）：
+快照（2026-09-23，拍平 `app_core` 后实测）：
 
 | | 手写文件 | 进分母 | 豁免 | 覆盖率 |
 |---|---|---|---|---|
-| 根 `lib/` | 37 | 31 | 6 | 90.0% |
-| `packages/app_core` | 20 | 18 | 2 | 89.8% |
+| `lib/`（含已拍平的基础设施） | 57 | 49 | 8 | 90.0% |
+
+（`master` 是双包：根 `lib/` 37 文件 / 90.0% + `packages/app_core` 20 文件 / 89.8%，两份 lcov 各算各的。）
 
 同一个快照里 `lib/app/app.dart` 从「差集里的一个文件」变成了
 `test/app/app_test.dart`：它是组合根，装配错了集成测试才会红，而集成测试不进覆盖率统计。
@@ -343,15 +328,13 @@ CI 的 `analyze` job 有一步（见 `.github/workflows/ci.yml`）：
 
 ```bash
 dart run build_runner build
-(cd packages/app_core && dart run build_runner build)
-git add -N -- lib packages   # 让「新增」的生成物也进入 diff
-git diff --exit-code -- lib packages
+git add -N -- lib   # 让「新增」的生成物也进入 diff
+git diff --exit-code -- lib
 ```
 
 几个不显然的点：
 
 - **为什么要 `git add -N`**：`git diff --exit-code` 看不见未跟踪文件，而最常见的漂移形态恰恰是「新增一个 `@freezed` 模型 → 多出一个 `.freezed.dart`」——只用 `git diff` 会放过它
-- **为什么扫 `lib packages` 两处**：`app_core` 是独立 package，根目录跑的 `build_runner` 不会碰它，它的生成物只能在包目录内生成；两处都是生成物的落点
 - 比的是 `build_runner build` 写盘后的结果，而不是 `--only-check`：两者等价，但后者要求 `build_runner` ≥ 2.16.0。当前 lock 是 2.16.1（可用），保留 `build` 是为了不把门禁绑死在小版本上
 - **pre-commit 有意不做这一步**：它要跑完整 codegen（本项目量级是几十秒），而 pre-commit 已经跑了 `flutter test --coverage`。漏提交由 CI 兜
 - 这一步排在 `flutter analyze` 之前：生成物缺失时 analyze 会报一堆「找不到 `part` / provider」的噪声，先跑它能让报错指向真正的原因
@@ -398,7 +381,7 @@ git diff --exit-code -- lib packages
 
 | 做法 | 为什么不 |
 |------|---------|
-| 按目录多次调用 `--build-filter=lib/features/xxx/**` | 每次调用都要重新加载 package config、重建 asset graph，固定开销是数十秒量级；而 builder 之间有跨目录依赖（路由汇总到 `lib/app/routing/router.gr.dart`、LazyDatabase 与表汇总到 `packages/app_core` 的 `app_database.g.dart`），拆开跑完还得再跑一次全量才正确 |
+| 按目录多次调用 `--build-filter=lib/features/xxx/**` | 每次调用都要重新加载 package config、重建 asset graph，固定开销是数十秒量级；而 builder 之间有跨目录依赖（路由汇总到 `lib/app/routing/router.gr.dart`、LazyDatabase 与表汇总到 `lib/core/data/database/app_database.g.dart`），拆开跑完还得再跑一次全量才正确 |
 | 第三方「缓存 codegen 产物」的包（如 `cached_build_runner` 一类） | 把正确性押在 cache key 上：SDK 版本、依赖版本、`build.yaml`、builder 配置任一变化都可能让缓存与源不匹配，而它**不会报错，只会静默给出旧产物**。build_runner 官方的增量缓存都栽过跟头（workspace 与包构建间切换时的增量不正确，直到 2.15.1 才修）——用第三方缓存换来的秒数，不值得拿生成物正确性去赌 |
 
 **CI 上不要 cache `.dart_tool/build/`**：该目录与 Dart SDK 版本、依赖解析结果强绑定。缓存命中不当时最坏的结果是「检查通过，但仓库里的生成物其实是旧的」——这道门禁的价值全在结论可信，快几秒不值这个风险。
@@ -484,7 +467,7 @@ Android / iOS，没有 `linux/` 平台目录，所以**不要**用 `xvfb-run`）
 
 - **`bootstrap()` 不可重入**：`prefsProvider` 的 override 与 leak_tracker 启动都只能执行一次。因此整个冒烟流程只在**一个** `testWidgets` 中调用一次 `app.main()`；拆成多个 `testWidgets` 各自启动会在第二次抛「Bad state: Leak tracking is already enabled.」
 - **测试需清理登录态**：`SharedPreferences` 在设备上跨运行保留，测试开头要 `prefs.clear()`，否则上一次运行残留的登录态会让启动直接进主框架
-- **字体**：主题（`packages/app_core/lib/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上都不存在"渲染时联网拉字体"的问题。如果以后引入按需下载字体的方案（如 `google_fonts`），务必在测试里关掉运行时下载（`GoogleFonts.config.allowRuntimeFetching = false`）——否则 `pumpAndSettle` 会卡数分钟且结果不稳定。生产环境更该把字体打进产物，而不是运行时下载
+- **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上都不存在"渲染时联网拉字体"的问题。如果以后引入按需下载字体的方案（如 `google_fonts`），务必在测试里关掉运行时下载（`GoogleFonts.config.allowRuntimeFetching = false`）——否则 `pumpAndSettle` 会卡数分钟且结果不稳定。生产环境更该把字体打进产物，而不是运行时下载
 - `msw_dio_interceptor` 的 mock 由 `.env` 的 `USE_MOCK` 控制（`.env.development` 默认 `true`）。写 mock 规则必踩的坑（必须 `MockRule.regex` 且锚定结尾）见 [backend/network-guidelines.md](backend/network-guidelines.md) 的 Mock 一节
 
 ---

@@ -114,12 +114,11 @@ flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS schem
 
 ```bash
 dart run build_runner build
-(cd packages/app_core && dart run build_runner build)
 ```
 
-- [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart`，含
-      `packages/app_core` 包内那一份）——CI 的 `analyze` job 会跑一遍 codegen 再比对 `git diff`，
-      漏提交会被拦下（策略与时机见 `.trellis/spec/cross-cutting.md`）
+- [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart`）——CI 的
+      `analyze` job 会跑一遍 codegen 再比对 `git diff`，漏提交会被拦下
+      （策略与时机见 `.trellis/spec/cross-cutting.md`）
 
 - [ ] 门禁全绿：
 
@@ -129,8 +128,7 @@ dart run tool/check_conventions.dart    # 形态约定（build 里禁 ref.read /
 flutter analyze lib/ test/              # 静态分析
 dart analyze tool/                      # 工具脚本
 flutter test --coverage                 # 单元 + widget 测试（顺带产出覆盖率数据）
-(cd packages/app_core && flutter test --coverage)   # 共享包，必须在包目录里采集
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info  # 门禁：手写代码 ≥ 80%（逐份校验）
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib  # 门禁：手写代码 ≥ 80%
 flutter test integration_test/          # 端到端冒烟
 ```
 

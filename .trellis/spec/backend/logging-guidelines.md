@@ -81,7 +81,7 @@ The pretty-printer applies colours/emojis unconditionally. There is no tree-shak
 
 HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMode && preferences.enableDebugLogging`。
 
-它的 `logPrint` 串了 `packages/app_core/lib/logging/log_redactor.dart`：请求 / 响应体在落控制台之前逐行过
+它的 `logPrint` 串了 `lib/core/logging/log_redactor.dart`：请求 / 响应体在落控制台之前逐行过
 `LogRedactor.redact()`，`authorization` / `password` / `accessToken` / `refreshToken` 等字段的值
 换成 `***` —— 上面「What NOT to Log」里的密码与令牌因此不会被调试日志带出去。
 
@@ -89,7 +89,7 @@ HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMo
   拿不到可替换的 `RequestOptions` / `Response`（理由写在 `log_redactor.dart` 的文件注释里）
 - 它是**跨行带状态**的：`PrettyDioLogger` 按 `maxWidth`（默认 90）给长值折行，只屏蔽命中那一行
   会把剩下的令牌漏出去。所以同一个 `LogRedactor` 实例要贯穿整条日志流，别在回调里现建
-- 新增敏感字段时同步 `LogRedactor.sensitiveKeys`，并在 `packages/app_core/test/logging/log_redactor_test.dart`
+- 新增敏感字段时同步 `LogRedactor.sensitiveKeys`，并在 `test/core/logging/log_redactor_test.dart`
   里补一条 —— 漏了不会报错，只会静默漏值。
 
 > **Notifier 里没有日志框架，也没有 `dispose()` 生命周期钩子。** Notifier 是 `@riverpod` 生成的

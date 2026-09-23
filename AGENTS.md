@@ -155,25 +155,22 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 ## `## 改完必跑`
 
 ```bash
-dart format lib test tool packages
+dart format lib test tool
 dart run tool/check_boundaries.dart
 dart run tool/check_conventions.dart
 dart run tool/check_readme_tree.dart
 dart run dependency_validator
 flutter analyze lib/ test/
-dart analyze tool/ && dart analyze packages/
+dart analyze tool/
 flutter test --coverage
-(cd packages/app_core && flutter test --coverage)
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
-  --src=lib --src=packages/app_core/lib
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib
 ```
 
 两条容易漏的：
 
 - 增删了 `lib/` 下的文件或目录后，`README.md` 与 `frontend/directory-structure.md`
   里的目录树要同步，否则 `check_readme_tree` 会红；
-- 改了注解 / 模型 / 文件增删后要重跑 codegen（`packages/app_core` 需在包目录内跑），
-  并把生成物一起提交 —— CI 会比对这份 diff。
+- 改了注解 / 模型 / 文件增删后要重跑 codegen，并把生成物一起提交 —— CI 会比对这份 diff。
 
 ## 完成定义（DoD）
 

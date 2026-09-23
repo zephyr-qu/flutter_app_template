@@ -12,8 +12,8 @@
 | ----------- | --------- | ---------------- | --------- |
 | Key-value | `shared_preferences` | `UserPreferences`、`AuthStorage`（仅用户信息） | Preferences, settings, non-secret data |
 | Secrets | `flutter_secure_storage` | `AuthStorage`（整条令牌 JSON） | Tokens and other credentials |
-| Relational | `drift`（原生库由 `sqlite3` 3.x 的 build hook 提供） | `AppDatabase`（`packages/app_core/lib/data/database/app_database.dart`） | Structured, queryable local cache |
-| Files | `path_provider` | `FileStorage`（`packages/app_core/lib/data/storage/file_storage.dart`） | Binary / large text data |
+| Relational | `drift`（原生库由 `sqlite3` 3.x 的 build hook 提供） | `AppDatabase`（`lib/core/data/database/app_database.dart`） | Structured, queryable local cache |
+| Files | `path_provider` | `FileStorage`（`lib/core/data/storage/file_storage.dart`） | Binary / large text data |
 
 **不要**把令牌之类的敏感数据放进 `SharedPreferences`——那是明文的 XML/plist。令牌一律走 `flutter_secure_storage`（Android：KeyStore 包装的 AES-GCM，API 23+；iOS/macOS：Keychain；Windows：凭据管理器）。两者的实例都由 provider 装配（`lib/core/providers.dart`），业务代码只 `ref.watch`，不自己 new。
 
@@ -35,7 +35,7 @@
 
 ### AuthStorage 的接口
 
-`AuthStorage` 实现 `app_core` 的 `TokenStore`，对外只有同步 getter 与一条流：
+`AuthStorage` 实现 `TokenStore`（两者同在 `lib/core/data/`），对外只有同步 getter 与一条流：
 
 ```dart
 class AuthStorage implements TokenStore {
@@ -78,7 +78,7 @@ class AuthStorage implements TokenStore {
 
 ### 为什么 401 之后的登出要经 `userChanges` 回流
 
-`AuthInterceptor` 在 `app_core` 里，只认识 `TokenStore`，不认识 Riverpod。所以「凭证被清了」
+`AuthInterceptor`（`lib/core/data/network/`）只认识 `TokenStore`，不认识 Riverpod。所以「凭证被清了」
 这件事只能由存储经 `userChanges` 广播出来，`Session` 与路由守卫才有得订阅——完整链路见
 [error-handling.md](./error-handling.md)「登出语义」。
 
@@ -109,21 +109,21 @@ Always use `static const String _keyX = '...'` constants, never inline strings.
 ## Drift (Relational Cache)
 
 `AppDatabase` 只负责**连接与 schema**：表定义（`DbArticles`）、`schemaVersion`、迁移。
-它在 `packages/app_core` 里（`app_core` 不依赖状态管理，所以没有装配注解），
+它是 `lib/core/data/database/` 里的纯 Dart 类（不带装配注解），
 由 `lib/core/providers.dart` 的 `databaseProvider` 建成单例。
 
 **它已经被真正接进数据流**：`SampleService` 用「缓存旁路」消费 `SampleDao` —— 网络成功就刷新
 缓存，网络失败就回退到缓存，让离线时还能读到上次的内容
 （`features/sample/data/sample_service.dart`）。
 
-### 分工：schema 在共享包，查询在 feature
+### 分工：schema 在 `core/`，查询在 feature
 
 | 内容 | 位置 | 为什么 |
 | --- | --- | --- |
-| 表结构、`schemaVersion`、迁移 | `packages/app_core/lib/data/database/` | schema 是全局的，`@DriftDatabase` 必须看得见所有表；而共享包不能 import feature |
-| 针对某张表的查询（DAO） | `features/{feature}/data/{feature}_dao.dart` | 查询按 feature 划分。写进 `AppDatabase` 就再也搬不出去（共享包不能反向依赖），只会随 feature 数无限膨胀 |
+| 表结构、`schemaVersion`、迁移 | `lib/core/data/database/` | schema 是全局的，`@DriftDatabase` 必须看得见所有表；而 `core/` 不能 import feature（`check_boundaries` 强制） |
+| 针对某张表的查询（DAO） | `features/{feature}/data/{feature}_dao.dart` | 查询按 feature 划分。写进 `AppDatabase` 就再也搬不出去（`core/` 不能反向依赖），只会随 feature 数无限膨胀 |
 
-这样加一个 feature 时共享包只多一张表，查询代码不堆在共享包里。
+这样加一个 feature 时 `core/` 只多一张表，查询代码不堆在 `core/` 里。
 
 ### 表必须 part 进数据库文件（踩过的坑）
 
@@ -131,11 +131,11 @@ drift 的默认 codegen 有一条硬约束：**表必须和数据库类在同一
 表可以按表拆成独立文件，但必须写成 `part`：
 
 ```dart
-// packages/app_core/lib/data/database/app_database.dart
+// lib/core/data/database/app_database.dart
 part 'app_database.g.dart';
 part 'tables/db_articles.dart';    // ← 不是 import
 
-// packages/app_core/lib/data/database/tables/db_articles.dart
+// lib/core/data/database/tables/db_articles.dart
 part of '../app_database.dart';    // ← part 文件不能有 import
 ```
 
@@ -143,32 +143,31 @@ part of '../app_database.dart';    // ← part 文件不能有 import
 `@DriftAccessor` 会失败并报
 `Could not read tables from @DriftAccessor annotation! Please make sure that all table classes exist.`
 
-### ⚠️ 跨 package 时不要用 `@DriftAccessor`
+### DAO 用 `@DriftAccessor`（表与数据库同包）
 
-抽包之后 `@DriftAccessor(tables: [DbArticles])` **不再可用**：`drift_dev` 解析不到另一个 package
-里的表（drift#3669），生成出来的 mixin 是**空的** —— 报
-`The referenced element, DbArticles, is not understood by drift`，然后 `dbArticles` 未定义、
-DAO 编译不过。
-
-实测边界：同 package 内**无论表在 part 文件还是与数据库同一文件都正常**，只有跨 package 会失败。
-
-所以 DAO 直接持有 `AppDatabase`，用它的生成 getter 取表：
+表与数据库同在 `lib/core/data/database/`，是同一个 package，所以 DAO 用 idiomatic 的
+`@DriftAccessor` 声明它要访问的表：
 
 ```dart
 // features/sample/data/sample_dao.dart
-class SampleDao {
-  new(this._db);
-  final AppDatabase _db;
+part 'sample_dao.g.dart';
 
-  Future<List<DbArticle>> getCachedItems() => _db.select(_db.dbArticles).get();
+@DriftAccessor(tables: [DbArticles])
+class SampleDao extends DatabaseAccessor<AppDatabase> with _$SampleDaoMixin {
+  new(super.attachedDatabase);
+
+  Future<List<DbArticle>> getCachedItems() => select(dbArticles).get();
 
   Future<void> cacheItem(DbArticle item) =>
-      _db.into(_db.dbArticles).insertOnConflictUpdate(item);
+      into(dbArticles).insertOnConflictUpdate(item);
 }
 ```
 
-装配在 feature 自己的 provider 文件里（**不要**用 `@DriftDatabase(daos: [...])` —— 那要求共享包
-反 import feature）：
+`@DriftAccessor` 生成的 mixin（`_$SampleDaoMixin`）提供 `dbArticles` getter，方法体里直接写
+`select(dbArticles)` / `into(dbArticles)` 即可。
+
+装配在 feature 自己的 provider 文件里（**不要**用 `@DriftDatabase(daos: [...])` ——
+那要求 `core/` 反 import feature，违反「core 不得依赖上层」）：
 
 ```dart
 // features/sample/data/sample_providers.dart
@@ -176,11 +175,12 @@ class SampleDao {
 SampleDao sampleDao(Ref ref) => SampleDao(ref.watch(databaseProvider));
 ```
 
-- 行类 `DbArticle` 生成在 `packages/app_core/lib/data/database/app_database.g.dart`，所以 feature
-  的 DAO 需要 `import 'package:app_core/data/database/app_database.dart';` 才能拿到它。
+- 行类 `DbArticle` 生成在 `lib/core/data/database/app_database.g.dart`，所以 feature
+  的 DAO 需要 `import 'package:my_app/core/data/database/app_database.dart';` 才能拿到它。
 
-> 根治要动共享包（例如把表与 DAO 各自独立成 library，或等 drift 修 #3669）。
-> 在此之前，**新增 DAO 一律照 `SampleDao` 的写法**。
+> 历史背景：`master` 把表放进 `packages/app_core` 共享包时，`drift_dev` 解析不到另一个
+> package 里的表（drift#3669），DAO 只能绕开 `@DriftAccessor`、直接持有 `AppDatabase`。
+> 本分支已把该包拍平回 `lib/core/`，同包后这个坑不再存在。
 
 ### 加表 / 改表
 
@@ -212,7 +212,7 @@ SampleDao sampleDao(Ref ref) => SampleDao(ref.watch(databaseProvider));
 | `DbArticle` | `app_database.g.dart`（生成） | 数据库里的一行 |
 | `SampleItem` | `features/sample/data/models/sample_item.dart` | 业务模型（freezed） |
 
-两者字段目前一致，但**不要**合并：共享包不能依赖 feature，反过来让 feature 的模型去当 drift
+两者字段目前一致，但**不要**合并：`core/` 不能依赖 feature，反过来让 feature 的模型去当 drift
 行类也会把两层绑死。
 
 **互转也不放在模型上**，而是留在 `SampleService` 的私有 `_toRow` / `_toModel` 里：
@@ -260,7 +260,7 @@ String get tableName => 'articles';
 File-based storage for text and bytes。根目录是**自己拥有的两个子目录**，不是 `path_provider` 给的根：
 
 ```dart
-// packages/app_core/lib/data/storage/file_storage.dart
+// lib/core/data/storage/file_storage.dart
 class FileStorage {
   /// 应用目录 / 临时目录下用来放本类文件的子目录名
   static const String namespace = 'file_storage';
@@ -272,12 +272,12 @@ class FileStorage {
 }
 ```
 
-它不带装配注解（共享包不依赖状态管理），由 `lib/core/providers.dart` 的
-`fileStorageProvider` 建成 provider。精确签名见
-`packages/app_core/lib/data/storage/file_storage.dart`。
+它是纯 Dart 类（不带装配注解——本分支用 provider 装配，没有 injectable），
+由 `lib/core/providers.dart` 的 `fileStorageProvider` 建成 provider。精确签名见
+`lib/core/data/storage/file_storage.dart`。
 
 > **本分支没有 FileStorage 的示例页**：`features/demo/` 已随示例收敛删除。要看用法就照
-> `packages/app_core/test/data/storage/file_storage_test.dart`（真实文件 + 内存路径）写，
+> `test/core/data/storage/file_storage_test.dart`（真实文件 + 内存路径）写，
 > 需要文件缓存的目标应用再自己建页面。
 
 - Use `appDirectory` for persistent data and `tempDirectory` for cache
@@ -328,7 +328,7 @@ await for (final entry in dir.list(recursive: true, followLinks: false)) {
 - ❌ **把 `prefs` 做成 `FutureProvider`** — `AsyncValue` 会一路传染到所有消费者（见 `lib/core/providers.dart`）
 - ❌ **给 `AuthStorage` / `UserPreferences` 加状态管理依赖** — 它们要能脱开容器单测；状态在 `Session` / `AppSettingsNotifier` 里
 - ❌ **路由守卫改成读 provider** — 会引入「状态还没 emit → 先判成未登录」的空窗；守卫读 `AuthStorage.isLoggedIn`
-- ❌ **用 `@DriftAccessor` 写跨 package 的 DAO** — 生成的 mixin 是空的，编译不过（drift#3669）
+- ❌ **把 DAO 的查询逻辑塞进 `AppDatabase`** — 加 feature 会让 `core/` 无限膨胀，且查询再也搬不出去；查询放 feature 的 DAO 里（`@DriftAccessor`）
 - ❌ **Editing `*.g.dart` by hand** — regenerate with `dart run build_runner build`
 - ❌ **Changing a Drift schema without bumping `schemaVersion`** — existing installs will not migrate
 - ❌ **Storing secrets in `SharedPreferences`** — 令牌走 `flutter_secure_storage`

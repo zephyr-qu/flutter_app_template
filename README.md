@@ -18,7 +18,7 @@
 - **MD3 主题** — `flex_color_scheme`，亮/暗主题完整支持
 - **通用组件** — Loading / Error / Empty 三态组件（`AsyncView` 统一三态渲染入口）
 - **代码生成** — `freezed` / `json_serializable` / `retrofit_generator` / `riverpod_generator`
-- **架构边界检查** — `tool/check_boundaries.dart`（core 不得依赖上层、跨 feature 只共享 data 层、logic 不得手动建容器 / 不得 import material、`app_core` 不得依赖状态管理），跑在 pre-commit 与 CI
+- **架构边界检查** — `tool/check_boundaries.dart`（core 不得依赖上层、跨 feature 只共享 data 层、logic 不得手动建容器 / 不得 import material），跑在 pre-commit 与 CI
 - **代码形态约定** — `tool/check_conventions.dart`（build 里禁用 `ref.read` 取值、注释块 ≤10 行），同样跑在 pre-commit 与 CI
 - **覆盖率门禁** — `tool/check_coverage.dart`，只统计手写代码、按行数加权，默认阈值 80%，同样是 pre-commit 与 CI 的一道门
 - **数据库** — `Drift`（SQLite ORM，可选按需使用）
@@ -59,23 +59,28 @@ lib/
 │       ├── splash_page.dart                # 启动页
 │       └── not_found_page.dart             # 404
 │
-├── core/                                   # 只剩「状态耦合的适配层」（基础设施已抽到 packages/app_core）
+├── core/                                   # 基础设施 + 状态耦合的适配层
 │   ├── auth/
 │   │   └── session.dart                    # 登录态 provider（AuthStorage.userChanges 的镜像）
+│   ├── base/                               # Failure / Result / runCatching
 │   ├── config/
 │   │   ├── app_settings.dart               # 偏好快照 + Notifier（主题 / 调试日志 / 页大小）
+│   │   ├── network_config.dart             # NetworkConfig（环境变量值对象）
 │   │   └── user_preferences.dart           # 偏好的裸存储（读写 SharedPreferences）
 │   ├── data/
-│   │   ├── network/
-│   │   │   └── dio_client.dart             # Dio 的 provider 装配 + 应用专属 Mock 规则
-│   │   └── storage/
-│   │       └── auth_storage.dart           # 令牌/用户存储（实现 app_core 的 TokenStore）
+│   │   ├── database/                       # Drift 连接 + schema + 表
+│   │   ├── network/                        # Dio 工厂 / 认证拦截器 / TokenStore 契约 / 应用侧 Dio 装配
+│   │   └── storage/                        # AuthStorage（令牌 / 用户） + FileStorage
+│   ├── logging/                            # 日志封装 + 调试日志脱敏
+│   ├── models/                             # User / TokenSet
 │   ├── providers.dart                      # 基础设施 provider（prefs / 安全存储 / 数据库 / 文件）
-│   └── ui/                                 # 共享 UI（要读项目文案与主题，故留应用侧）
+│   ├── theme/                              # 色板 / ThemeData 组装 / 设计 token
+│   └── ui/                                 # 共享 UI
 │       ├── async_view.dart                 # AsyncValue → Widget（三态渲染入口）
+│       ├── empty_widget.dart               # 无业务文案的空态组件
+│       ├── error_text.dart                 # 错误 + 重试
 │       ├── failure_message.dart            # FailureCode → 用户文案
-│       ├── loading_indicator.dart          # LoadingIndicator / ScreenLoadingIndicator
-│       └── error_text.dart                 # 错误 + 重试
+│       └── loading_indicator.dart          # LoadingIndicator / ScreenLoadingIndicator
 │
 └── features/                               # 业务功能模块
     ├── auth/                               # 认证（示例模块）
@@ -87,22 +92,10 @@ lib/
     └── sample/                             # 金标准示例（retrofit / drift / Result 三种 data 形态）
 ```
 
-与状态管理无关的基础设施抽到了本地包，由 signals 栈与 Riverpod 栈共用
-（拆分依据见 `.trellis/tasks/09-22-extract-app-core/design.md`）：
-
-```
-packages/app_core/lib/
-├── base/                               # Failure / Result / runCatching
-├── config/                             # NetworkConfig（环境变量值对象）
-├── data/
-│   ├── database/                       # Drift 连接 + schema + 表
-│   ├── network/                        # Dio 工厂 / 认证拦截器 / TokenStore 契约
-│   └── storage/                        # FileStorage
-├── logging/                            # 日志封装 + 调试日志脱敏
-├── models/                             # User / TokenSet
-├── theme/                              # 色板 / ThemeData 组装 / 设计 token
-└── ui/                                 # 无业务文案的共享组件（EmptyWidget）
-```
+`master` 曾把与状态管理无关的基础设施抽成 `packages/app_core` 包（为 signals / Riverpod
+双栈共用）。本分支是脚手架、不需要长期维护双栈，已把它**拍平回 `lib/core/`**（理由见
+`BRANCH.md`）——所以本分支是**单包结构**，`dart analyze` / 覆盖率都只针对 `lib/`。
+`master` 仍是双包。
 
 模块内部每层职责：
 
@@ -145,10 +138,7 @@ flutter test
 改了注解（`@freezed` / `@JsonSerializable` / `@RoutePage` / `@riverpod`、Drift 表）、增删了代码文件，或升级了任一 codegen 依赖之后，**必须重新生成并把生成物一起提交**——CI 会跑一遍 `build_runner build` 再比对 `git diff`，漏提交直接红（`analyze` job 的 `Check generated code is up to date`）。
 
 ```bash
-# 根工程
 dart run build_runner build
-# 共享包（独立 package，根目录的 build_runner 不会碰它）
-(cd packages/app_core && dart run build_runner build)
 # 升级 codegen 包 / SDK 后全量重建
 dart run build_runner clean && dart run build_runner build
 ```
@@ -340,14 +330,9 @@ flutter test
 # 特定测试文件
 flutter test test/features/sample/logic/sample_list_notifier_test.dart
 
-# 共享包的测试（独立 package，必须进包目录跑）
-cd packages/app_core && flutter test
-
 # 覆盖率数据 + 门禁校验
 flutter test --coverage
-(cd packages/app_core && flutter test --coverage)
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
-  --src=lib --src=packages/app_core/lib
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib
 ```
 
 测试原则：
@@ -370,16 +355,15 @@ dart run tool/check_coverage.dart          # 默认 80%，只查 coverage/lcov.i
 dart run tool/check_coverage.dart --min=85
 ```
 
-**必须采集两份 lcov**：`app_core` 是独立 package，根工程跑 `--coverage` 时包内文件的命中不会被
-归集（根 lcov 里一条 `packages/` 记录都没有），只能在包目录里单独跑一次。两份**逐份独立校验、
-不合并**：路径都是相对各自包根的 `lib/...`，合并会搅在一起；包内的低覆盖也不该被 `lib/` 稀释。
+本分支是单包结构，一份 `coverage/lcov.info` 覆盖全部 `lib/`。
+（`master` 是双包，需要分别在根目录与 `packages/app_core` 各采集一份、逐份独立校验。）
 
 ## 🔍 架构边界检查
 
 边界规则由一个脚本执行（**不是** analyzer 插件——插件规则只在 IDE 生效，CLI/CI 跑不到）：
 
 ```bash
-dart run tool/check_boundaries.dart          # 默认扫 lib 与 packages/app_core/lib
+dart run tool/check_boundaries.dart          # 默认扫 lib
 ```
 
 已接入 pre-commit 与 CI 的 `analyze` job，`flutter test` 里也有一条针对真实仓库的回归测试。
@@ -390,13 +374,11 @@ dart run tool/check_boundaries.dart          # 默认扫 lib 与 packages/app_co
 | 跨 feature 只共享 data 层 | 不能引用其他 feature 的 `page/` / `logic/` |
 | logic 不得手动建容器 | `features/*/logic/` 里不能出现 `ProviderContainer(...)`，依赖从 `ref` 或构造器取 |
 | logic 不得依赖 Flutter UI | `features/*/logic/` 不能 import `package:flutter/material.dart` |
-| app_core 不得依赖状态管理 | `packages/app_core` 里不能出现 `signals_*` / `riverpod*` / `get_it` / `injectable` |
 
-**扫描根是两处**：`lib` 与 `packages/app_core/lib`。抽包之后只扫 `lib/` 的话，新包就成了边界真空。
-最后一条是共享包的**存在前提**——包里一旦出现 signals / Riverpod，另一个栈就用不了它。
+**扫描根是 `lib`。**
 
 组合根（`lib/app/`）可以引用任何 feature——FSD 的 app 层负责装配。
-中间两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`）。
+后两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`）。
 页面层的 material 不在管辖内（`lib/core/config/app_settings.dart` 为了 `ThemeMode` import material 是正当的）。
 
 > 上一代（master 的 signals 栈）有一条「页面必须给可选注入点」，对应 [ADR-0001](docs/adr/ADR-0001.md) 的缓解措施。Riverpod 栈的注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段，那条规则与它的 ADR 只对 master 成立。
