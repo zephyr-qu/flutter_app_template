@@ -323,7 +323,7 @@ dart run dependency_validator     # 退出码 1 = 有问题，0 = 干净
 
 | 时机 | 命令 |
 |------|------|
-| 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@riverpod` | `dart run build_runner build --delete-conflicting-outputs` |
+| 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@riverpod` | `dart run build_runner build` |
 | 增删代码文件（含删掉整个 feature） | 同上。删文件后**必须**重跑，否则 provider 注册与路由仍指向已删的类 |
 | 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（本分支已无 l10n，见 [frontend/localization.md](frontend/localization.md)） |
 | 升级 / 降级任一 codegen 包（`freezed`、`json_serializable`、`drift_dev`、`retrofit_generator`、`auto_route_generator`、`riverpod_generator`、`build_runner`） | `dart run build_runner clean` 后全量重建 |
@@ -331,15 +331,19 @@ dart run dependency_validator     # 退出码 1 = 有问题，0 = 干净
 | 切分支、rebase / merge 后生成物冲突 | 解决源文件冲突后全量重建，生成物不手工编辑 |
 | CI 的 `Check generated code is up to date` 失败 | 按上表重跑，把生成物一起提交 |
 
-`--delete-conflicting-outputs` 不是可选装饰：builder 版本变化或删过文件时旧输出会与新预期冲突，不加它构建**直接失败**（报 conflicting outputs）。
+**不要加 `--delete-conflicting-outputs`**：它在 build_runner 2.16.0 起已经是**被移除的选项**
+（源码里的注释是 `// Removed options, kept to not break old command lines.`，
+`lib/src/build_runner_command_line.dart`，2.16.1 实测）。传进去不报错、也**不起任何作用**，
+只会在输出里多一条 warning。它当年要解决的事——覆盖冲突输出、修掉被手改过的旧产物——
+**从那版起是默认行为**；想退回旧行为要用 `--keep-modified-outputs`（见本文「禁止模式」）。
 
 ### 门禁：生成物是否与源一致
 
 CI 的 `analyze` job 有一步（见 `.github/workflows/ci.yml`）：
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
-(cd packages/app_core && dart run build_runner build --delete-conflicting-outputs)
+dart run build_runner build
+(cd packages/app_core && dart run build_runner build)
 git add -N -- lib packages   # 让「新增」的生成物也进入 diff
 git diff --exit-code -- lib packages
 ```

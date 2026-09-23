@@ -46,7 +46,7 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 ## 之后
 
-1. `dart run build_runner build --delete-conflicting-outputs` —— 改了注解 / 增删文件后
+1. `dart run build_runner build` —— 改了注解 / 增删文件后
    必须重跑（生成物提交入库，CI 会比对漂移）；纯改名其实已经由脚本覆盖了生成物
 2. `flutter clean && flutter pub get`
 3. `flutter analyze` + 门禁脚本（清单以 `.githooks/pre-commit` 为准）

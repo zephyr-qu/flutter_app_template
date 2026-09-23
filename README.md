@@ -126,7 +126,7 @@ packages/app_core/lib/
 flutter pub get
 
 # 代码生成（生成物已提交进仓库；改了注解 / 模型后再跑一次即可）
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 
 # 运行
 flutter run
@@ -146,11 +146,11 @@ flutter test
 
 ```bash
 # 根工程
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 # 共享包（独立 package，根目录的 build_runner 不会碰它）
-(cd packages/app_core && dart run build_runner build --delete-conflicting-outputs)
+(cd packages/app_core && dart run build_runner build)
 # 升级 codegen 包 / SDK 后全量重建
-dart run build_runner clean && dart run build_runner build -d
+dart run build_runner clean && dart run build_runner build
 ```
 
 生成物冲突时不要手工 merge，解决源文件冲突后重跑 codegen 覆盖。完整策略、重新生成时机表、以及 build_runner 升级与「目录级 cache」的评估结论见 [.trellis/spec/cross-cutting.md](.trellis/spec/cross-cutting.md)「代码生成与生成物」。

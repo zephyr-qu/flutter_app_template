@@ -113,8 +113,8 @@ flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS schem
 - [ ] 重新生成产物（模型、provider、路由、Drift schema）：
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
-(cd packages/app_core && dart run build_runner build --delete-conflicting-outputs)
+dart run build_runner build
+(cd packages/app_core && dart run build_runner build)
 ```
 
 - [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart`，含

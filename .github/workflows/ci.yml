@@ -25,15 +25,15 @@ jobs:
       # 策略与重新生成时机见 .trellis/spec/cross-cutting.md「代码生成与生成物」。
       - name: Check generated code is up to date
         run: |
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
           # app_core 是独立 package，生成物（user.freezed.dart / app_database.g.dart 等）
           # 只能在包目录内生成 —— 根目录跑的 build_runner 不会碰它。
-          (cd packages/app_core && flutter pub get && dart run build_runner build --delete-conflicting-outputs)
+          (cd packages/app_core && flutter pub get && dart run build_runner build)
           # -N（intent to add）让「新增」的生成物也进入 diff —— 只用 git diff 会漏掉
           # 「新增一个 @freezed 模型 → 多出一个 .freezed.dart」这种最常见的漂移。
           git add -N -- lib packages
           git diff --exit-code -- lib packages || {
-            echo "::error::生成物与源不一致（见上方 diff）。本地执行 dart run build_runner build --delete-conflicting-outputs（app_core 需在包目录内跑），并把生成物一起提交。";
+            echo "::error::生成物与源不一致（见上方 diff）。本地执行 dart run build_runner build（app_core 需在包目录内跑），并把生成物一起提交。";
             exit 1;
           }
 
