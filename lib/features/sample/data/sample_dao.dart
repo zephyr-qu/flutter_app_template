@@ -1,37 +1,38 @@
-import 'package:app_core/data/database/app_database.dart';
+import 'package:drift/drift.dart';
+import 'package:my_app/core/data/database/app_database.dart';
+
+part 'sample_dao.g.dart';
 
 /// 示例条目的本地缓存读写（Drift 形态）。
 ///
-/// 用的是 `app_core` 预置的通用示例表（`id` + `title` + `body`）。表必须与
-/// `@DriftDatabase` 同 library，而共享包不认识业务，所以脚手架只留了这一张。
-///
-/// **不写 `@DriftAccessor(tables: [...])`**：`drift_dev` 解析不到另一个 package
-/// 里的表（drift#3669），生成的 mixin 会是空的。所以这里直接持有 `AppDatabase`，
-/// 用它的生成 getter（`dbArticles`）取表；接真实业务时照此写法加自己的表。
-class SampleDao {
-  new(this._db);
-  final AppDatabase _db;
+/// 表 `DbArticles` 与数据库 `AppDatabase` 同在 `lib/core/data/database/`，
+/// 所以用 idiomatic 的 `@DriftAccessor` 声明本 DAO 要访问的表。
+/// 接真实业务时照此写法：新表加进 `AppDatabase` 的 `@DriftDatabase`，DAO 用
+/// `@DriftAccessor(tables: [...])` 声明。
+@DriftAccessor(tables: [DbArticles])
+class SampleDao extends DatabaseAccessor<AppDatabase> with _$SampleDaoMixin {
+  new(super.attachedDatabase);
 
   /// 缓存整份列表（先清后写：列表是一份快照）
   ///
   /// **不要**用它写单条 —— 会把其余缓存一并清掉，单条请用 [cacheItem]。
   Future<void> cacheItems(List<DbArticle> items) async {
-    await _db.batch((batch) {
+    await batch((batch) {
       batch
-        ..deleteAll(_db.dbArticles)
-        ..insertAll(_db.dbArticles, items);
+        ..deleteAll(dbArticles)
+        ..insertAll(dbArticles, items);
     });
   }
 
   /// 写入 / 更新单条，不影响其它缓存行
   Future<void> cacheItem(DbArticle item) =>
-      _db.into(_db.dbArticles).insertOnConflictUpdate(item);
+      into(dbArticles).insertOnConflictUpdate(item);
 
-  Future<List<DbArticle>> getCachedItems() => _db.select(_db.dbArticles).get();
+  Future<List<DbArticle>> getCachedItems() => select(dbArticles).get();
 
   Future<DbArticle?> getCachedItem(int id) async {
-    final row = await (_db.select(
-      _db.dbArticles,
+    final row = await (select(
+      dbArticles,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     return row;
   }
@@ -45,6 +46,6 @@ class SampleDao {
   }
 
   Future<void> clearAll() async {
-    await _db.delete(_db.dbArticles).go();
+    await delete(dbArticles).go();
   }
 }

@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/providers.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
 
 /// 启动页——带渐入动画的品牌页。
 ///

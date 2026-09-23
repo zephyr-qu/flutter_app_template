@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:app_core/base/failure.dart';
-import 'package:app_core/base/result.dart';
-import 'package:app_core/models/user.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:my_app/core/base/failure.dart';
+import 'package:my_app/core/base/result.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_providers.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/auth/logic/login_notifier.dart';

@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:app_core/models/user.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/core/providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -10,7 +10,7 @@ part 'session.g.dart';
 /// 登录态（[User?]）的**可订阅镜像**，真源是 [AuthStorage]。
 ///
 /// 为什么需要这一层，而不是让页面直接读 `authStorage.currentUser`：
-/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `app_core`，
+/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `core/data/network/`，
 /// 不认识 Riverpod，也不该认识。所以「凭证被清了」这件事只能由存储对象广播出来
 /// （[AuthStorage.userChanges]），再由本类转成 provider 状态，页面与守卫才有得订阅。
 ///

@@ -233,7 +233,7 @@ void main() {
       final violations = findViolations(
         path: 'lib/features/sample/logic/sample_list_notifier.dart',
         content:
-            "import 'package:app_core/base/result.dart';\n"
+            "import 'package:my_app/core/base/result.dart';\n"
             "import 'package:flutter/material.dart';",
       );
 

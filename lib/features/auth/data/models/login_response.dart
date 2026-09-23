@@ -1,6 +1,6 @@
-import 'package:app_core/models/token_set.dart';
-import 'package:app_core/models/user.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:my_app/core/models/token_set.dart';
+import 'package:my_app/core/models/user.dart';
 
 part 'login_response.freezed.dart';
 part 'login_response.g.dart';

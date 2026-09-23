@@ -10,7 +10,7 @@ part of 'dio_client.dart';
 // ignore_for_file: type=lint, type=warning
 /// Dio 与 NetworkConfig 的装配（master 分支上这里是 `@module` + `@lazySingleton`）。
 ///
-/// 拦截器栈本身在 `app_core` 的 [createDio] 里（与状态管理无关，两个栈共用）；
+/// 拦截器栈本身在 `dio_factory.dart` 的 [createDio] 里（与状态管理无关）；
 /// 本层只做三件本应用专属的事：
 /// 1. 从 `dotenv` 取配置（环境变量在 `bootstrap()` 之后才加载）
 /// 2. 读 `UserPreferences` 决定要不要挂调试日志
@@ -25,7 +25,7 @@ final networkConfigProvider = NetworkConfigProvider._();
 
 /// Dio 与 NetworkConfig 的装配（master 分支上这里是 `@module` + `@lazySingleton`）。
 ///
-/// 拦截器栈本身在 `app_core` 的 [createDio] 里（与状态管理无关，两个栈共用）；
+/// 拦截器栈本身在 `dio_factory.dart` 的 [createDio] 里（与状态管理无关）；
 /// 本层只做三件本应用专属的事：
 /// 1. 从 `dotenv` 取配置（环境变量在 `bootstrap()` 之后才加载）
 /// 2. 读 `UserPreferences` 决定要不要挂调试日志
@@ -40,7 +40,7 @@ final class NetworkConfigProvider
     with $Provider<NetworkConfig> {
   /// Dio 与 NetworkConfig 的装配（master 分支上这里是 `@module` + `@lazySingleton`）。
   ///
-  /// 拦截器栈本身在 `app_core` 的 [createDio] 里（与状态管理无关，两个栈共用）；
+  /// 拦截器栈本身在 `dio_factory.dart` 的 [createDio] 里（与状态管理无关）；
   /// 本层只做三件本应用专属的事：
   /// 1. 从 `dotenv` 取配置（环境变量在 `bootstrap()` 之后才加载）
   /// 2. 读 `UserPreferences` 决定要不要挂调试日志

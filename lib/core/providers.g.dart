@@ -210,20 +210,20 @@ final class DatabaseProvider
 
 String _$databaseHash() => r'd6e05638b723b0524e474cecb5226cbaac2e507a';
 
-/// [FileStorage] 来自 `app_core`，包内不带任何装配注解（包不依赖状态管理），
-/// 所以在这里显式建成 provider。
+/// [FileStorage]（`core/data/storage/`）是纯 Dart 类，不带任何装配注解（本项目用
+/// provider 装配，没有 injectable），所以在这里显式建成 provider。
 
 @ProviderFor(fileStorage)
 final fileStorageProvider = FileStorageProvider._();
 
-/// [FileStorage] 来自 `app_core`，包内不带任何装配注解（包不依赖状态管理），
-/// 所以在这里显式建成 provider。
+/// [FileStorage]（`core/data/storage/`）是纯 Dart 类，不带任何装配注解（本项目用
+/// provider 装配，没有 injectable），所以在这里显式建成 provider。
 
 final class FileStorageProvider
     extends $FunctionalProvider<FileStorage, FileStorage, FileStorage>
     with $Provider<FileStorage> {
-  /// [FileStorage] 来自 `app_core`，包内不带任何装配注解（包不依赖状态管理），
-  /// 所以在这里显式建成 provider。
+  /// [FileStorage]（`core/data/storage/`）是纯 Dart 类，不带任何装配注解（本项目用
+  /// provider 装配，没有 injectable），所以在这里显式建成 provider。
   FileStorageProvider._()
     : super(
         from: null,
@@ -315,7 +315,7 @@ final class UserPreferencesProvider
 
 String _$userPreferencesHash() => r'f6398449cab22aa2003fdf229ab484af5751e799';
 
-/// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+/// 认证存储：实现 `core/data/network/token_store.dart` 的 `TokenStore`，令牌与用户都从这里进出。
 ///
 /// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
 /// 可订阅的镜像在 `core/auth/session.dart`。
@@ -323,7 +323,7 @@ String _$userPreferencesHash() => r'f6398449cab22aa2003fdf229ab484af5751e799';
 @ProviderFor(authStorage)
 final authStorageProvider = AuthStorageProvider._();
 
-/// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+/// 认证存储：实现 `core/data/network/token_store.dart` 的 `TokenStore`，令牌与用户都从这里进出。
 ///
 /// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
 /// 可订阅的镜像在 `core/auth/session.dart`。
@@ -331,7 +331,7 @@ final authStorageProvider = AuthStorageProvider._();
 final class AuthStorageProvider
     extends $FunctionalProvider<AuthStorage, AuthStorage, AuthStorage>
     with $Provider<AuthStorage> {
-  /// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+  /// 认证存储：实现 `core/data/network/token_store.dart` 的 `TokenStore`，令牌与用户都从这里进出。
   ///
   /// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
   /// 可订阅的镜像在 `core/auth/session.dart`。

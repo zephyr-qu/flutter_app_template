@@ -1,8 +1,8 @@
-import 'package:app_core/data/database/app_database.dart';
-import 'package:app_core/data/storage/file_storage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:my_app/core/config/user_preferences.dart';
+import 'package:my_app/core/data/database/app_database.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/data/storage/file_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,8 +40,8 @@ FlutterSecureStorage secureStorage(Ref ref) => const FlutterSecureStorage();
 @Riverpod(keepAlive: true)
 AppDatabase database(Ref ref) => AppDatabase();
 
-/// [FileStorage] 来自 `app_core`，包内不带任何装配注解（包不依赖状态管理），
-/// 所以在这里显式建成 provider。
+/// [FileStorage]（`core/data/storage/`）是纯 Dart 类，不带任何装配注解（本项目用
+/// provider 装配，没有 injectable），所以在这里显式建成 provider。
 @Riverpod(keepAlive: true)
 FileStorage fileStorage(Ref ref) => FileStorage();
 
@@ -53,7 +53,7 @@ FileStorage fileStorage(Ref ref) => FileStorage();
 UserPreferences userPreferences(Ref ref) =>
     UserPreferences(ref.watch(prefsProvider));
 
-/// 认证存储：实现 `app_core` 的 `TokenStore`，令牌与用户都从这里进出。
+/// 认证存储：实现 `core/data/network/token_store.dart` 的 `TokenStore`，令牌与用户都从这里进出。
 ///
 /// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
 /// 可订阅的镜像在 `core/auth/session.dart`。

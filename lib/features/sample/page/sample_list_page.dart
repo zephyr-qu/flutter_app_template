@@ -1,9 +1,9 @@
-import 'package:app_core/theme/app_theme_extension.dart';
-import 'package:app_core/ui/empty_widget.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
 import 'package:my_app/core/ui/async_view.dart';
+import 'package:my_app/core/ui/empty_widget.dart';
 import 'package:my_app/core/ui/error_text.dart';
 import 'package:my_app/core/ui/loading_indicator.dart';
 import 'package:my_app/features/sample/data/models/sample_item.dart';

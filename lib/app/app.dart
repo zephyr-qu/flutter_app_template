@@ -1,11 +1,11 @@
-import 'package:app_core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/providers.dart';
 import 'package:my_app/core/config/app_settings.dart';
+import 'package:my_app/core/theme/app_theme.dart';
 
 /// 应用根组件 —— **只做接线**：
-/// 路由与重评估触发器来自 `app/providers.dart`，主题来自 `app_core`，
+/// 路由与重评估触发器来自 `app/providers.dart`，主题来自 `core/theme/app_theme.dart`，
 /// 主题模式来自 `appSettingsProvider`（改设置立刻生效）。
 ///
 /// 外层必须已经包好 `ProviderScope`（含 `prefsProvider` 的 override）——

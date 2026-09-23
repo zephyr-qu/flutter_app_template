@@ -12,10 +12,6 @@ environment:
 # 生产依赖（编译和运行期都需要）
 # ──────────────────────────────────────────────
 dependencies:
-  # ── 共享基础设施（与状态管理无关，signals / Riverpod 双栈共用） ──
-  app_core:
-    path: packages/app_core
-
   flutter:
     sdk: flutter
 
@@ -29,15 +25,15 @@ dependencies:
   # get_it / injectable 与它们的 generator 因此一起移除。
 
   # ── Network & API ──
-  # dio_smart_retry / pretty_dio_logger 只被 app_core 的 Dio 工厂使用，声明在包里
   dio: ^5.10.0
+  dio_smart_retry: ^7.0.1 # core/data/network/dio_factory.dart 的重试策略
   msw_dio_interceptor: ^1.0.5 # Mock API（应用专属规则在 core/data/network/dio_client.dart）
+  pretty_dio_logger: ^1.4.0 # core/data/network/dio_factory.dart 的调试日志
   retrofit: ^4.9.2 # 运行时注解，API 客户端生成
 
   # ── Data & Persistence ──
-  # path_provider 只被 app_core 的 database / file_storage 使用，声明在包里。
-  # drift 的数据库与表都在 app_core（那里才是它的运行时使用者）；根工程只在
-  # **测试**里用 `package:drift/native.dart` 建内存库，所以它声明在 dev_dependencies。
+  drift: ^2.34.1 # 数据库与表在 lib/core/data/database/，运行期需要
+  path_provider: ^2.1.0 # core/data/database 与 core/data/storage 取应用目录
   shared_preferences: ^2.5.3
 
   # ── Serialization（运行时依赖） ──
@@ -47,10 +43,13 @@ dependencies:
   # ── Routing（运行时依赖） ──
   auto_route: ^11.1.0 # @RoutePage 注解
 
+  # ── Theme ──
+  flex_color_scheme: ^8.4.0 # core/theme/app_theme.dart（本分支仅此一处使用）
+
   # ── Utils ──
-  # logger 只被 app_core 的 logging 使用，声明在包里
   flutter_dotenv: ^6.0.0
   leak_tracker: ^11.0.2 # 内存泄漏检测（debug 模式自动启用）
+  logger: ^2.6.2 # core/logging/logging.dart
   flutter_secure_storage: ^11.2.0
 
 # ──────────────────────────────────────────────
@@ -78,9 +77,8 @@ dev_dependencies:
   # ── Code Gen：API ──
   retrofit_generator: ^10.2.1 # 生成 Retrofit 客户端实现
 
-  # ── Code Gen / 测试：Drift ──
-  drift: ^2.34.1 # 原生 SQLite 由 sqlite3 3.x 的 build hook 提供
-  drift_dev: ^2.34.2+1 # 生成 Drift DAO 代码
+  # ── Code Gen：Drift ──
+  drift_dev: ^2.34.2+1 # 生成 Drift 数据库 / DAO 代码（drift 运行期依赖见 dependencies）
 
   # ── Code Gen：路由 ──
   auto_route_generator: ^10.6.0

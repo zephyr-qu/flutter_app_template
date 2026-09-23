@@ -1,9 +1,9 @@
-import 'package:app_core/base/result.dart';
-import 'package:app_core/models/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:my_app/core/base/result.dart';
 import 'package:my_app/core/config/app_settings.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_providers.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/profile/page/profile_page.dart';

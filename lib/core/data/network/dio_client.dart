@@ -1,8 +1,8 @@
-import 'package:app_core/config/network_config.dart';
-import 'package:app_core/data/network/dio_factory.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:msw_dio_interceptor/msw_dio_interceptor.dart';
+import 'package:my_app/core/config/network_config.dart';
+import 'package:my_app/core/data/network/dio_factory.dart';
 import 'package:my_app/core/providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -10,7 +10,7 @@ part 'dio_client.g.dart';
 
 /// Dio 与 NetworkConfig 的装配（master 分支上这里是 `@module` + `@lazySingleton`）。
 ///
-/// 拦截器栈本身在 `app_core` 的 [createDio] 里（与状态管理无关，两个栈共用）；
+/// 拦截器栈本身在 `dio_factory.dart` 的 [createDio] 里（与状态管理无关）；
 /// 本层只做三件本应用专属的事：
 /// 1. 从 `dotenv` 取配置（环境变量在 `bootstrap()` 之后才加载）
 /// 2. 读 `UserPreferences` 决定要不要挂调试日志
@@ -40,7 +40,7 @@ Dio dio(Ref ref) => createDio(
 
 /// 注册内置 Mock 规则。
 ///
-/// 规则留在应用侧而不是 `app_core`：它们是本应用的具体端点，包不该知道
+/// 规则留在应用侧而不是 `dio_factory.dart` 里：它们是本应用的具体端点，工厂不该知道
 /// `/sample-items` / `/login` 这类业务路径（见 design 6.5）。
 ///
 /// 必须用 `MockRule.regex` 且锚定 URL 结尾 —— `MockRule(path: ...)` 永远打不中，

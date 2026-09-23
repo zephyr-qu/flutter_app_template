@@ -1,18 +1,18 @@
-import 'package:app_core/config/network_config.dart';
-import 'package:app_core/data/network/dio_factory.dart';
-import 'package:app_core/models/token_set.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:my_app/core/config/network_config.dart';
+import 'package:my_app/core/data/network/dio_factory.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/models/token_set.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/scripted_http_adapter.dart';
 
-/// 跑的是 `app_core` 的 [createDio]：与线上同一条拦截器栈
+/// 跑的是 `dio_factory.dart` 的 [createDio]：与线上同一条拦截器栈
 /// （Auth → 解码 → Retry → Mock），只是把适配器换成了脚本化的假实现。
 ///
-/// 与 `packages/app_core/test/data/network/token_refresh_test.dart` 的分工见
+/// 与 `test/core/data/network/token_refresh_test.dart` 的分工见
 /// backend/network-guidelines.md「拦截器顺序」。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

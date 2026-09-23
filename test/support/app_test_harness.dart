@@ -1,4 +1,3 @@
-import 'package:app_core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -7,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:my_app/core/providers.dart';
+import 'package:my_app/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 测试用的装配上下文。

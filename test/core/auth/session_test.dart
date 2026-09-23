@@ -1,6 +1,6 @@
-import 'package:app_core/models/user.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/core/auth/session.dart';
+import 'package:my_app/core/models/user.dart';
 
 import '../../support/app_test_harness.dart';
 

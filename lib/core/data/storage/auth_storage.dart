@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:app_core/data/network/token_store.dart';
-import 'package:app_core/logging/logging.dart';
-import 'package:app_core/models/token_set.dart';
-import 'package:app_core/models/user.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:my_app/core/data/network/token_store.dart';
+import 'package:my_app/core/logging/logging.dart';
+import 'package:my_app/core/models/token_set.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 认证存储：用户信息走 [SharedPreferences]，令牌走 [FlutterSecureStorage]。
@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 令牌整条 [TokenSet]（含绝对过期时刻）序列化成 JSON 存在安全存储的**单个键**下，
 /// 内存里缓存一份，所以 [getAccessToken] / [getRefreshToken] 是同步的。
 ///
-/// 实现 [TokenStore] 供 `app_core` 的网络层使用；**本类不含任何状态管理依赖** ——
+/// 实现 [TokenStore] 供 `core/data/network/` 的网络层使用；**本类不含任何状态管理依赖** ——
 /// 登录态的可订阅镜像在 `core/auth/session.dart`，它订阅 [userChanges]。
 /// 存储划分、读写失败策略与这层分工见 backend/database-guidelines.md。
 class AuthStorage implements TokenStore {

@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:app_core/models/user.dart';
 import 'package:flutter/foundation.dart';
+import 'package:my_app/core/models/user.dart';
 
 /// 把「登录态变化」桥接成 [Listenable]，交给 auto_route 的 `reevaluateListenable`。
 ///

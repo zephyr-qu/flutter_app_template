@@ -11,7 +11,7 @@ part of 'session.dart';
 /// 登录态（[User?]）的**可订阅镜像**，真源是 [AuthStorage]。
 ///
 /// 为什么需要这一层，而不是让页面直接读 `authStorage.currentUser`：
-/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `app_core`，
+/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `core/data/network/`，
 /// 不认识 Riverpod，也不该认识。所以「凭证被清了」这件事只能由存储对象广播出来
 /// （[AuthStorage.userChanges]），再由本类转成 provider 状态，页面与守卫才有得订阅。
 ///
@@ -24,7 +24,7 @@ final sessionProvider = SessionProvider._();
 /// 登录态（[User?]）的**可订阅镜像**，真源是 [AuthStorage]。
 ///
 /// 为什么需要这一层，而不是让页面直接读 `authStorage.currentUser`：
-/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `app_core`，
+/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `core/data/network/`，
 /// 不认识 Riverpod，也不该认识。所以「凭证被清了」这件事只能由存储对象广播出来
 /// （[AuthStorage.userChanges]），再由本类转成 provider 状态，页面与守卫才有得订阅。
 ///
@@ -34,7 +34,7 @@ final class SessionProvider extends $NotifierProvider<Session, User?> {
   /// 登录态（[User?]）的**可订阅镜像**，真源是 [AuthStorage]。
   ///
   /// 为什么需要这一层，而不是让页面直接读 `authStorage.currentUser`：
-  /// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `app_core`，
+  /// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `core/data/network/`，
   /// 不认识 Riverpod，也不该认识。所以「凭证被清了」这件事只能由存储对象广播出来
   /// （[AuthStorage.userChanges]），再由本类转成 provider 状态，页面与守卫才有得订阅。
   ///
@@ -72,7 +72,7 @@ String _$sessionHash() => r'3d57bf5991394a97d4404d2ee65ac68e7ee9ca7e';
 /// 登录态（[User?]）的**可订阅镜像**，真源是 [AuthStorage]。
 ///
 /// 为什么需要这一层，而不是让页面直接读 `authStorage.currentUser`：
-/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `app_core`，
+/// 401 之后 `AuthInterceptor` 会调 `TokenStore.clearAuth()` —— 它属于 `core/data/network/`，
 /// 不认识 Riverpod，也不该认识。所以「凭证被清了」这件事只能由存储对象广播出来
 /// （[AuthStorage.userChanges]），再由本类转成 provider 状态，页面与守卫才有得订阅。
 ///
