@@ -150,7 +150,7 @@ void main() {
       expect(storage.getAccessToken(), isNull);
       expect(storage.getRefreshToken(), isNull);
       expect(storage.isAccessTokenExpiring(), isFalse);
-      expect(storage.currentUser.value, isNull);
+      expect(storage.currentUser, isNull);
       expect(storage.isLoggedIn, isFalse);
       expect(prefs.getString('auth.user'), isNull);
       expect(await secure.read(key: 'auth.tokens'), isNull);
@@ -239,32 +239,53 @@ void main() {
   });
 
   group('AuthStorage — 用户信息仍走 SharedPreferences', () {
-    test('saveUser 写入 prefs 并更新信号', () async {
+    test('saveUser 写入 prefs 并更新内存真源', () async {
       final storage = createStorage();
       await storage.ready;
 
       await storage.saveUser(const User(id: 7, name: '张三'));
 
-      expect(storage.currentUser.value?.name, '张三');
+      expect(storage.currentUser?.name, '张三');
       expect(storage.currentUserId, 7);
       expect(prefs.getString('auth.user'), isNotNull);
 
       final restarted = createStorage();
-      expect(restarted.currentUser.value?.name, '张三');
+      expect(restarted.currentUser?.name, '张三');
+    });
+
+    test('本地用户数据损坏时清理，不抛异常', () async {
+      SharedPreferences.setMockInitialValues({'auth.user': 'not-json'});
+
+      final storage = createStorage();
+      await storage.ready;
+
+      expect(storage.currentUser, isNull);
+      expect(prefs.getString('auth.user'), isNull);
     });
   });
 
-  group('AuthStorage — 登录态派生信号', () {
-    test('随用户信号翻转，登出后回到 false', () async {
+  group('AuthStorage — userChanges 流', () {
+    test('订阅时立刻收到当前值，之后随登录态推送', () async {
       final storage = createStorage();
       await storage.ready;
-      expect(storage.isLoggedInSignal.value, isFalse);
+
+      final seen = <User?>[];
+      final subscription = storage.userChanges.listen(seen.add);
+      addTearDown(subscription.cancel);
+
+      // 对齐 signals 的「读即有值」：消费者不必先读 currentUser 再订阅
+      await pumpEventQueue();
+      expect(seen, [null]);
 
       await storage.saveUser(const User(id: 7, name: '张三'));
-      expect(storage.isLoggedInSignal.value, isTrue);
+      await pumpEventQueue();
+      expect(seen.last?.name, '张三');
+      expect(storage.isLoggedIn, isTrue);
 
       await storage.clearAuth();
-      expect(storage.isLoggedInSignal.value, isFalse);
+      await pumpEventQueue();
+      expect(seen.last, isNull);
+      expect(storage.isLoggedIn, isFalse);
     });
   });
 }

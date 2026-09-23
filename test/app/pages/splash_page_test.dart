@@ -1,30 +1,21 @@
-import 'package:app_core/base/result.dart';
 import 'package:app_core/models/token_set.dart';
 import 'package:app_core/models/user.dart';
 import 'package:app_core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:my_app/app/pages/splash_page.dart';
-import 'package:my_app/app/routing/auth_reevaluate.dart';
-import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/config/user_preferences.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/features/article/data/article_repository.dart';
-import 'package:my_app/features/article/data/models/article.dart';
-import 'package:my_app/features/article/logic/article_view_model.dart';
+import 'package:my_app/app/providers.dart';
+import 'package:my_app/features/auth/data/auth_providers.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:my_app/features/auth/logic/auth_view_model.dart';
 import 'package:my_app/features/auth/page/login_page.dart';
 import 'package:my_app/features/home/page/home_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/app_test_harness.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository;
-
-class MockArticleRepository extends Mock implements ArticleRepository;
 
 /// 启动页：入场动画本身，以及 2.2s 后按登录态选择落点这条分支。
 ///
@@ -40,9 +31,6 @@ class MockArticleRepository extends Mock implements ArticleRepository;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late AppRouter router;
-  AuthReevaluateListenable? reevaluate;
-
   setUp(() {
     // 本测试构建真实的 AppRouter：RouterDelegate 没有 dispose()，auto_route
     // 内部的 delegate / 守卫观察者无法在测试里释放。只放宽「未释放」，
@@ -53,50 +41,37 @@ void main() {
     );
   });
 
-  tearDown(() async {
-    reevaluate?.dispose();
-    await GetIt.I.reset();
-  });
-
   /// 装配容器并以 [loggedIn] 的登录态启动 splash 页面。
   Future<void> pumpSplash(WidgetTester tester, {required bool loggedIn}) async {
-    SharedPreferences.setMockInitialValues({});
-    FlutterSecureStorage.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-
-    final storage = AuthStorage(prefs, const FlutterSecureStorage());
-    await storage.ready;
-    if (loggedIn) {
-      await storage.saveTokens(const TokenSet(accessToken: 'token'));
-      await storage.saveUser(const User(id: 1, name: '张三'));
-    }
-
-    final authRepo = MockAuthRepository();
-    when(authRepo.logout).thenAnswer((_) async => const Result.success(null));
-    final articleRepo = MockArticleRepository();
-    when(articleRepo.getArticles)
-        .thenAnswer((_) async => const Result.success(<Article>[]));
-
-    await GetIt.I.reset();
-    GetIt.I.registerSingleton<AuthStorage>(storage);
-    GetIt.I.registerSingleton<UserPreferences>(UserPreferences(prefs));
-    GetIt.I.registerFactory<AuthViewModel>(() => AuthViewModel(authRepo));
-    GetIt.I.registerFactory<ArticleViewModel>(
-      () => ArticleViewModel(articleRepo),
+    final app = await setUpTestApp(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(MockAuthRepository()),
+      ],
     );
 
-    reevaluate = AuthReevaluateListenable(storage.isLoggedInSignal);
+    if (loggedIn) {
+      await app.storage.saveTokens(const TokenSet(accessToken: 'token'));
+      await app.storage.saveUser(const User(id: 1, name: '张三'));
+    }
+
+    final container = app.container;
     // 把初始 location 指到 `/splash`。auto_route 的 provider 是 lazy 且只建
     // 一次（`??=`），所以必须在 config() 之前实例化它。
-    router = AppRouter(storage)
+    final router = container.read(routerProvider)
       ..routeInfoProvider(
         initialRouteInformation: RouteInformation(uri: Uri.parse('/splash')),
       );
+    final routerConfig = router.config(
+      reevaluateListenable: container.read(authReevaluateProvider),
+    );
 
     await tester.pumpWidget(
-      MaterialApp.router(
-        theme: buildLightTheme(),
-        routerConfig: router.config(reevaluateListenable: reevaluate),
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: buildLightTheme(),
+          routerConfig: routerConfig,
+        ),
       ),
     );
     // 只 pump 一帧：再推进时钟就跨过 2.2s，页面已经跳走了

@@ -6,28 +6,26 @@ import 'package:app_core/models/user.dart';
 import 'package:app_core/theme/app_theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:my_app/app/routing/auth_reevaluate.dart';
+import 'package:my_app/app/providers.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/config/user_preferences.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/features/article/data/article_repository.dart';
-import 'package:my_app/features/article/data/models/article.dart';
-import 'package:my_app/features/article/logic/article_view_model.dart';
-import 'package:my_app/features/article/page/article_list_page.dart';
+import 'package:my_app/features/auth/data/auth_providers.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:my_app/features/auth/logic/auth_view_model.dart';
 import 'package:my_app/features/home/page/home_page.dart';
 import 'package:my_app/features/profile/page/profile_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_app/features/sample/data/models/sample_item.dart';
+import 'package:my_app/features/sample/data/sample_providers.dart';
+import 'package:my_app/features/sample/data/sample_repository.dart';
+import 'package:my_app/features/sample/page/sample_list_page.dart';
+
+import '../support/app_test_harness.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository;
 
-class MockArticleRepository extends Mock implements ArticleRepository;
+class MockSampleRepository extends Mock implements SampleRepository;
 
 /// 主框架（底部导航 / 侧边导航）与路由栈的联动。
 ///
@@ -36,10 +34,7 @@ class MockArticleRepository extends Mock implements ArticleRepository;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late AuthStorage storage;
-  late AppRouter router;
-  late AuthReevaluateListenable reevaluate;
-  late RouterConfig<UrlState> routerConfig;
+  late TestAppContext app;
 
   setUp(() {
     // 真实 MyApp/AppRouter 内部的 delegate 由此处无法释放，见 auth_redirect_test
@@ -49,44 +44,37 @@ void main() {
     );
   });
 
-  tearDown(() async {
-    reevaluate.dispose();
-    await GetIt.I.reset();
-  });
-
   /// 以「已登录」状态启动，落到主框架
   Future<void> pumpShell(WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({});
-    FlutterSecureStorage.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    final sampleRepo = MockSampleRepository();
+    when(sampleRepo.getItems)
+        .thenAnswer((_) async => const Result.success(<SampleItem>[]));
 
-    storage = AuthStorage(prefs, const FlutterSecureStorage());
-    await storage.ready;
-    await storage.saveTokens(
+    app = await setUpTestApp(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(MockAuthRepository()),
+        sampleRepositoryProvider.overrideWithValue(sampleRepo),
+      ],
+    );
+
+    await app.storage.saveTokens(
       const TokenSet(accessToken: 'token', refreshToken: 'refresh'),
     );
-    await storage.saveUser(const User(id: 1, name: '张三'));
+    await app.storage.saveUser(const User(id: 1, name: '张三'));
 
-    final authRepo = MockAuthRepository();
-    when(authRepo.logout).thenAnswer((_) async => const Result.success(null));
-    final articleRepo = MockArticleRepository();
-    when(articleRepo.getArticles)
-        .thenAnswer((_) async => const Result.success(<Article>[]));
-
-    await GetIt.I.reset();
-    GetIt.I.registerSingleton<AuthStorage>(storage);
-    GetIt.I.registerSingleton<UserPreferences>(UserPreferences(prefs));
-    GetIt.I.registerFactory<AuthViewModel>(() => AuthViewModel(authRepo));
-    GetIt.I.registerFactory<ArticleViewModel>(
-      () => ArticleViewModel(articleRepo),
-    );
-
-    router = AppRouter(storage);
-    reevaluate = AuthReevaluateListenable(storage.isLoggedInSignal);
-    routerConfig = router.config(reevaluateListenable: reevaluate);
+    final container = app.container;
+    final routerConfig = container
+        .read(routerProvider)
+        .config(reevaluateListenable: container.read(authReevaluateProvider));
 
     await tester.pumpWidget(
-      MaterialApp.router(theme: buildLightTheme(), routerConfig: routerConfig),
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: buildLightTheme(),
+          routerConfig: routerConfig,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
     // 启动页 2.2s 品牌动画
@@ -114,9 +102,9 @@ void main() {
   testWidgets('点击底部导航切换标签并更新高亮', (tester) async {
     await pumpShell(tester);
 
-    await tester.tap(tabLabel('文章'));
+    await tester.tap(tabLabel('示例'));
     await tester.pumpAndSettle();
-    expect(find.byType(ArticleListPage), findsOneWidget);
+    expect(find.byType(SampleListPage), findsOneWidget);
     expect(selectedTabIndex(tester), 1);
 
     await tester.tap(tabLabel('我的'));
@@ -132,16 +120,16 @@ void main() {
   testWidgets('标签被别处切换时高亮跟随——而不是停在本地索引', (tester) async {
     await pumpShell(tester);
     expect(selectedTabIndex(tester), 0);
-    // 文章页此刻还没被加载过（lazyLoad）
-    expect(find.byType(ArticleListPage), findsNothing);
+    // 示例页此刻还没被加载过（lazyLoad）
+    expect(find.byType(SampleListPage), findsNothing);
 
     // 模拟「由别处发起」的标签切换：首页的快捷入口、深链、返回栈都会走这条路。
     // 旧实现把索引存在 State 里，此时高亮会错位停在首页。
     final context = tester.element(find.byType(HomePage));
-    unawaited(AutoTabsRouter.of(context).navigate(const ArticleListRoute()));
+    unawaited(AutoTabsRouter.of(context).navigate(const SampleListRoute()));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ArticleListPage), findsOneWidget);
+    expect(find.byType(SampleListPage), findsOneWidget);
     expect(selectedTabIndex(tester), 1);
   });
 
@@ -157,7 +145,7 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
 
     final context = tester.element(find.byType(HomePage));
-    unawaited(AutoTabsRouter.of(context).navigate(const ArticleListRoute()));
+    unawaited(AutoTabsRouter.of(context).navigate(const SampleListRoute()));
     await tester.pumpAndSettle();
 
     expect(

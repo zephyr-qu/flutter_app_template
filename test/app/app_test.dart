@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:my_app/app/app.dart';
+import 'package:my_app/core/config/app_settings.dart';
+import 'package:my_app/features/auth/data/auth_providers.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:my_app/features/auth/logic/auth_view_model.dart';
 import 'package:my_app/features/auth/page/login_page.dart';
 
 import '../support/app_test_harness.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository;
 
-/// 根组件是**组合根**：DI 取值、路由创建、登录态监听、主题装配、主题模式订阅
-/// 全在这几十行里。断言本身不多，价值在「装配错了就红」——少注册一个
-/// `getIt`、路由指向已删的页面、主题信号没被订阅，都会在这里暴露。
+/// 根组件是**组合根**：路由创建、登录态监听、主题装配、主题模式订阅
+/// 全在这几十行里。断言本身不多，价值在「装配错了就红」——少接一个 provider、
+/// 路由指向已删的页面、主题模式没被 watch，都会在这里暴露。
 ///
 /// 集成测试也跑这条链路，但 `flutter test --coverage` 不含 `integration_test/`，
 /// 所以这里必须也有一条，否则 `lib/app/app.dart` 会一直是覆盖率盲区。
@@ -30,40 +31,43 @@ void main() {
     );
   });
 
-  tearDown(tearDownTestApp);
-
   /// 用真实容器 + 真实路由启动根组件，返回装配上下文供断言使用
   Future<TestAppContext> pumpMyApp(WidgetTester tester) async {
-    final context = await setUpTestApp();
-    // 路由建 LoginPage 时走「可选注入点」的兜底分支：按类型从容器取 ViewModel
-    GetIt.I.registerFactory<AuthViewModel>(
-      () => AuthViewModel(MockAuthRepository()),
+    final app = await setUpTestApp(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(MockAuthRepository()),
+      ],
     );
 
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: app.container, child: const MyApp()),
+    );
     await tester.pumpAndSettle();
-    return context;
+    return app;
   }
 
   testWidgets('未登录时根组件落在登录页（守卫按真实登录态重定向）', (tester) async {
-    final context = await pumpMyApp(tester);
+    final app = await pumpMyApp(tester);
 
     expect(find.byType(LoginPage), findsOneWidget);
-    expect(context.storage.isLoggedIn, isFalse);
+    expect(app.storage.isLoggedIn, isFalse);
   });
 
-  testWidgets('themeMode 跟随 UserPreferences 的信号变化', (tester) async {
-    final context = await pumpMyApp(tester);
+  testWidgets('themeMode 跟随 AppSettingsNotifier 的状态变化', (tester) async {
+    final app = await pumpMyApp(tester);
 
-    MaterialApp app() => tester.widget<MaterialApp>(find.byType(MaterialApp));
+    MaterialApp materialApp() =>
+        tester.widget<MaterialApp>(find.byType(MaterialApp));
 
-    expect(app().themeMode, ThemeMode.system);
+    expect(materialApp().themeMode, ThemeMode.system);
 
-    context.preferences.setThemeMode(ThemeMode.dark);
+    await app.container
+        .read(appSettingsProvider.notifier)
+        .setThemeMode(ThemeMode.dark);
     await tester.pump();
 
-    // 必须靠 useSignalValue 订阅：改读 getter 只会在恰好重建时更新
-    expect(app().themeMode, ThemeMode.dark);
+    // 必须靠 ref.watch 订阅：只读一次 getter 只会在恰好重建时更新
+    expect(materialApp().themeMode, ThemeMode.dark);
   });
 
   testWidgets('亮 / 暗主题都接在 MaterialApp 上', (tester) async {

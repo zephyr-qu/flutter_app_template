@@ -1,5 +1,5 @@
 name: my_app
-description: "个人 Flutter 脚手架：FSD 结构 + Signals + auto_route + Retrofit/Drift 离线缓存"
+description: "个人 Flutter 脚手架：FSD 结构 + Riverpod + auto_route + Retrofit/Drift 离线缓存"
 publish_to: "none"
 version: 1.0.0+1
 
@@ -35,9 +35,10 @@ dependencies:
   retrofit: ^4.9.2 # 运行时注解，API 客户端生成
 
   # ── Data & Persistence ──
-  # path_provider 只被 app_core 的 database / file_storage 使用，声明在包里
+  # path_provider 只被 app_core 的 database / file_storage 使用，声明在包里。
+  # drift 的数据库与表都在 app_core（那里才是它的运行时使用者）；根工程只在
+  # **测试**里用 `package:drift/native.dart` 建内存库，所以它声明在 dev_dependencies。
   shared_preferences: ^2.5.3
-  drift: ^2.34.1 # 运行时注解，数据库引擎；原生 SQLite 由 sqlite3 3.x 的 build hook 提供
 
   # ── Serialization（运行时依赖） ──
   json_annotation: ^4.12.0 # @JsonSerializable 注解
@@ -77,7 +78,8 @@ dev_dependencies:
   # ── Code Gen：API ──
   retrofit_generator: ^10.2.1 # 生成 Retrofit 客户端实现
 
-  # ── Code Gen：数据库 ──
+  # ── Code Gen / 测试：Drift ──
+  drift: ^2.34.1 # 原生 SQLite 由 sqlite3 3.x 的 build hook 提供
   drift_dev: ^2.34.2+1 # 生成 Drift DAO 代码
 
   # ── Code Gen：路由 ──
