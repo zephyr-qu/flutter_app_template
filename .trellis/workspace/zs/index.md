@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 5
+- **Total Sessions**: 6
 - **Last Active**: 2026-09-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~231 | Active |
+| `journal-1.md` | ~264 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 6 | 2026-09-23 | scaffold-branch-strategy: 分支化策略收尾归档 | `6fdb67f` | `preset/ai-starter` |
 | 5 | 2026-09-23 | preset/ai-starter: Riverpod 栈 + AI 协作契约 | `6fdb67f` | `preset/ai-starter` |
 | 4 | 2026-09-22 | 补齐 app_core 覆盖率分母（差集检查 + 纯包测试） | `163d2a1`, `f88f0b2`, `dd41ac8`, `8a3b6e4`, `4e68ee3` | `master` |
 | 3 | 2026-09-21 | Extract lib/app/ layer, flatten core/ui, record architecture review | - | `master` |

@@ -229,3 +229,36 @@ Extracted an explicit `lib/app/` application layer (composition root) and flatte
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: scaffold-branch-strategy: 分支化策略收尾归档
+
+**Date**: 2026-09-23
+**Task**: scaffold-branch-strategy: 分支化策略收尾归档
+**Branch**: `preset/ai-starter`
+
+### Summary
+
+归档分支化策略父任务。三个子任务均已落地: extract-app-core (抽 packages/app_core 双栈共用, 包内无 signals/riverpod import)、prune-l10n (tool/prune.dart --l10n=single, 仓库已无 l10n)、preset-ai-starter (Riverpod 栈, 已先归档)。策略文档本身只定方案+列子任务地图, 无代码改动。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6fdb67f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
