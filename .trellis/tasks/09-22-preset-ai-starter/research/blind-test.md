@@ -167,10 +167,12 @@ dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/
 
 ### 由此需要的 spec 改动（回到阶段 7 补，然后重测）
 
+> 状态：第 1、2 条已补（commit `5dd2065`，已重跑 `## 改完必跑` 全绿）；第 3 条（环境）已在 §5 补。
+
 1. 在 `frontend/directory-structure.md`（应用层 / 导航）或 `quality-guidelines.md` 补一句：
    **「新增 / 调整底部导航标签后，必须同步更新 `test/routing/main_shell_test.dart` 的标签顺序与 `selectedTabIndex` 期望」**——
-   让下一只盲测 AI 知道这是联动点，而不是只改 `MainPage`。
+   让下一只盲测 AI 知道这是联动点，而不是只改 `MainPage`。（已写入 `directory-structure.md` §3.1）
 2. （可选，非 spec 缺口）`MainPage` 的 `labelStyle(index)` 与标签位置强耦合、易复制粘贴错；
-   可在 `MainPage` 注释里点明「index 必须与该 destination 在 `_tabs` 里的位置一致」，或在 review checklist 加一条。
+   在 `MainPage` 注释里点明「index 必须与该 destination 在 `_tabs` 里的位置一致」。（已写入 `main_page.dart` 的 `labelStyle` 上方）
 3. （环境）把上面第 3 条 sqlite3 卡死绕过法补进 §5 的注意事项（已完成）。
 
