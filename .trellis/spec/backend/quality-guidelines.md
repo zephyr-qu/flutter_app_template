@@ -10,9 +10,11 @@ These guidelines apply to:
 
 - `lib/core/` — shared infrastructure
 - `lib/features/*/data/` — API, service, repository, models
-- `lib/features/*/logic/` — ViewModels
+- `lib/features/*/logic/` — Notifier（状态 + 业务编排）
 
-**架构边界**（`core/` 不得 import 上层、跨 feature 只共享 `data/`、ViewModel 不得用 service locator）以及所有门禁、测试基建与发布的约定，见 [../cross-cutting.md](../cross-cutting.md) —— 本文件不重复。
+**架构边界**（`core/` 不得 import 上层、跨 feature 只共享 `data/`、`logic/` 不得手动建容器 /
+不得 import `package:flutter/material.dart`）以及所有门禁、测试基建与发布的约定，见
+[../cross-cutting.md](../cross-cutting.md) —— 本文件不重复。
 
 ---
 
@@ -24,15 +26,15 @@ These guidelines apply to:
 
    ```dart
    // BAD
-   Future<List<Article>> getArticles() async { ... }
+   Future<List<SampleItem>> getItems() async { ... }
 
    // GOOD
-   Future<Result<List<Article>, Failure>> getArticles() async { ... }
+   Future<Result<List<SampleItem>, Failure>> getItems() async { ... }
    ```
 
 2. **`print()` in production code** — use the `Logging` facade (`Logging.info/debug/warning/error`). (`avoid_print` is not currently enabled in `analysis_options.yaml`; this is a review convention, not a lint error.)
 
-3. **Raw `DioException` propagation to the ViewModel** — convert to a typed `Failure` in the Service layer
+3. **Raw `DioException` propagation to the Notifier** — convert to a typed `Failure` in the Service layer
 
    ```dart
    // BAD
@@ -45,15 +47,15 @@ These guidelines apply to:
 4. **Cyclic imports between features** — a feature never imports another feature's `page/` or `logic/`
 
    ```dart
-   // BAD — article feature reaching into auth's UI/logic
+   // BAD — sample feature reaching into auth's UI/logic
    import 'package:my_app/features/auth/page/login_page.dart';
    ```
 
-5. **Business logic in the data layer** — 业务规则的**判断**（分支、阈值、策略）放 ViewModel；Service 只做转换与 I/O：调 API、读写缓存、把 `DioException` 映射成 `Failure`
+5. **Business logic in the data layer** — 业务规则的**判断**（分支、阈值、策略）放 `logic/`；Service 只做转换与 I/O：调 API、读写缓存、把 `DioException` 映射成 `Failure`
 
 6. **`getOrThrow` in production code** — only in tests; use `when()` for exhaustive matching
 
-7. **Calling `getIt()` from a ViewModel** — inject the dependency through the constructor instead
+7. **`logic/` 里手动建容器** — 依赖从 `ref` 取（`ref.watch` / `ref.read` provider）或从构造器传入，**不要** `ProviderContainer(...)`，也不要自己 new 服务（`tool/check_boundaries.dart` 会拦）
 
 ---
 
@@ -63,22 +65,24 @@ These guidelines apply to:
 
 1. **`Result<T, Failure>`** for all fallible operations in repository interfaces and service implementations
 
-2. **Service annotation**: `@LazySingleton(as: SomeRepository)` — register the implementation against its interface
+2. **Service 与接口的绑定在 provider 里** — `{feature}_providers.dart` 让 provider 返回抽象类型
 
    ```dart
-   @LazySingleton(as: ArticleRepository)
-   class ArticleService implements ArticleRepository { ... }
+   // features/sample/data/sample_providers.dart
+   @Riverpod(keepAlive: true)
+   SampleRepository sampleRepository(Ref ref) =>
+       SampleService(ref.watch(sampleApiProvider), ref.watch(sampleDaoProvider));
    ```
 
-3. **DI modules** for third-party/API dependencies:
+3. **第三方 / API 依赖也用 provider 装配**：
 
    ```dart
-   @module
-   abstract class ArticleModule {
-     @LazySingleton()
-     ArticleApi articleApi(Dio dio) => ArticleApi(dio);
-   }
+   @Riverpod(keepAlive: true)
+   SampleApi sampleApi(Ref ref) => SampleApi(ref.watch(dioProvider));
    ```
+
+   （master 的 `@module` + `@LazySingleton` 在这里没有对应物：provider 本身就是注册表，
+   见 [frontend/state-management.md](../frontend/state-management.md)「三种 Provider 形态」。）
 
 4. **Repository abstraction is optional** — write `{Feature}Repository` only when there is a genuine multi-implementation need (mock / online switching). Simple features call the Service directly. When both exist, the interface is `{feature}_repository.dart` and the implementation `{feature}_service.dart` — both live in the feature's `data/` layer (there is no `domain/` layer).
 
@@ -88,18 +92,19 @@ These guidelines apply to:
 
 7. **Doc comments on public APIs**: `///` on repository/service methods, stating what the method does and which `Result` variants it returns
 
-8. **Models**: annotate with `@freezed` (value semantics, `copyWith`, generated `fromJson`/`toJson`). 脚手架里所有模型都是 freezed（`Article` / `User` / `LoginRequest` / `LoginResponse`）。Never hand-edit the generated `*.g.dart` / `*.freezed.dart`
+8. **Models**: annotate with `@freezed` (value semantics, `copyWith`, generated `fromJson`/`toJson`). 脚手架里所有模型都是 freezed（`SampleItem` / `User` / `LoginRequest` / `LoginResponse`）。Never hand-edit the generated `*.g.dart` / `*.freezed.dart`
 
 ---
 
 ## Testing Requirements
 
 - **Unit tests required for**:
-  - ViewModel state transitions (loading → data, loading → error)
+  - Notifier 的状态迁移（loading → data、loading → error）
   - Failure paths, via `Result.failure()` mocks
   - Repository/Service error mapping where non-trivial
 - **Test file location**: `test/features/{feature}/`
-- **Testing libraries**: `flutter_test`, `mocktail`
+- **Testing libraries**: `flutter_test`, `mocktail`；provider 测试用 `ProviderContainer` + `overrides`
+  （模板：`test/features/sample/logic/sample_list_notifier_test.dart`）
 
 ---
 
@@ -110,9 +115,9 @@ When reviewing data-layer code, check:
 - [ ] Does the method return `Result<T, Failure>` instead of throwing?
 - [ ] Are all `DioException`s caught and converted via `handleDioError()`?
 - [ ] Is the `catch` ordering correct? (specific → generic)
-- [ ] Are DI annotations correct? (`@LazySingleton(as:)`, `@Singleton`, `@module`)
-- [ ] Does the ViewModel use constructor injection rather than `getIt()`?
+- [ ] Are the providers wired correctly? (`@Riverpod(keepAlive: true)` for stateless services, provider 返回抽象类型)
+- [ ] Does the Notifier take its dependencies from `ref`（而不是自己 new 或建容器）?
 - [ ] Are generated files (`*.g.dart`) regenerated after model/annotation changes?
 - [ ] Is there no import of another feature's `page/` or `logic/`?
-- [ ] Does the module class only provide dependencies (no business logic)?
+- [ ] Does the Notifier hold no business I/O of its own (it delegates to Service / Repository)?
 - [ ] Are debug prints avoided in production paths?

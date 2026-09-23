@@ -20,12 +20,13 @@
 | `packages/app_core/lib/data/network/token_store.dart` | 令牌存取的**能力契约**（`ready` / 读写 / 过期判断 / 清除），各栈自己实现 |
 | `packages/app_core/lib/data/network/auth_extra_keys.dart` | `RequestOptions.extra` 的两个标记键 |
 | `packages/app_core/lib/config/network_config.dart` | 不可变的网络配置（超时、重试次数、mock 开关） |
-| `lib/core/data/network/dio_client.dart` | `NetworkModule`：取 `dotenv` 配置、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
+| `lib/core/data/network/dio_client.dart` | `networkConfigProvider` / `dioProvider`：取 `dotenv` 配置、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
 
 `TokenStore` 是这层的反转点：网络层只依赖它，令牌存在哪里（安全存储 + 内存缓存）
-以及登录态用哪种状态管理暴露，都不是网络层该知道的事。signals 分支的实现是
-`lib/core/data/storage/auth_storage.dart`，Riverpod 分支会是另一个类。
-代价是纯包测试要用假 `TokenStore` 驱动（`packages/app_core/test/support/`）。
+以及登录态用哪种状态管理暴露，都不是网络层该知道的事。本分支（`preset/ai-starter`）的实现是
+`lib/core/data/storage/auth_storage.dart`（master 的 signals 栈用的是同一个类；两个分支的差别在
+「登录态怎么暴露给 UI」，不在存储本身）。
+代价是纯包测试要用假 `TokenStore` 驱动（`packages/app_core/test/support/fake_token_store.dart`）。
 
 401 刷新的完整约定在 [error-handling.md](./error-handling.md#401-与令牌刷新)，本页不重复。
 
@@ -33,19 +34,21 @@
 
 ## 配置：`dotenv` 只读一次
 
-`CoreModule` / `NetworkModule` 里**只有 `networkConfig()` 一处读 `dotenv.env`**，之后所有消费者拿到的都是同一个不可变 `NetworkConfig`。
+全项目**只有 `networkConfigProvider` 一处读 `dotenv.env`**（`lib/core/data/network/dio_client.dart`），之后所有消费者拿到的都是同一个不可变 `NetworkConfig`。
 
 - 不要写成 `static` 类：`static` + `dotenv.env` 是全局可变状态，测试里没有干净的覆盖点，用例之间会互相污染
 - 测试直接构造自己的实例即可：`const NetworkConfig(baseUrl: 'http://localhost:8080/api')`
-- 正常路径走不到「`BASE_URL` 缺失」的回退值 —— `bootstrap()` 的 `_validateEnv()` 会在 DI 初始化前 fail fast
+- 正常路径走不到「`BASE_URL` 缺失」的回退值 —— `bootstrap()` 的 `_validateEnv()` 会在 `ProviderScope` 装配前 fail fast
 
 ---
 
 ## `Dio` 必须是单例
 
-`NetworkModule.dio` 用 `@lazySingleton`，**不能**给每个 API 客户端各建一个。理由与后果见 [error-handling.md](./error-handling.md#401-与令牌刷新) 的约束列表（single-flight 失效会误登出用户；mock 规则会重复注册）。
+`dioProvider` 是 `@Riverpod(keepAlive: true)`，**不能**给每个 API 客户端各建一个。理由与后果见 [error-handling.md](./error-handling.md#401-与令牌刷新) 的约束列表（single-flight 失效会误登出用户；mock 规则会重复注册）。
 
-调试日志是**条件注册**的：只在 `kDebugMode && preferences.enableDebugLogging.value` 时才加 `PrettyDioLogger`。它的日志体会先过 `LogRedactor` 脱敏（`password` / `accessToken` / `refreshToken` 等），约定见 [logging-guidelines.md](./logging-guidelines.md)。
+它读的是 `userPreferencesProvider` 而**不是** `appSettingsProvider`：后者一变 provider 就会被重建，而「Dio 必须单例」优先——重建会丢掉在飞请求、重放状态与 mock 注册。代价是调试开关**重启后生效**（与 master 一致）。
+
+调试日志是**条件注册**的：只在 `kDebugMode && preferences.enableDebugLogging` 时才加 `PrettyDioLogger`。它的日志体会先过 `LogRedactor` 脱敏（`password` / `accessToken` / `refreshToken` 等），约定见 [logging-guidelines.md](./logging-guidelines.md)。
 
 ---
 
@@ -71,9 +74,9 @@ Dio 对**请求**按添加顺序正向穿过，对**响应 / 错误**按相反�
 >   装出来的栈（Auth → 解码 → Retry 的相对顺序、mock 开关、调试日志开关），
 >   以及「Retry 不吞 401 / 5xx 走重试」两条语义
 > - `test/core/data/network/interceptor_stack_test.dart` —— 钉住 lib 侧
->   `NetworkModule.dio()` 的等价行为（同一套栈，另加 `UserPreferences` / `dotenv` 装配）
+>   `dioProvider` 的等价行为（同一套栈，另加 `UserPreferences` / `dotenv` 装配）
 >
-> 别拿 `token_refresh_test.dart` 当替代：它自建的 Dio 只挂了 `AuthInterceptor`，
+> 别拿 `packages/app_core/test/data/network/token_refresh_test.dart` 当替代：它自建的 Dio 只挂了 `AuthInterceptor`，
 > 那条链上根本不存在 Retry，上面两点它验不到。
 >
 > 断言拦截器清单时**不要直接数 `dio.interceptors.length`**：`Dio` 自己会在最前面插一个
@@ -98,10 +101,12 @@ if (config.isMock) {
 
 - Dio 的 `options.uri.path` 含 baseUrl 的路径前缀（`http://host/api` + `/login` → `/api/login`），而 `MockMatcher` 对 path 规则做的是**全等比较**，`path: '/login'` 永远打不中
 - 打不中的后果是**静默失效**：Mock 不生效，请求直接打到真实网络，本地调试会以为是后端问题
-- `:id` 这类占位符同样不被支持（也是全等比较），要写成 `r'/articles/\d+$'`
+- `:id` 这类占位符同样不被支持（也是全等比较），要写成 `r'/sample-items/\d+$'`
 
-现有规则都在 `dio_client.dart` 的 `_registerMockRules()` 里（写这份 spec 时是
-`GET /articles`、`GET /articles/{id}`、`POST /login`、`POST /refresh`）。新增接口时照这个形状加。
+现有规则都在 `dio_client.dart` 的 `_registerMockRules()` 里。
+
+> 快照（2026-09）：`GET /sample-items`、`GET /sample-items/{id}`、`POST /login`、`POST /refresh`。
+> 新增接口时照这个形状加。
 
 ---
 

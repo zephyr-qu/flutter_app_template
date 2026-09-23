@@ -11,9 +11,9 @@
 本项目的层（权威布局见 [../frontend/directory-structure.md](../frontend/directory-structure.md)）：
 
 ```
-Page → ViewModel → Repository (接口) → Service → Api (Retrofit) → Dio
-                                        ↓
-                                    DAO / Drift（本地缓存）
+Page → Notifier → Repository (接口) → Service → Api (Retrofit) → Dio
+                                      ↓
+                                  DAO / Drift（本地缓存）
 ```
 
 典型跨层 bug：
@@ -36,7 +36,7 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 
 对每个箭头问：
 
-- 数据在这里是什么类型？（`Map<String, dynamic>` / `Article` / `DbArticle`）
+- 数据在这里是什么类型？（`Map<String, dynamic>` / `SampleItem` / `DbArticle`）
 - 哪里可能出错？
 - 谁负责校验与转换？
 
@@ -47,7 +47,7 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 | API ↔ Service | 字段漏映射、可空性假设不一致 |
 | Service ↔ DAO | 模型 ↔ drift 行类转换、`null` 处理 |
 | core ↔ feature | 依赖方向搞反（`core` 不能 import feature，`tool/check_boundaries.dart` 会拦） |
-| ViewModel ↔ Page | 状态类型（`AsyncState`）与渲染分支不匹配 |
+| Notifier ↔ Page | 状态类型（`AsyncValue`）与渲染分支不匹配（一律走 `AsyncView`） |
 
 ### Step 3: Define Contracts
 
@@ -71,15 +71,15 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 
 ### Mistake 2: Scattered Validation
 
-**Bad**：同一件事在 ViewModel 和 Service 各校验一遍
+**Bad**：同一件事在 Notifier 和 Service 各校验一遍
 
-**Good**：入口处校验一次 —— 简单字段校验放 ViewModel 的 computed getter，复杂规则交给后端
+**Good**：入口处校验一次 —— 简单字段校验做成状态快照上的 getter（`LoginState.canSubmit`），复杂规则交给后端
 
 ### Mistake 3: Leaky Abstractions
 
-**Bad**：让 `Article` 模型知道 drift 的存在（例如给它加 `Article.fromRow(DbArticle)`）
+**Bad**：让 `SampleItem` 模型知道 drift 的存在（例如给它加 `SampleItem.fromRow(DbArticle)`）
 
-**Good**：模型不碰基础设施；行↔模型互转留在消费方（`ArticleService` 的私有方法）。理由见 [../backend/database-guidelines.md](../backend/database-guidelines.md)「命名规范」一节
+**Good**：模型不碰基础设施；行↔模型互转留在消费方（`SampleService` 的私有方法）。理由见 [../backend/database-guidelines.md](../backend/database-guidelines.md)「命名规范」一节
 
 ### Mistake 4: 同一个错误在多层各映射一次
 

@@ -55,14 +55,14 @@
 
 | 能力 | 推荐包 | 脚手架里已有的落点 |
 |---|---|---|
-| 崩溃 / 错误上报 | `sentry_flutter`、`firebase_crashlytics` | `bootstrap.dart` 的 `FlutterError.onError`、`PlatformDispatcher.instance.onError`、`runZonedGuarded`——**现在只打日志，是天然接入点** |
+| 崩溃 / 错误上报 | `sentry_flutter`、`firebase_crashlytics` | `bootstrap.dart` 的 `FlutterError.onError`、`PlatformDispatcher.instance.onError`——**现在只打日志，是天然接入点** |
 | 上报上下文 | `device_info_plus` | 同上，配合上报一起加 |
 | 深链 / 分享链接打开 App | `app_links` | `AppRouter` 的初始路由（`lib/app/routing/router.dart`） |
 | 网络调试 UI（真机上抓包看请求） | `talker_flutter`（`alice` 的后继） | 替换 `dio_client.dart` 里 `PrettyDioLogger` 的挂载位置 |
 | 本地通知 / 推送 | `flutter_local_notifications`、`firebase_messaging` | `ProfilePage` 的 `TODO(template): 接入通知设置页` |
 | 原生启动图 | `flutter_native_splash` | `splash_page.dart` 是 **Flutter 层**启动页；native 层冷启动白屏要靠它 |
 | 应用图标 | `flutter_launcher_icons`（已在依赖里） | ⚠️ `pubspec.yaml` 指向 `assets/icon/icon.png`，**该文件目前不存在**，跑之前先补 |
-| 主题模式 UI | 不需要新包 | 已闭环：`UserPreferences.themeMode` + `ProfilePage` 的「外观」弹窗 |
+| 主题模式 UI | 不需要新包 | 已闭环：`appSettingsProvider` 的 `themeMode` + `ProfilePage` 的「外观」弹窗 |
 
 ---
 
@@ -81,10 +81,10 @@
 | 二维码生成 / 扫描 | `qr_flutter`、`mobile_scanner` |
 | 图表 | `fl_chart` |
 | 声明式动画 | `flutter_animate`（比手写 `AnimationController` 省事） |
-| 分页加载 | `infinite_scroll_pagination`（或照 `ArticleViewModel` 自己写） |
-| 表单校验 | `formz`（或沿用 `AuthViewModel.canSubmit` 那种 `computed`） |
-| 日期 / 货币格式化 | **已有**：`intl` 的 `DateFormat` / `NumberFormat` |
-| 下拉刷新 | **已有**：`RefreshIndicator`（见 `article_list_page.dart`） |
+| 分页加载 | `infinite_scroll_pagination`（或照 `SampleListNotifier` 自己写） |
+| 表单校验 | `formz`（或沿用 `LoginState.canSubmit` 那种快照 getter） |
+| 日期 / 货币格式化 | **需要时加**：`flutter pub add intl`，用它的 `DateFormat` / `NumberFormat`（本项目已裁剪 l10n，`intl` 不在依赖里） |
+| 下拉刷新 | **已有**：`RefreshIndicator`（见 `sample_list_page.dart`） |
 | 列表三态 | **已有**：`LoadingIndicator` / `ErrorText` / `EmptyWidget` |
 
 **⚠️ 一个反模式**：`connectivity_plus` 不要用来决定"要不要发请求"，也不要用来决定
@@ -99,8 +99,8 @@
 | 工具 | 用途 | 备注 |
 |---|---|---|
 | `patrol` | 端到端测试 | 比 `integration_test/` 强：能操作系统弹窗、原生权限框 |
-| `alchemist` / 内建 `matchesGoldenFile` | 视觉回归测试 | 改主题、改多语言时的护栏 |
-| `dio_cache_interceptor` | HTTP 缓存拦截器 | 比 `ArticleService` 手写的缓存旁路完整（ETag / max-age / 过期策略）；需求简单就别上 |
+| `alchemist` / 内建 `matchesGoldenFile` | 视觉回归测试 | 改主题时的护栏 |
+| `dio_cache_interceptor` | HTTP 缓存拦截器 | 比 `SampleService` 手写的缓存旁路完整（ETag / max-age / 过期策略）；需求简单就别上 |
 | `custom_lint` | 自定义 lint 规则 | ⚠️ **只在 IDE 里生效**，CLI/CI 跑不到——所以本项目的边界与形态约定仍用 `tool/check_boundaries.dart` / `tool/check_conventions.dart` 脚本做门禁，别搬过去 |
 | `very_good_analysis` | 更严格的 lint 集 | ✅ **已采用**：规则集在 `analysis_options.yaml` 的 `include:`；存量用 `dart fix` 批量修 + 少量带理由的 `// ignore`，三条不适用规则在文件里注明理由 |
 | `flutter_flavorizr` | 生成 build flavor 脚手架 | 需要 dev/staging/prod 同机共存时用它最省事；只改 Android 的话照第七节的片段手改即可，不用装 |
@@ -113,12 +113,12 @@
 
 | 现在用的 | 替代 | 迁移成本 |
 |---|---|---|
-| `signals` + `flutter_hooks` | `riverpod` | **高**。ViewModel 与页面订阅写法全变，`useSignalValue` → `ref.watch` |
+| `riverpod`（本分支就换了这一个轴，见 `BRANCH.md`） | `signals` / `bloc` / `provider` | **高**。Notifier 与页面订阅写法全变，`ref.watch` 要逐个换掉 |
 | `auto_route` | `go_router`（官方，无 codegen） | 中。`@RoutePage` 全删，守卫改写成 `redirect` 函数 |
-| `injectable` + `get_it` | 手写 `get_it` 注册、或 `riverpod` 的 provider | 低 ~ 中 |
+| provider 装配（无 DI 容器） | `get_it` + `injectable` | 低 ~ 中。装配方式整体换掉，页面侧还要重新开注入口 |
 | `retrofit` | 手写 Dio 调用 | **低**。只有 2 个 API 文件 |
 | `freezed` | 只留 `json_serializable` + 手写 `copyWith`/`==` | 中。约 5 个模型 |
-| `Drift` | `shared_preferences`（纯 KV）、`sqflite`（手写 SQL）、`objectbox`（性能好） | **低**。只影响 `ArticleService` 的缓存与 `features/demo/` |
+| `Drift` | `shared_preferences`（纯 KV）、`sqflite`（手写 SQL）、`objectbox`（性能好） | **低**。只影响 `SampleService` 的缓存与 `SampleDao` |
 | `dio` | `http`（官方） | 低，但会失去整套拦截器生态 |
 
 ---
@@ -127,7 +127,7 @@
 
 这几类加进来通常弊大于利：
 
-- **第二套状态管理**（`riverpod` / `bloc` / `provider`）——会和 `signals` 并存成两套
+- **第二套状态管理**（`signals` / `bloc` / `provider`）——会和 `riverpod` 并存成两套
   状态源，后面想拆都拆不干净。要换就整体换，别混用。
 - **`fpdart` / `dartz` 这类函数式 Either** ——项目已有自实现的 `Result<T, E>` +
   `Failure`，再加一套会让错误处理彻底分裂。

@@ -20,51 +20,53 @@ This is a **Flutter project using Material Design 3** (Material You). Widgets fo
 
 ## Page Structure
 
-### 标准页面（带 ViewModel）
+### 标准页面（带状态）
 
 ```dart
 @RoutePage()
-class ArticleListPage extends HookWidget {
-  /// 可选注入点——只有测试会传值（ADR-0001 的缓解措施，脚本规则 4 会拦缺失）
-  final ArticleViewModel? viewModel;
-
-  const ArticleListPage({super.key, this.viewModel});
+class SampleListPage extends ConsumerWidget {
+  const new({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
-    final async = useSignalValue(vm.articles);
-
-    useEffect(() {
-      vm.loadArticles();
-      return null;
-    }, []);
-
-    final theme = Theme.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(sampleListProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('文章列表')),
-      body: AsyncView<List<Article>>(
-        state: async,
+      appBar: AppBar(title: const Text('示例')),
+      body: AsyncView<List<SampleItem>>(
+        state: items,
         loading: () => const LoadingIndicator(),
-        error: (Object error, StackTrace stackTrace) =>
-            ErrorText(error: error, onRetry: vm.loadArticles),
-        data: (items) => ListView.builder(/* ... */),
+        error: (error, stackTrace) => ErrorText(
+          error: error,
+          onRetry: () => ref.invalidate(sampleListProvider),
+        ),
+        data: (list) => RefreshIndicator(
+          onRefresh: () => ref.refresh(sampleListProvider.future),
+          child: /* 列表 / 空态 */,
+        ),
       ),
     );
   }
 }
 ```
 
-### 无状态页面（无需 ViewModel）
+- 页面**不持有**任何可注入字段（注入口是 `ProviderScope(overrides:)`），也不注册 `getIt`
+- 状态与业务逻辑在 `logic/` 的 Notifier 里，页面只 `ref.watch` + 转事件
+- 详细的写法、生命周期与测试见 [state-management.md](./state-management.md)「Consumer 一节」
+
+### 无状态页面（无需状态）
 
 ```dart
-class ArticleDetailPage extends StatelessWidget {
-  final Article article;
-  const ArticleDetailPage({super.key, required this.article});
+class SampleCard extends StatelessWidget {
+  const new({super.key, required this.item});
+
+  final SampleItem item;
 
   @override
-  Widget build(BuildContext context) { ... }
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(item.title, style: theme.textTheme.titleMedium);
+  }
 }
 ```
 
@@ -100,7 +102,7 @@ class ErrorText extends StatelessWidget {
 ```dart
 // GOOD
 Text(
-  article.title,
+  item.title,
   style: theme.textTheme.titleLarge,
 ),
 Text(
@@ -111,12 +113,12 @@ Text(
 ),
 
 // BAD
-Text(article.title, style: TextStyle(fontSize: 18, color: Colors.black)),
+Text(item.title, style: TextStyle(fontSize: 18, color: Colors.black)),
 ```
 
 ## Theme Layer
 
-主题拆成三个文件（`lib/core/theme/`），**各有唯一职责**：
+主题拆成三个文件（`packages/app_core/lib/theme/`），**各有唯一职责**：
 
 | 文件 | 职责 |
 |---|---|
@@ -137,16 +139,16 @@ Text(article.title, style: TextStyle(fontSize: 18, color: Colors.black)),
 **规则 1 —— token 不放颜色。** `app_theme_extension.dart` 只放 `ColorScheme` 表达不了的东西（圆角、间距），**不出现任何 `Color` 字段**：能用「语义角色」表达的东西就不该另造一个 token，否则换主题时会漏掉它。
 
 ```bash
-grep -n "Color" lib/core/theme/app_theme_extension.dart   # 期望：无输出
+grep -n "Color" packages/app_core/lib/theme/app_theme_extension.dart   # 期望：无输出
 ```
 
-**规则 2 —— `flex_color_scheme` 只允许出现在 `lib/core/theme/`。** 页面与组件不得 import 它，配色只在 `app_color_scheme.dart` 里定义。
+**规则 2 —— `flex_color_scheme` 只允许出现在共享包的 `theme/`。** 页面与组件不得 import 它，配色只在 `app_color_scheme.dart` 里定义。
 
 ```bash
-grep -rln "flex_color_scheme" lib/   # 期望：只命中 lib/core/theme/app_color_scheme.dart
+grep -rln "flex_color_scheme" lib/ packages/app_core/lib/   # 期望：只命中 packages/app_core/lib/theme/app_color_scheme.dart
 ```
 
-第三档之后 `lib/` 里不再有 `flex_color_scheme`，规则 2 的 `grep` 验证会变成「无输出」——
+第三档之后共享包里不再有 `flex_color_scheme`，规则 2 的 `grep` 验证会变成「无输出」——
 这也是它可被验证的意义：边界会不会破，一条命令就能看出来。
 
 **主题入口只有两个函数，不内联在 `lib/app/app.dart`。**
@@ -157,21 +159,22 @@ ThemeData buildDarkTheme();
 ```
 
 内联在组合根也能跑，但那样测试只能自己拼一套主题，于是出现「测试里一套、线上另一套」，
-主题相关的断言全部失去意义。公开成函数后，测试挂的就是同一份。
+主题相关的断言全部失去意义。公开成函数后，测试挂的就是同一份
+（`app.dart` 把两份 `ThemeData` 缓存在顶层 `final`，理由见该文件注释）。
 
 ---
 
 ## Shared Widgets
 
-Core shared widgets in `lib/core/ui/`:
+共享组件分两处（可复用的放共享包里，需要项目文案或主题的在应用侧）：
 
-| Widget | Purpose | Props |
-| -------- | --------- | ------- |
-| `AsyncView<T>` | 把 `AsyncState<T>` 渲染成 Widget，**类型安全**（取代 `AsyncState.map`） | `state`, `data`, `loading`, `error`, `refreshing?`, `reloading?` |
-| `LoadingIndicator` | 居中转圈（`CircularProgressIndicator`，零依赖） | `size` |
-| `ScreenLoadingIndicator` | 全屏加载态（转圈 + 一行 `l10n.loading`） | — |
-| `ErrorText` | Error with retry | `error`, `onRetry?`, `icon?` |
-| `EmptyWidget` | Empty state placeholder | `message`, `icon?`, `actionLabel?`, `onAction?` |
+| Widget | 位置 | Purpose | Props |
+| -------- | ------ | --------- | ------- |
+| `AsyncView<T>` | `lib/core/ui/` | 把 `AsyncValue<T>` 渲染成 Widget，**类型安全**（判定表见 [state-management.md](./state-management.md)） | `state`, `data`, `loading`, `error`, `refreshing?`, `reloading?` |
+| `LoadingIndicator` | `lib/core/ui/` | 居中转圈（`CircularProgressIndicator`，零依赖） | `size` |
+| `ScreenLoadingIndicator` | `lib/core/ui/` | 全屏加载态（转圈 + 一行 `加载中...`） | — |
+| `ErrorText` | `lib/core/ui/` | Error with retry；靠 `Failure` 的错误码翻译文案 | `error`, `onRetry?`, `icon?` |
+| `EmptyWidget` | `packages/app_core/lib/ui/` | Empty state placeholder（不读文案，文案由调用方给） | `message`, `icon?`, `actionLabel?`, `onAction?` |
 
 ---
 
@@ -181,22 +184,22 @@ Core shared widgets in `lib/core/ui/`:
 
 ```dart
 // 推荐：状态与分支都由 AsyncView 承载
-AsyncView<List<Article>>(
-  state: async,
+AsyncView<List<SampleItem>>(
+  state: items,                                   // ref.watch(xxxProvider)
   loading: () => const LoadingIndicator(),
-  error: (Object error, StackTrace stackTrace) =>
-      ErrorText(error: error, onRetry: retry),
-  data: (items) => items.isEmpty
+  error: (error, stackTrace) => ErrorText(error: error, onRetry: retry),
+  data: (list) => list.isEmpty
       ? const EmptyWidget(message: '暂无数据')
       : ListView.builder(...),
 )
 
-// 不推荐：AsyncState.map 的 error 回调签名在运行期才校验（见 frontend/state-management.md）
+// 不推荐：AsyncValue.when —— 判定顺序与 data(null) 语义要各自重写一遍
 // 不推荐：手写 is-loading / has-error 分支，三态逻辑会被抄散到每个页面
 ```
 
 `AsyncView` 覆盖稳定态（loading / data / error）；后台刷新与重载用可选的
-`refreshing` / `reloading` 回调，缺省时退回 `data`（旧数据）。
+`refreshing` / `reloading` 回调，缺省时退回 `data`（旧数据）。判定顺序表与
+`data(null)` 这条定制语义见 [state-management.md](./state-management.md)「渲染状态」。
 
 ---
 
@@ -214,6 +217,7 @@ AsyncView<List<Article>>(
 - ❌ **Hardcoding colors/fonts** — Always use `Theme.of(context)` and `colorScheme`
 - ❌ **Not using `const` constructors** — The linter enforces `prefer_const_constructors`
 - ❌ **Missing `super.key`** — Always include `super.key` in widget constructors
-- ❌ **Business logic in widgets** — Delegate to ViewModel for all state mutations
-- ❌ **Creating ViewModel in `build()` without `useMemoized`** — Creates new instance per rebuild
-- ❌ **Using `Watch.builder` / `Watch()`** — These are deprecated; use `SignalBuilder` or `useSignalValue`
+- ❌ **Business logic in widgets** — Delegate to the Notifier for all state mutations
+- ❌ **在页面里 `ref.read(xxxProvider)` 取值** — 用 `ref.watch`（门禁 `avoid_ref_read_in_build` 会拦）
+- ❌ **用 `AsyncValue.when` 渲染三态** — 用 `AsyncView`（判定顺序与 `data(null)` 语义已封装）
+- ❌ **给页面加 `final Xxx? viewModel;` 注入点** — 那是 master（signals 栈）的做法；本分支的注入点是 `ProviderScope(overrides:)`

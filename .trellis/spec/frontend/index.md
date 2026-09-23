@@ -1,6 +1,6 @@
 # Frontend Development Guidelines
 
-> 页面、状态、组件、类型安全与本地化的约定。
+> 页面、状态、组件、类型安全与文案的约定。
 
 ---
 
@@ -9,11 +9,10 @@
 | Guide | 内容 |
 | ------- | ------------- |
 | [Directory Structure](./directory-structure.md) | FSD 简化版布局（**canonical**）与命名约定 |
-| [State Management](./state-management.md) | Signals + ViewModel、`runAsync`、`dispose` 边界 |
+| [State Management](./state-management.md) | Riverpod provider、`AsyncView`、生命周期、Consumer 与页面写法 |
 | [Component Guidelines](./component-guidelines.md) | 页面结构、主题层、共享组件、三态渲染 |
-| [Hook Guidelines](./hook-guidelines.md) | `flutter_hooks` / `signals_hooks` 用法 |
 | [Type Safety](./type-safety.md) | sealed `Result` / `Failure`、`@freezed` 模型、实际启用的 lint |
-| [Localization](./localization.md) | l10n 配置、文案写法、语言设置 |
+| [Localization](./localization.md) | 单语言约定、文案写在哪、要加 l10n 时怎么做 |
 | [Quality Guidelines](./quality-guidelines.md) | UI 层的禁止模式、Required Patterns、错误处理层级 |
 
 ---

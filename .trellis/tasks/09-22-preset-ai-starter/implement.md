@@ -59,8 +59,152 @@
 换栈这种「必然有红窗口」的迁移里，正确做法是：先让 `flutter analyze` 收敛，再跑 codegen；
 或跑完立刻核对生成物 diff。
 
-**下一步**：阶段 3（7 个 page → `ConsumerWidget`、4 个 logic → `@riverpod` Notifier），
-再进阶段 4（`features/sample` 金标准 + 删 article/demo）。
+**2026-09-22 · 阶段 3 + 4 合并完成（features 迁移 + sample 金标准，`flutter analyze lib/` 零 issue）**
+
+阶段 3 与 4 合并做：`features/demo` 与 `features/article` 在阶段 4 整体删除，先按 Riverpod 迁一遍再删是纯浪费，
+所以这一轮把「存活页面迁移」与「sample 替换 article/demo」一次做完。
+
+| 动作 | 文件 |
+|---|---|
+| 删 | `features/article/`、`features/demo/`、`features/auth/logic/auth_view_model.dart`、`lib/di/`（空目录） |
+| 新增 | `features/auth/data/auth_providers.dart`、`features/auth/logic/login_notifier.dart`、`features/sample/`（data 三形态 + logic + page） |
+| 改写 | `login_page` / `home_page` / `profile_page` / `splash_page`（HookWidget → Consumer*）、`router.dart`、`main_page`（tab 文章→示例）、`error_text.dart`（doc） |
+
+四条实现细节（阶段 7 要进 spec）：
+
+1. **provider 命名会被收敛**：`riverpod_generator` 把 `XxxNotifier` 的 provider 命名成 `xxxProvider` ——
+   `LoginNotifier` → `loginProvider`（**不是** `loginNotifierProvider`）。写页面时容易踩，没有 lint 兜。
+2. **`AsyncView` 的错误对象就应该是 `Failure` 本身**：`AsyncNotifier.build()` 里 `throw error`
+   （`Failure implements Exception`，`only_throw_errors` 不报），`AsyncValue.error` 原样带着它，
+   `ErrorText` 才翻译得出错误码。**不要**另造一个包装异常，否则页面只剩「未知错误」。
+3. **刷新 / 重试不需要 request token**：页面用 `ref.refresh(xxxProvider.future)`（下拉刷新）
+   与 `ref.invalidate(xxxProvider)`（重试）；竞态与「刷新保留旧值」由框架保证，`AsyncView` 的
+   refreshing / reloading 分支直接接上。
+4. **页面不再需要 `final VM? viewModel;` 三件套**（D2 落地）：注入点就是 `ProviderScope(overrides:)`。
+   `check_boundaries` 规则 4 因此**自然失效**（它只扫 `getIt<XxxViewModel>`），阶段 6 删规则时不会误报。
+
+⚠️ **新发现（影响 master，不属本任务范围）：`@DriftAccessor(tables: [...])` 解析不到另一个 package 里的表。**
+
+`packages/app_core` 抽包之后，`features/*/data/*_dao.dart` 里 `@DriftAccessor(tables: [DbArticles])`
+生成出来的 mixin 是**空的**（`drift_dev` 报 `The referenced element, DbArticles, is not understood by drift`，
+对应 drift 未关闭的 issue #3669），于是 `dbArticles` 未定义、DAO 编译不过（实测）。
+
+- 已实测的边界：同 package 内**无论表在 part 文件还是与数据库同一文件都正常**，只有跨 package 会失败。
+- 所以 master 的 `article_dao.g.dart` 还完好，只是因为停在 `8b8cb40`（抽包之前），而上次红窗口
+  `build_runner` 的产物被 `git restore` 回滚了 —— **master 上跑一次全量 `build_runner` 就会把
+  `article_dao.g.dart` 打空并当场编译失败**。
+- 本分支处置：`SampleDao` 不用 `@DriftAccessor`，直接持有 `AppDatabase` 并用生成 getter
+  `dbArticles` 取表（`app_core` 零改动），理由写在类注释里。根治要动共享包，留给你定。
+
+**本阶段遗留（阶段 5–7 处理）**：
+
+- ~~`test/` 471 个 issue~~ —— **阶段 5 已清零**：`flutter analyze lib/ test/` 干净，241 条测试全绿。
+- ~~`check_conventions` 2 处违规~~ —— **阶段 5 已处理**（比计划早一步）：两处注释块的详细内容已搬进
+  spec —— `AsyncView` 的 Riverpod 判定表进 `frontend/state-management.md`「渲染状态」、
+  `AuthStorage` 不含状态管理依赖进 `backend/database-guidelines.md`；代码里只留一行指针。
+  先写 spec 再删代码，知识不会在中间态丢失。
+- ~~`check_readme_tree` 红~~ —— **阶段 6 已处理**：README 与 `directory-structure.md` 的树按实际 `lib/` 重画。
+  顺带照出两个删除动作留下的空目录（`lib/core/base`、`test/core/base`、`test/features/article`、
+  `test/features/demo`），一并清掉 —— 目录树门禁的价值就在这里：残留物自己会露出来。
+- `dart analyze tool/` 有 10 个 info，全部在 `tool/prune.dart`（本任务未改动它，疑似 master 侧既有问题）
+  —— **本阶段有意不动**：实测 `dart analyze` 对 info 的退出码是 0，门禁本来就不红；
+  而它是 master 侧的工具脚本，在这里顺手改等于把一个 750 行脚本的重排混进换栈分支。
+
+**2026-09-23 · 阶段 6 完成（门禁调整，六道门禁全绿）**
+
+| 脚本 | 改动 |
+|---|---|
+| `check_boundaries.dart` | 规则 1 由「不得用 `getIt`」改成「不得手动建容器」（`ProviderContainer(` / `.test(`）；规则 4「页面必须给可选注入点」退役（D2）；新增「`features/*/logic/` 不得 import `package:flutter/material.dart`」 |
+| `check_conventions.dart` | `avoid_async_state_map` 退役；新增 `avoid_ref_read_in_build`（`build` 里不得用 `ref.read` 取 provider 值） |
+| `check_readme_tree.dart` | 脚本未改，改的是目标树（README ×2 棵 + `directory-structure.md`） |
+
+两个判断要记下来：
+
+1. **`ref.read(xxx.notifier)` 必须放行，否则门禁一上线就红**：`login_page.dart:25` 在 `build` 里
+   `ref.read(loginProvider.notifier)`，把 `updateEmail` / `updatePassword` 当 tear-off 传给输入框。
+   取的是 notifier 实例本身（身份稳定、不参与订阅），是正当写法。所以判据落在「取**值**的 read」
+   （实参不是 `.notifier`），而不是「所有 read」—— 回调里 `ref.read(repoProvider).logout()` 照旧放行。
+   这条偏差是实现时按既有代码定的，不是 PRD 原文的字面口径。
+2. **规则 4 退役后，`findViolations` 的 sort 也一起删了**：那次排序是为「规则 4 的文件级结果
+   先入列」服务的；规则一走，行扫描本身就是行号升序。
+
+顺带修掉三处会被下一个人当真的过期描述：`analysis_options.yaml` 的规则清单注释、
+`docs/release-checklist.md` 的门禁说明、pre-commit 与 CI 里指向旧规则的步骤注释。
+`docs/adr/`、`docs/architecture-review.md`、`frontend/{state-management,quality-guidelines,hook-guidelines,component-guidelines}.md`
+里的 signals 口径**留给阶段 7**（加适用范围标注 / 重写 / 删除），本阶段不碰。
+
+**阶段 6 门禁实测（2026-09-23）**
+
+| 门禁 | 结果 |
+|---|---|
+| `dart format --set-exit-if-changed` | 0 changed（132 文件） |
+| `check_boundaries` / `check_conventions` / `check_readme_tree` / `dependency_validator` | 全绿（目录树由 19 处 → 0） |
+| `flutter analyze lib/ test/` | No issues found |
+| `dart analyze tool/` / `dart analyze packages/` | 退出码 0（`tool/` 仍打 10 个 info，全在 `prune.dart`，见上） |
+| `flutter test` | 242 passed / 1 skipped；`app_core` 104 passed |
+| `check_coverage --src` | 根 `lib/` 90.0%（31 文件）、`app_core` 89.8%；无未加载文件、无过期豁免 |
+| 脚本自身用例 | `check_boundaries_test` / `check_conventions_test` 全绿，新规则各有正反例 + 真实仓库回归 |
+
+**下一步**：阶段 7（spec 与文档重写：`state-management.md` 重写、`hook-guidelines.md` 删除、
+`quality-guidelines.md` / `directory-structure.md` 改口径、ADR 与 `architecture-review.md` 加适用范围标注、README 主体重写）。
+
+---
+
+**2026-09-23 · 阶段 7 完成（spec 与文档重写）**
+
+原则：**正文只写仓库里真实成立的事**，master 的旧口径不删原文、改成显式的适用范围框；
+能用命令验证的写法优先给命令。涉及状态的每个断言都对着代码核过（provider 名、`ref.mounted`、
+`wrapPage(page, container:)`、`AsyncView` 的四条分支、`keepAlive` 清单、`NoRetry` 等）。
+
+| 文件 | 改动 |
+|---|---|
+| `frontend/state-management.md` | **全文重写**：三种 provider 形态（顶层函数 / 同步 Notifier / `Future<T> build()`）+ 各自的金标准文件、`watch` vs `read`、`AsyncView` 判定表与两条页面要求、刷新重试（对照 master 的 `runAsync` 三条语义）、`autoDispose` / `keepAlive` 清单 / `ref.mounted` / `ref.onDispose`、**Consumer 一节**（原 hook-guidelines）、Testing Requirements 三条硬约束 |
+| `frontend/hook-guidelines.md` | **删除**（D3），内容并入上一条的「Consumer 一节」；`frontend/index.md` 的索引同步去掉 |
+| `frontend/quality-guidelines.md` | 禁止/必须模式按 Riverpod 改写（`getIt` → `ProviderContainer`/`ref`、`asyncSignal` → `AsyncNotifier`、`useSignalValue` → `ref.watch`）；原第 11 条「可选注入点」改成「**不要**再加注入点参数」并说明理由 |
+| `frontend/directory-structure.md` | `logic/` 改 Notifier；Feature 间通信改「core/ 的 provider」（范例换成 `Session`）；命名表去掉 DI module / ViewModel 行、加 providers / Notifier 行；数据库一节改「表在共享包、查询在 feature、**不要** `@DriftAccessor`」 |
+| `frontend/component-guidelines.md` | 页面模板改 `ConsumerWidget`；共享组件表 `AsyncState` → `AsyncValue` 并标出 `EmptyWidget` 在包里；三态渲染段与 Common Mistakes 去 hooks/signals |
+| `frontend/type-safety.md` | `AsyncState` 删除、`@injectable` → `@riverpod`、`*.config.dart` 标「本分支不存在」、`Signal state checking` → `Async state checking`；新增一条写法约定：**构造器不重复类名**（`const new({...})` / `const factory({...})` / `factory fromJson(...)` 是本分支的统一形状，别「顺手改成老写法」） |
+| `frontend/localization.md` | **重写**：仓库**已经没有 l10n**（master 的 `09-22-prune-l10n` 把脚手架降为单语言），原文整份在描述一个不存在的配置。改成「单语言约定 + 文案写在哪 + 要加回来时照 `prune.dart` 的裁剪面反向做」 |
+| `frontend/index.md` | 索引与描述改口径 |
+| `backend/network-guidelines.md` | `TokenStore` 的实现指向（本分支就是 `AuthStorage`）；`NetworkModule` → `networkConfigProvider` / `dioProvider`；调试开关重启生效的理由；Mock 规则换 `/sample-items*` |
+| `backend/error-handling.md` | 「错误文案怎么到界面上」改成「`AsyncNotifier.build()` 抛 `Failure` 本身」；ViewModel layer → Notifier layer；Service 例子换 `SampleService`；`lib/core/base/*` → `packages/app_core/lib/base/*`；`token_refresh_test` 路径 |
+| `backend/database-guidelines.md` | **大改**：「状态管理与存储的分工」表（存储不带状态管理）、`AuthStorage` 的接口与失败策略、跨 package **禁** `@DriftAccessor`（drift#3669）、表在共享包 / 查询在 feature、缓存旁路与行↔模型转换换 `Sample*`、FileStorage 已无示例页 |
+| `backend/quality-guidelines.md` | `getIt()` → `ref` / `ProviderContainer`；`@LazySingleton` / `@module` → provider 装配；review 清单同步 |
+| `backend/directory-structure.md` | data flow 的 `ViewModel` → `Notifier`；`{feature}_module.dart` → `{feature}_providers.dart`；删 `service_locator.config.dart` |
+| `backend/logging-guidelines.md` | 「没有 per-Notifier 日志」；`lib/core/logging` → `packages/app_core/lib/logging`；示例与测试路径换口径 |
+| `guides/{index,cross-layer-thinking-guide,comment-guidelines,code-reuse-thinking-guide}.md` | `ViewModel` → `Notifier`、`Article(Service)` → `SampleItem(Service)`、`getCachedArticle` → `getCachedItems`、mock 端点示例换 `/sample-items` |
+| `cross-cutting.md` | codegen 表（`@riverpod` 生成 `.g.dart`、`*.config.dart` 已无、`app_localizations` 标注）；生成器清单（`riverpod_generator` 顶替 `injectable_generator`）；CI 漂移检查去掉 `gen-l10n`；`leak_tracker` 段改成 provider 口径；集成测试的 CI 段改「Android 模拟器，不要 xvfb」；测试范例换 sample |
+| `docs/adr/ADR-0001.md`、`ADR-0002.md`、`docs/architecture-review.md` | 顶部加「⚠️ 适用范围：仅对 master（signals 栈）成立」的框 + 逐条对照表；**正文一字不动** |
+| `docs/release-checklist.md`、`docs/optional-additions.md` | 可执行项与替代方案表改口径（生成物清单、`intl` 不在依赖里、riverpod 是现状而 signals 是替代、缓存示例换 `SampleService`） |
+| `README.md` | 主体重写：特性 / 技术栈表 / 示例模块（auth + sample）/「如何添加新功能模块」的 Notifier 与页面模板 / 测试原则 / 数据流图 / Feature 间通信；**两棵目录树只改注释、路径未动**（`check_readme_tree` 仍绿） |
+
+**顺带发现并修掉的过期描述**（都不在阶段 7 清单里，但都属「会被下一个人当真」）：
+
+1. **仓库已经没有 l10n，而 CI 还在跑 `flutter gen-l10n`** —— 缺 `l10n.yaml` 时该命令会直接失败。
+   已从 `.github/workflows/ci.yml` 删掉（连同报错文案），README / `release-checklist.md` /
+   `cross-cutting.md` 同步。**这是 master 侧的既有问题**：`09-22-prune-l10n` 只验了六道门禁，
+   CI 的那一步不在其中，所以裁剪完之后 CI 的 `analyze` job 应该一直是红的。
+2. `integration_test/app_test.dart` 还写着「应用默认跟随系统语言」并设置 `app.locale`（l10n 已裁剪，那行是死代码）；
+   同一文件的注释还把 `bootstrap()` 说成「DI 注册」。
+3. `lib/core/ui/error_text.dart` 的文档注释说「按当前语言翻译」。
+4. `pubspec.yaml` 的 `description` 还写着 `Signals`（`tool/init_project.dart` 会把这句写进新项目）。
+5. `docs/release-checklist.md` 的崩溃上报接入点还列着早已删掉的 `runZonedGuarded`。
+6. `cross-cutting.md` 说集成测试在 CI 里用 `xvfb-run` —— 实际是 `reactivecircus/android-emulator-runner`
+   （`ci.yml` 自己写着「不要用 xvfb」）。
+
+**阶段 7 门禁实测（2026-09-23）**
+
+| 门禁 | 结果 |
+|---|---|
+| `dart format --set-exit-if-changed` | 0 changed（132 文件） |
+| `check_boundaries` / `check_conventions` | ✅ |
+| `check_readme_tree` | ✅ 3 棵树一致（README ×2 + `directory-structure.md`） |
+| `dependency_validator` | ✅ No dependency issues |
+| `flutter analyze lib/` / `flutter analyze test/` | No issues found |
+| `flutter test` | 242 passed / 1 skipped（`SCAFFOLD_E2E`）；`app_core` 104 passed |
+| `check_coverage --src` | 根 `lib/` 90.0%（31 文件）、`app_core` 89.8%；无未加载文件、无过期豁免 |
+
+**下一步**：阶段 8（`AGENTS.md` 升级为 AI 协作契约、新建 `BRANCH.md`、跑盲测 DoD）。
 
 ---
 
@@ -153,13 +297,49 @@ python ./.trellis/scripts/task.py set-branch 09-22-preset-ai-starter preset/ai-s
 
 ## 阶段 5：测试与测试基建（这一步起必须全绿）
 
-- [ ] 删：`core/base/run_async_test.dart`、`signal_basics_test.dart`、`signal_builder_widget_test.dart`、
-      `features/article/**`、`features/demo/**` 下的测试
-- [ ] 改造：`core/ui/async_view_test.dart`、`core/config/user_preferences_test.dart`、
+- [x] 删：`core/base/run_async_test.dart`、`signal_basics_test.dart`、`signal_builder_widget_test.dart`、
+      `features/article/**`、`features/demo/**` 下的测试（另删 demo 测试专用的
+      `support/fake_path_provider.dart`；包内那份仍被 app_core 测试使用，未动）
+- [x] 改造：`core/ui/async_view_test.dart`、`core/config/user_preferences_test.dart`、
       `core/data/storage/auth_storage_test.dart`、`routing/*`、`app/pages/splash_page_test.dart`、
       `app/app_test.dart`、`support/app_test_harness.dart`（`GetIt` → `ProviderContainer`）
-- [ ] 新增 `features/sample/**` 的对应测试（provider 测试用 `ProviderContainer` + `overrides`）
-- [ ] `test/tool/check_boundaries_test.dart`、`check_conventions_test.dart`：随规则改动同步用例
+- [x] 新增 `features/sample/**` 的对应测试（provider 测试用 `ProviderContainer` + `overrides`）；
+      另外补上 `core/auth/session_test.dart`、`core/config/app_settings_test.dart`、
+      `auth/logic/login_notifier_test.dart`、`core/data/network/dio_client_test.dart` ——
+      这些都是本分支新写/大改的文件，不留覆盖率盲区
+- [x] `test/tool/check_boundaries_test.dart`、`check_conventions_test.dart`：阶段 5 不动脚本规则，
+      两条「真实仓库」回归用例保持绿；规则改动在阶段 6
+
+### 阶段 5 实测（2026-09-23）
+
+> 阶段 0–4 的复选框未回填，以各阶段末的叙述为准；从这里起逐阶段记实测数字。
+
+| 门禁 | 结果 |
+|---|---|
+| `flutter test` | **241 passed / 1 skipped**（`SCAFFOLD_E2E` 端到端），0 failed |
+| `flutter test --coverage` + `check_coverage` | 根 `lib/` **90.2%**（31 个文件）、`app_core` 89.8%，均达标；豁免清单无过期项 |
+| `check_boundaries` / `check_conventions` / `dependency_validator` / `flutter analyze lib+test` | 全绿 |
+| `dart format --set-exit-if-changed` | 0 changed |
+| `check_readme_tree` | **仍红 19 处**（README 与 `directory-structure.md` 的树）——阶段 6 |
+
+四个「不改就红」的坑，已写进 spec（`state-management.md`「渲染状态」+ `database-guidelines.md`）：
+
+1. **`AsyncView` 的 `data(null)` 语义在阶段 3/4 的实现里丢了**。master 的 `runAsync` 在
+   `previous == null` 时直接置 `loading`，而刷新 / 重载分支原先直接渲染 `data(null)`。
+   已按 D5 修回（额外判一次 `value != null`），并为 refreshing / reloading / `data(null)`
+   各留一条测试钉住。
+2. **widget 测试里不能 `await provider.future`**：假时钟下 riverpod 的调度任务只有
+   `tester.pump()` 才跑得动，那个 await 会悬挂到该用例超时（10 分钟/条）。改为
+   「先渲染首帧 → 完成 Completer → `pump()` → 读状态」。
+3. **Riverpod 3 默认对失败的 provider 自动重试**（200ms 起、指数退避、最多 10 次）：
+   widget 测试收尾会报 `A Timer is still pending...`，`verify` 的调用次数也会被悄悄加一。
+   测试容器统一传 `noRetry`（`test/support/app_test_harness.dart`），生产保留默认行为。
+4. **`mocktail` 的 `verify` 会消耗命中的调用**：先 `called(1)` 再 `called(2)` 只看得见剩下
+   那一次；要断言总数就只 verify 一次。
+
+顺带修掉一处与阶段 5 无关的红：`pubspec.yaml` 的 `drift` 从 `dependencies` 挪到
+`dev_dependencies`（数据库与表都在 `app_core`，根工程只在测试里用 `drift/native.dart`
+建内存库），`dependency_validator` 因此转绿。
 
 ## 阶段 6：门禁调整
 
@@ -176,26 +356,43 @@ python ./.trellis/scripts/task.py set-branch 09-22-preset-ai-starter preset/ai-s
 
 ## 阶段 7：spec 与文档重写（成败关键）
 
-- [ ] `frontend/state-management.md` **重写**：`AsyncState`→`AsyncValue`、`asyncSignal`→
+- [x] `frontend/state-management.md` **重写**：`AsyncState`→`AsyncValue`、`asyncSignal`→
       `AsyncNotifier`、`computed`→provider、dispose 边界→`autoDispose` 语义、
       `runAsync` 的竞态与刷新语义→框架内建行为（**哪些坑不再是坑、哪些仍然要守**要写清楚）
-- [ ] `frontend/hook-guidelines.md` **删除**（D3），内容并入上一条的 Consumer 一节
-- [ ] `frontend/quality-guidelines.md`：禁止/必须模式按 Riverpod 改写（`getIt` → `ProviderContainer`）
-- [ ] `frontend/directory-structure.md`：删 `di/` 段 + 目录树
-- [ ] `cross-cutting.md`：六道门禁的规则变化；覆盖率豁免清单复核
-- [ ] `backend/network-guidelines.md`：`TokenStore` 的实现指向（`AuthStorage` → Riverpod 版）
-- [ ] `docs/adr/ADR-0001.md` / `ADR-0002.md` / `docs/architecture-review.md`：**加适用范围标注**
+- [x] `frontend/hook-guidelines.md` **删除**（D3），内容并入上一条的 Consumer 一节
+- [x] `frontend/quality-guidelines.md`：禁止/必须模式按 Riverpod 改写（`getIt` → `ProviderContainer`）
+- [x] `frontend/directory-structure.md`：删 `di/` 段 + 目录树
+- [x] `cross-cutting.md`：六道门禁的规则变化；覆盖率豁免清单复核
+- [x] `backend/network-guidelines.md`：`TokenStore` 的实现指向（`AuthStorage` → Riverpod 版）
+- [x] `docs/adr/ADR-0001.md` / `ADR-0002.md` / `docs/architecture-review.md`：**加适用范围标注**
       「仅对 master（signals 栈）成立」，不是删掉重写
-- [ ] `README.md`：目录树 + 依赖表
+- [x] `README.md`：目录树 + 依赖表
+- [x] **清单外但必须做**（同一个「spec 与代码一致」的口径）：`frontend/{type-safety,localization,index,component-guidelines}.md`、
+      `backend/{error-handling,database-guidelines,quality-guidelines,directory-structure,logging-guidelines}.md`、
+      `guides/*`、`docs/{release-checklist,optional-additions}.md`；`localization.md` 是重写（仓库已无 l10n），
+      其余是逐处换口径
 
 ## 阶段 8：AI 协作契约 + DoD
 
 - [ ] `AGENTS.md`：必读三份（新的 state-management / quality-guidelines / directory-structure）
       置顶 + `## 改完必跑` 命令块 + 禁止模式速查 + `features/sample/` 金标准指向 + DoD
+      —— **注意两处现存的事实错误**（阶段 7 有意留着没改，因为整块在 `<!-- TRELLIS:START -->` 托管区里，
+      `trellis update` 可能覆盖）：第 11 行仍写 `Signals + ViewModel state management`、
+      第 13 行仍写 `Injectable + GetIt dependency injection`、第 16 行仍写「用户可见文案走 l10n」
 - [ ] `BRANCH.md`：基于 master、换了什么、**为什么是兄弟分支不回流**
 - [ ] **盲测 DoD**：新开一个 AI 会话（不给任何解释，只给仓库），让它新增一个 feature，
       要求结构与 `features/sample/` 一致并通过全部六道门禁。**结果（成功/卡在哪）要写进
       `research/` 或 task notes——这条不达标则本任务未完成**
+
+### 阶段 8 开工前要用户拍板的两件事
+
+1. **`.agents/skills/signals-*` 还在仓库里**（`signals-dart` / `signals-flutter` / `signals-hooks` /
+   `signals-lint` / `signals-migration-6-to-7`，共五个技能目录）。本分支已经没有 signals，
+   而 AI 会按技能描述去写 signals 代码 —— 与「AI 打开仓库就能在边界内产出符合规范的代码」直接冲突。
+   建议随本阶段一起删掉（或换成 riverpod 版），但删技能文件影响面较大，先确认。
+2. **CI 的触发分支仍是 `branches: [master]`**（`.github/workflows/ci.yml`，阶段 6 提出，仍未决）：
+   推 `preset/ai-starter` 不会跑任何 CI，而本分支的提交约定是 `--no-verify` —— 六道门禁全靠本地自觉。
+   要不要临时加上 `preset/*`？
 
 ### `## 改完必跑` 命令块（AGENTS.md 里要落的版本）
 

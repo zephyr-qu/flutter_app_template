@@ -22,7 +22,7 @@ These guides help you **ask the right questions before coding**.
 | Guide | Purpose | When to Use |
 |-------|---------|-------------|
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | 发现自己在复制粘贴时 |
-| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | 功能跨 Page / ViewModel / Service / DAO 时 |
+| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | 功能跨 Page / Notifier / Service / DAO 时 |
 | [Comment Guidelines](./comment-guidelines.md) | 代码注释写什么、spec 引用与语言约定、长文放哪 | 写或改任何注释 / spec 时 |
 
 ---
@@ -31,7 +31,7 @@ These guides help you **ask the right questions before coding**.
 
 ### When to Think About Cross-Layer Issues
 
-- [ ] 功能跨 3+ 层（Page / ViewModel / Service / DAO）
+- [ ] 功能跨 3+ 层（Page / Notifier / Service / DAO）
 - [ ] 数据在两个层之间换了类型（`DioException` → `Failure`、模型 → drift 行类）
 - [ ] 同一份数据既走网络又走缓存
 - [ ] 不确定某段逻辑该放哪一层

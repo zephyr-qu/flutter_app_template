@@ -76,8 +76,8 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 - **applicationId**（`com.example.flutter_app`）是设备与商店里的唯一标识，首次发布前
   必须改掉。
-- **package name** 影响 Dart import 路径。生成物（`*.g.dart` /
-  `service_locator.config.dart`）已经随脚本一起改；只有在你额外改了注解时才需要重跑
+- **package name** 影响 Dart import 路径。生成物（`*.g.dart` / `*.freezed.dart` /
+  `*.gr.dart`）已经随脚本一起改；只有在你额外改了注解时才需要重跑
   build_runner。
 - **显示名**（`CFBundleDisplayName` / `android:label`）才是用户看到的那个名字。
 - **build flavor** 会让 `applicationId` 分散到多个 flavor 块里，脚本届时会「找不到

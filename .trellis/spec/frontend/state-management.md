@@ -1,30 +1,34 @@
 # State Management
 
-> How state is managed in this project.
+> 状态怎么管。本文件的结论针对 `preset/ai-starter` 分支（Riverpod 3）。
+> 同仓库的 master 用的是 signals —— 两栈不互相合并，只在必要处对照一句
+> （`BRANCH.md` 是本分支的说明文件，随阶段 8 补齐）。
 
 ---
 
 ## Overview
 
-Uses **`signals_flutter`** for reactive state. Signals provide fine-grained reactivity without widget tree rebuilds.
+**Provider 是唯一的状态载体**，它同时承担了 master 里三样东西的职责：
 
-No base ViewModel class — ViewModels are plain `@injectable` classes. A standalone `runAsync` / `runAsyncVoid` helper handles the common async tri-state pattern.
+| master（signals 栈） | 本分支 |
+|---|---|
+| `signal` / `asyncSignal` / `computed` | `@riverpod` 的 `Notifier` / `AsyncNotifier` / 顶层函数 provider |
+| `get_it` + `@injectable` 注册表 | provider 之间的 `ref.watch` 依赖 |
+| `@Singleton` / `factory` 生命周期 | `@Riverpod(keepAlive: true)` / 默认 `autoDispose` |
 
-**Signals are private; expose them as `ReadonlySignal` getters.** Hold the writable signal in a private field, expose a `ReadonlySignal<T>` getter, and keep every mutation inside a ViewModel method:
+因此 `lib/di/` 不存在，页面也不再从容器里取 ViewModel：页面是
+`ConsumerWidget` / `ConsumerStatefulWidget`，用 `ref.watch` 订阅。
 
-```dart
-final _email = signal('');
-ReadonlySignal<String> get email => _email;
-void updateEmail(String value) => _email.value = value;
-```
+三个要点：
 
-Cost: one line per signal. What it buys: the rule in 「常见错误」（不要在 widget 里直接 `vm.x.value = x`）stops being a convention nobody can enforce and becomes a **compile error** — without the wrapper, `flutter analyze` stays silent and only review catches it.
-
-Three boundaries worth knowing:
-
-- **Compile-time only.** `Signal<T>` is `with ReadonlySignal<T>`, and `Signal.readonly()` is literally `=> this`（`signals_core` 的 `src/core/signal.dart`），so `(vm.email as Signal<String>).value = 'x'` still compiles and runs. It stops the accidental write, not a determined one.
-- **`computed` needs no wrapper** — it is already `with ReadonlySignal<T>` and has no setter, so `canSubmit` stays a plain public field.
-- **Internal calls need the private field** — `runAsync` / `runAsyncVoid` take `Signal<AsyncState<T>>`（可写），so they receive `_user`, never `user`.
+- **状态私有。** `Notifier` 的 `state` 只有类内能写（Dart 的库私有可见性），页面拿不到
+  写入手段，只能 `ref.watch` 读、调方法改。master 用 `ReadonlySignal` + 私有字段达成的
+  同一件事，在这里是语言本身保证的。
+- **没有基类。** 不引入 `BaseNotifier`：异步三态由 `AsyncValue` 承载，刷新/竞态由框架
+  承载，项目侧没有可收敛的样板（与 master 的 [ADR-0002](../../../docs/adr/ADR-0002.md)
+  同一结论，理由不同）。
+- **没有 hooks。** `flutter_hooks` 已从依赖里移除，`HookWidget` / `useMemoized` /
+  `useEffect` / `useSignalValue` 在本分支不存在。对应写法见「Consumer 一节」。
 
 ---
 
@@ -32,370 +36,367 @@ Three boundaries worth knowing:
 
 | Category | Where | Pattern |
 | ---------- | ------- | --------- |
-| **Async Data** (API results) | `logic/` ViewModels | `asyncSignal<T>(AsyncState.data([]))` |
-| **Sync Data** (form inputs) | `logic/` ViewModels | `signal<T>(initialValue)` |
-| **Derived State** | ViewModel getters/computed | `computed(() => ...)` or `bool get canSubmit => ...` |
-| **Global Config** (theme, auth) | `core/theme/` `core/config/` `core/data/storage/` | signal + SharedPreferences |
-| **UI-Only State** (animation, scroll) | Local widget state | `setState()` or local `ValueNotifier` |
+| **Async Data** (API results) | `logic/` | `@riverpod class XxxNotifier extends _$XxxNotifier` 且 `Future<T> build()` |
+| **Sync Data** (form inputs) | `logic/` | `@riverpod class XxxNotifier` 且同步 `build()` 返回**不可变快照** |
+| **Derived State** | 快照的 `bool get canSubmit => ...`，或 provider 里 `ref.watch` 组合 | 不另存一份状态 |
+| **无状态服务 / 依赖装配** | `data/*_providers.dart`、`core/providers.dart` | `@Riverpod(keepAlive: true)` 顶层函数 |
+| **Global Config** (theme, auth) | `core/config/`、`core/auth/`、`core/data/storage/` | `keepAlive` Notifier / 顶层 provider |
+| **UI-Only State** (animation, scroll) | 页面局部 | `setState()`（`ConsumerStatefulWidget`） |
 
 ---
 
-## Pattern: ViewModel + Signals
+## 三种 Provider 形态
+
+三个形态各有一个金标准文件，新增代码照抄它们（`features/sample/` 是「AI 唯一照抄对象」）。
+
+### 1. 顶层函数 provider —— 无状态服务与装配
 
 ```dart
-@injectable
-class ArticleViewModel {
-  final ArticleRepository _repo;
+// lib/features/sample/data/sample_providers.dart
+@Riverpod(keepAlive: true)
+SampleApi sampleApi(Ref ref) => SampleApi(ref.watch(dioProvider));
 
-  ArticleViewModel(this._repo);
-
-  // 私有可变；name 是 v7 的调试标签
-  final _articles = asyncSignal<List<Article>>(
-    AsyncState.data([]),
-    options: AsyncSignalOptions<List<Article>>(
-      name: 'articleViewModel.articles',
-    ),
-  );
-  final _selectedArticle = asyncSignal<Article?>(AsyncState.data(null));
-
-  // 对外只读（computed 不用包，它天生没有 setter）
-  ReadonlySignal<AsyncState<List<Article>>> get articles => _articles;
-  ReadonlySignal<AsyncState<Article?>> get selectedArticle => _selectedArticle;
-
-  // 写入只能在类内部：runAsync 要求可写的 Signal<AsyncState<T>>，所以传私有字段
-  Future<Result<void, Failure>> loadArticles() =>
-      runAsync(_articles, () => _repo.getArticles());
-}
+@Riverpod(keepAlive: true)
+SampleRepository sampleRepository(Ref ref) =>
+    SampleService(ref.watch(sampleApiProvider), ref.watch(sampleDaoProvider));
 ```
 
-### 两条写法约定
+无状态服务**都带 `keepAlive`**：让它们随页面生灭只会把实例化成本挪到每次 `ref.read`，
+换不来任何隔离收益。需要换实现（真实后端 / 测试假件）一律走 `ProviderScope(overrides:)`。
 
-**1. 一次改多个信号用 `batch()`。** `batch` 是**同步**事务：先把 `await` 全部做完，
-再进 batch（跨 `await` 的 batch 无效）。
-
-```dart
-// ❌ 三次写入 = 三次通知 = 页面（订阅了这三个信号）重建三趟
-savedContent.value = await _files.readString(name);
-usageKb.value = await _files.getUsage();
-cachedCount.value = (await _dao.getCachedArticles()).length;
-
-// ✅ 先 await，再一次性提交
-final String? content = await _files.readString(name);
-final int usage = await _files.getUsage();
-final int count = (await _dao.getCachedArticles()).length;
-batch(() {
-  savedContent.value = content;
-  usageKb.value = usage;
-  cachedCount.value = count;
-});
-```
-
-`runAsync` / `runAsyncVoid` 只操作**一个** signal，不存在「多个信号要一起提交」的问题，
-所以不需要包 `batch`。但要说清楚：它们一次调用会写**两次** signal —— 进 `loading` /
-`dataRefreshing` 一次，收尾写 `data` / `error` 一次。两次都是有意义的状态迁移，不要
-试图合并成一次。
-
-**2. 旧的读值用 `peek()`。** `runAsync` 启动时要读「上一次的值」来判定是首屏 loading
-还是刷新（`lib/core/base/run_async.dart`），那里用的是 `signal.peek().value`：
-命令式读取不该建立订阅关系，否则从 `SignalBuilder` 的 builder 或 `computed` 里发起
-加载时会把 signal 挂成调用方的依赖，形成自触发循环。**不要把它改回 `.value`。**
-
-`signal` / `computed` / `asyncSignal` 分别用 `SignalOptions` / `ComputedOptions` /
-`AsyncSignalOptions`，且**必须写全类型参数**（`analysis_options.yaml` 开了
-`strict-inference`，省略类型参数会推断失败）。
-
-### 为什么没有 BaseViewModel
-
-早期版本有 `BaseViewModel`，后来发现：
-
-- ViewModel 之间共享的行为只有 `runAsync` 这一个模式
-- 一个顶层函数比一个抽象类更简单，而且不影响 ViewModel 的构造方式
-- **不需要 dispose 机制**：ViewModel 由 `@injectable` 注册为 `factory`，每次 `getIt<VM>()` 返回一个新实例（配合页面 `useMemoized` 即为每页一个）。它的 signal 只被当前页面的 widget 订阅，页面销毁后没有监听者——此时 `runAsync` 再写入一次 signal 只是无意义的赋值，不会崩溃，实例也会被 GC 回收。因此 `runAsync` 不提供 `disposed` 守卫。
-
-### 什么时候才需要 dispose（上一条的边界）
-
-「不需要 dispose」的前提是 **ViewModel 的信号只与它自己的信号建立订阅关系**——这样它们形成一个无外部引用的「孤岛」，可被 GC 整体回收。前提一旦打破就会真的泄漏：
+### 2. 同步 Notifier —— 表单这类内存状态
 
 ```dart
-// ❌ VM 里订阅了长生命周期的全局信号
-final items = computed(() => globalCacheSignal.value);
-```
-
-`computed` 会把自己挂上 `globalCacheSignal` 的订阅链（**强引用**）。而 `Computed.dispose()` 只做标记、**不遍历 `sources` 退订**（只有 `Effect.dispose()` 会做这件事），所以即使页面和 ViewModel 都被丢弃，这个 computed 仍被全局信号钉住，ViewModel 跟着无法回收。
-
-任何「VM 订阅全局 signal」的写法都适用：`core/data/storage/` 里的信号、`UserPreferences` 的信号、以及将来新增的全局缓存信号。
-
-**解法**是给这类 computed 加 `autoDispose`（没有订阅者时自动释放），**不是**给所有 ViewModel 加 `dispose()`：
-
-```dart
-final items = computed(
-  () => globalCacheSignal.value,
-  options: const ComputedOptions(autoDispose: true),
-);
-```
-
-**不要「顺手」补 `vm.dispose()`**。`Signal.set` 在 disposed 之后是直接抛异常的（`signals_core` 的 `Signal.set`）：
-
-```dart
-if (disposed) {
-  throw SignalsWriteAfterDisposeError(this);
-}
-```
-
-页面在请求飞行中被 pop 时，若 `useEffect` 的 cleanup 调了 `vm.dispose()`，随后返回的网络响应会在 `runAsync` 里写 signal 并当场抛错。要避开它就得给 `runAsync` 加 `disposed` 守卫——而那正是本节选择不做的。
-
-另外，**`leak_tracker` 看不见 signals**：`Signal` / `AsyncSignal` / `Computed` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`（`signals_core` / `signals_flutter` 里没有任何集成），它追踪的是 `State` / `Element` / `ChangeNotifier` 这类 Flutter 对象。所以「测试里 `leak_tracker` 没报警」**不等于**「信号没有泄漏」。
-
-#### 边界规则：什么时候必须加 `autoDispose`
-
-**规则**：这个 `computed`（或 `effect`）读到的每一个信号，生命周期**都不长于它自己**时才不加
-`autoDispose`。只要有一个来自长生命周期对象——`@Singleton` 的 `AuthStorage` /
-`UserPreferences`、将来新增的全局缓存信号——就**必须**加：
-
-```dart
-// 只要读了全局信号，就带上 autoDispose（注意 strict-inference 要写全类型参数）
-final items = computed(
-  () => globalCacheSignal.value,
-  options: const ComputedOptions<List<Item>>(autoDispose: true),
-);
-```
-
-新增 `computed` / `effect` 时按这个清单过一遍：
-
-1. 列出它读到的**所有**信号（含通过方法间接读到的）
-2. 逐个问：**谁持有这个信号**？是本 ViewModel 自己，还是某个 `@Singleton`？
-3. 出现后者 → 加 `autoDispose: true`；一个都没有 → 保持不加
-4. **不要**改用 `vm.dispose()` 兜底（理由见上：飞行中的请求仍会回写 signal，而
-   `Signal.set` 在 disposed 之后抛异常）
-
-**现状核对**（写这份 spec 时全项目只有两处 `computed`，都不越界；查当前全量：
-`grep -rn "computed(" lib/`）：
-
-| computed | 读到的信号 | 归属 | 结论 |
-| --- | --- | --- | --- |
-| `AuthStorage.isLoggedInSignal` | `currentUser` | 同一个单例自己 | 安全：持有者本就活到进程结束，不存在「谁被谁钉住」 |
-| `AuthViewModel.canSubmit` | `_email` / `_password` | ViewModel 自己 | 安全：孤岛，随页面一起被 GC |
-
-全项目唯一的手动订阅在 `app/routing/auth_reevaluate.dart`（`isLoggedIn.subscribe(...)`），
-它在 `dispose()` 里显式调了 `_unsubscribe()`——这正是同一类边界的正确写法：**主动订阅就要
-主动退订**（`effect` 的 teardown 语义），不能指望 `Computed.dispose()` 替你遍历 `sources`。
-
-⚠️ 这条边界**没有代码约束**，只能靠人过清单：`computed(() => globalSignals.value)` 能正常
-编译、`flutter analyze` 也不会报，`leak_tracker` 又看不见（见上一段）。想变成机械检查，
-需要 `signals_lint` 之类的自定义规则——本项目**尚未接入**。
-
----
-
-## runAsync 使用
-
-```dart
-// 旧：每个 ViewModel 手写 7 行样板
-_articles.value = AsyncState.loading();
-final result = await repo.getArticles();
-result.when(
-  success: (d) => _articles.value = AsyncState.data(d),
-  failure: (f) => _articles.value = AsyncState.error(f),
-);
-
-// 新：一行
-await runAsync(_articles, () => repo.getArticles());
-```
-
-### ViewModel 方法的返回约定
-
-**所有异步方法统一返回 `Result<void, Failure>`**，直接 `return runAsync(...)`：
-
-```dart
-Future<Result<void, Failure>> loadArticles() =>
-    runAsync(_articles, () => _repo.getArticles());
-
-Future<Result<void, Failure>> loadDetail(int id) =>
-    runAsync(_selectedArticle, () => _repo.getArticle(id));
-```
-
-- 调用方不需要返回值时忽略即可；需要分支处理时（如登录成功后跳转）直接 `when(...)`，见 `AuthViewModel`
-- **不要**丢掉 `runAsync` 的返回值再用 `signal.value.hasError` 反推失败：那会把原始 `Failure` 换成 `Failure.unknown`，错误码就丢了
-
-### 任务只报成败：`runAsyncVoid`
-
-任务的 `Result` 里没有值（`Result<void, _>`，例如登出）时用 `runAsyncVoid`，把「成功
-时信号该是什么值」显式写出来：
-
-```dart
-Future<Result<void, Failure>> logout() =>
-    runAsyncVoid(_user, _repo.logout, onSuccess: null);
-```
-
-**不要把 `void` 任务直接交给 `runAsync`。** `T` 同时被「信号」和「任务结果」约束，而
-`void` 是所有类型的父类型：`LUB(T信号, void) = void`，于是 `AsyncState<void>` 在运行时
-等于 `AsyncState<dynamic>`，写进 `Signal<AsyncState<User?>>` 会当场抛 `TypeError`。
-给出 `onSuccess` 之后 `T` 只由信号与非 `void` 的值决定，推断是安全的。
-
-这条不是理论推演——`test/core/base/run_async_test.dart` 里有一条对照测试把这个
-`TypeError` 钉住了。若哪天 Dart 的推断不再这样解，那条测试会失败，届时可以删掉
-`runAsyncVoid`，而不是以为代码坏了。
-
-### 并发：最后一次胜出
-
-`runAsync` 内部按 signal 记录调用序号，**同一个 signal 上后发起的调用会作废先前仍在飞行中的调用**——后者照常返回自己 task 的 `Result`，但不再回写 signal。
-
-```dart
-// 首屏（慢）+ 下拉刷新（快）同时触发：刷新的结果胜出，首屏的旧响应后到时被丢弃
-vm.loadArticles();   // 旧
-vm.loadArticles();   // 新 —— 只有它写 signal
-```
-
-因此**不需要**在每个 ViewModel 里手写 request token 或取消逻辑，也不会出现「旧响应覆盖新状态」。两点要知道：
-
-- 序号**按 signal 隔离**，两个不同 signal 上的并发互不影响（`ArticleViewModel` 的 `loadArticles` / `loadDetail` 就是各记各的）
-- 被取代的调用返回的是它自己 task 的真实结果，**不代表状态已被更新**。需要分支处理的方法（如登录成功后跳转）不能假设「返回成功 = 这次成功了」
-
-### 刷新时保留旧数据
-
-`runAsync` **已有数据时不回到 loading**，而是置成 `AsyncState.dataRefreshing(旧数据)`：
-
-| 调用时的状态 | runAsync 置为 | 页面 `map` 走哪个分支 |
-| --- | --- | --- |
-| 无数据（首次加载 / 出错后重试） | `loading` | `loading`（整屏 spinner） |
-| 已有数据（下拉刷新 / 重新拉取） | `dataRefreshing` | **`data`**（继续渲染旧数据） |
-
-这是 `signals` 自带的类型（`AsyncDataRefreshing` 的 `hasValue` 为 true），所以**页面不需要任何改动**：下拉刷新时列表留在屏幕上，`RefreshIndicator` 自己转圈；只有首次加载和重试才显示整屏 loading。
-
-```dart
-// 想在刷新时显示别的东西（例如顶部一条细进度条），显式传 refreshing 回调即可
-AsyncView<List<Article>>(
-  state: async,
-  loading: () => const LoadingIndicator(),
-  refreshing: () => const _TopProgressBar(),   // 不传则走 data
-  data: (list) => ...,
-  error: (Object error, StackTrace stackTrace) => ErrorText(error: error),
-)
-```
-
-注意 `AsyncDataRefreshing.isLoading` 仍为 `true`，所以「是否在进行中」照旧看 `isLoading`；`data(null)` 视同没有数据（屏幕上本来就是空的，保留它不如给个 loading）。
-
-**页面侧有两个配套要求**（见 `features/article/page/article_list_page.dart`）：
-
-1. **空状态也要能刷新**。`RefreshIndicator` 得存在于树里，刷新才可能被触发；空状态若直接返回 `EmptyWidget`，「列表为空 → 想刷新 → 刷不动」就是死胡同。做法是用 `CustomScrollView` + `SliverFillRemaining` 把它包成可滚动的，再套 `RefreshIndicator`。
-2. **显式给 `AlwaysScrollableScrollPhysics`**。刷新依赖子级可滚动（实测换成 `NeverScrollableScrollPhysics` 后页面刷新测试全挂）；显式声明就不必赌「内容撑不满一屏时默认 physics 是否接受下拉」——这一点会随 Flutter 版本和平台变化。
-
-### 渲染状态：用 `AsyncView`，不要用 `AsyncState.map`
-
-**页面渲染 `AsyncState` 一律走 `core/ui/async_view.dart` 的 `AsyncView`。**
-
-`AsyncState.map` 的 `error` 参数类型是 `Function`，它**在运行期**用 `error is Function(dynamic, dynamic)` / `is Function(dynamic)` 判断回调签名。第二个参数写成 `StackTrace?` 时**不满足 `dynamic` 的逆变要求**，两个分支都不匹配，最后落到 `error()` 零参调用 → `NoSuchMethodError`，整页变红屏：
-
-```dart
-// ❌ 编译通过，运行期崩溃
-error: (Object? error, StackTrace? stackTrace) => ErrorText(...),
-```
-
-`AsyncView` 用 sealed class 的穷尽 `switch` 代替运行期分派，回调全部具名具类型：
-
-```dart
-AsyncView<List<Article>>(
-  state: async,
-  loading: () => const LoadingIndicator(),
-  error: (Object error, StackTrace stackTrace) =>
-      ErrorText(error: error, onRetry: () => vm.loadArticles()),
-  data: (List<Article> list) => ...,
-)
-```
-
-- 回调签名写错 → **编译期**报错，不再是运行期红屏。
-- signals 将来新增 `AsyncState` 子类型 → `switch` 不再穷尽，同样编译期报错。
-- `refreshing` / `reloading` 可选，缺省时退回 `data`（旧数据）/ `error`，与 `map` 行为一致；分支顺序约束（`AsyncLoading` 必须排在 `AsyncData*` 之后）已封装在 `AsyncView` 内部。
-
-⚠️ 上述坑曾经真实存在于 `article_list_page.dart`，直到页面测试把列表打到 error 态才暴露。**新增 error 分支后，仍要写一条「进入 error 态」的页面测试**——`AsyncView` 保证的是回调签名不会在运行期崩，不保证你的分支渲染逻辑本身正确。
-
----
-
-## 为什么不用 `futureSignal` / `computedAsync`
-
-signals v7 自带声明式的异步原语，本项目**没有**用它们承载 API 请求，而是 `asyncSignal` +
-`runAsync`。这是有意的取舍，不是漏掉的选项——两者能力高度重叠：
-
-| 维度 | `futureSignal` / `computedAsync` | 本项目的 `asyncSignal` + `runAsync` |
-| --- | --- | --- |
-| 何时执行 | **声明式**：随回调里读到的信号变化自动重跑（`FutureSignal` 手动跟踪这些依赖） | **命令式**：由页面事件显式调用（首屏 `useEffect`、下拉刷新、点重试、按钮） |
-| 刷新 / 重载 | `refresh()` → `AsyncDataRefreshing`（保留旧数据）、`reload()` → `AsyncDataReloading` | 同样两个状态，由 `runAsync` 按「有没有旧数据」自动选 |
-| 竞态保护 | 自带（新执行作废旧响应） | 自带（按 signal 记调用序号，最后一次胜出） |
-| 调用方拿结果 | `await signal.future`，失败走 `completeError`（异常） | 方法直接返回 `Result<void, Failure>`，失败带 `Failure` 错误码 |
-| 单测 | 需要 signals 运行时在场 | `runAsync` 是纯函数，喂 `Signal` + `Future` 即可 |
-
-三点让它不适配本项目：
-
-1. **触发源不是信号。** 首屏加载、下拉刷新、点重试都不是「某个信号变了」。硬用
-   `computedAsync` 就得先造一个「触发器信号」再手动 bump，等于把命令式意图编码成假的声明式
-   依赖，比现状更绕。
-2. **调用方要的是带 `Failure` 的 `Result`。** `login()` 的调用方要按成功 / 失败分支跳转或弹
-   提示，失败时还需要 `Failure` 里的错误码去翻译文案（`error.localizedMessage(l10n)`）。
-   `AsyncSignal` 有 `future` getter，`await signal.future` 也能拿到值，但失败那条路是
-   `completer.completeError(...)`——异常承载不了 `Failure` 的错误码语义，页面侧得改成
-   try/catch，等于把「错误模型」劈成两套。
-3. **三态细节是项目定制的。**「已有数据时不回 loading，只置 `dataRefreshing`」和
-   「`data(null)` 视同没有数据」都已经写进 `runAsync`，页面（`AsyncView` 的 refreshing 分支）
-   与测试都依赖它。换成库的 `lazy` / `init` 生命周期，这两条得再包一层。
-
-**什么时候该用它们**：当异步结果**确实是**某个信号的函数时，用声明式原语，别手写：
-
-```dart
-// ✅ 搜索建议：结果 = f(query)，且需要「后到的旧响应不能覆盖新结果」
-final query = signal('');
-final suggestions = computedAsync(
-  () => _api.searchSuggestions(query.value),   // Future<List<Suggestion>>
-  options: AsyncSignalOptions<List<Suggestion>>(
-    name: 'searchViewModel.suggestions',
-  ),
-);
-
-// ✅ 合并多个异步信号：任一在 loading 就整体 loading，全部成功才是 data
-final dashboard = computedFrom([profileSignal, statsSignal], () => ...);
-```
-
-判据一句话：**「用户 / 事件决定何时发起」→ `asyncSignal` + `runAsync`；
-「上游信号的值决定结果」→ `futureSignal` / `computedAsync`。** 两者可以共存，
-但**不要叠着写**：同一个状态只用一种原语承载——两条路都能写它时，谁最后写谁说了算，
-三态语义会被劈成两套。
-
----
-
-## 页面 ↔ ViewModel 生命周期
-
-页面通过 `getIt` 获取 ViewModel（`factory` 实例随页面生命周期，由 GC 回收，无需手动 dispose——只有 VM 订阅了全局信号时才需要处理，见「什么时候才需要 dispose」），**但必须留出可选注入点**给页面测试（[ADR-0001](../../../docs/adr/ADR-0001.md) 的缓解措施，`tool/check_boundaries.dart` 规则 4 会拦）：
-
-```dart
-@RoutePage()
-class ArticleListPage extends HookWidget {
-  /// 可选注入点——只有测试会传值
-  final ArticleViewModel? viewModel;
-
-  const ArticleListPage({super.key, this.viewModel});
-
+// lib/features/auth/logic/login_notifier.dart
+@riverpod
+class LoginNotifier extends _$LoginNotifier {
   @override
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
+  LoginState build() => const LoginState();
 
-    useEffect(() {
-      vm.loadArticles();
-      return null;
-    }, []);
+  void updateEmail(String value) => state = state.copyWith(email: value);
+
+  Future<Result<void, Failure>> login() async {
+    state = state.copyWith(isSubmitting: true);
+    final result = await ref.read(authRepositoryProvider)
+        .login(state.email, state.password);
+    if (ref.mounted) state = state.copyWith(isSubmitting: false);
+    return result;
   }
 }
 ```
 
+- 状态是**不可变快照**（`@immutable` + `copyWith`），不是一组可写字段。master 里
+  「一次改多个信号要用 `batch()`」那条约束在这里**不存在**：一次 `state = ...` 就是一次
+  通知，页面只重建一趟。
+- 写入走方法、不开 setter —— 这是「状态私有」的落地方式。
+- `autoDispose`（默认）意味着**页面离开即释放**，表单内容不跨页面残留。
+
+### 3. 异步 Notifier —— API 数据
+
+```dart
+// lib/features/sample/logic/sample_list_notifier.dart
+@riverpod
+class SampleListNotifier extends _$SampleListNotifier {
+  @override
+  Future<List<SampleItem>> build() async {
+    final result = await ref.watch(sampleRepositoryProvider).getItems();
+
+    return switch (result) {
+      Ok<List<SampleItem>, Failure>(:final data) => data,
+      Err<List<SampleItem>, Failure>(:final error) => throw error,
+    };
+  }
+}
+```
+
+一条不能破的约定：**抛 `Failure` 本身，不要另造包装异常**。
+
+`AsyncValue.error` 允许携带任意对象，`ErrorText` 要靠这个对象翻译错误码；包一层就只剩
+「未知错误」。`Failure implements Exception`，所以 `only_throw_errors` 不会报。
+
+`build()` 是**唯一的读取点**：首屏加载就是 build，刷新与重试退回框架原语（见「刷新与重试」），
+所以 Notifier 里通常没有 `load()` 方法。
+
+### Provider 命名由生成器决定
+
+`riverpod_generator` 按**去掉 `Notifier` 后缀的类名**命名 provider：
+
+| 声明 | 生成的 provider |
+|---|---|
+| `class LoginNotifier extends _$LoginNotifier` | `loginProvider`（**不是** `loginNotifierProvider`） |
+| `class SampleListNotifier extends _$SampleListNotifier` | `sampleListProvider` |
+| `SampleApi sampleApi(Ref ref)` | `sampleApiProvider` |
+
+容易写成 `loginNotifierProvider`，编译器会直接报「未定义」，没有 lint 兜——但也不会静默错。
+
 ---
 
-## 常见错误
+## 读写：`watch` vs `read`
+
+| 场景 | 用法 |
+|---|---|
+| provider 的 `build()` 里、页面的 `build()` 里 | `ref.watch(...)` —— 建订阅，变了跟着重建 |
+| Notifier 的方法里、事件回调里 | `ref.read(...)` —— 一次性取值 |
+| 页面要调 Notifier 的方法 | `ref.read(xxxProvider.notifier)` —— 取的是实例本身 |
+
+`ref.read(xxxProvider.notifier)` 在 `build` 里是**正当写法**：notifier 实例身份稳定、
+不参与订阅，页面拿它当方法接收者（`onChanged: notifier.updateEmail`）。门禁
+`avoid_ref_read_in_build` 只管「取**值**的 read」，实参是 `.notifier` 时放行
+（口径见 [cross-cutting.md](../cross-cutting.md)「代码形态约定」）。
+
+`ref.watch` 只能在 `build` 里；在方法里 `watch` 会抛（`Ref.watch` 的生命周期约束）。
+需要「状态变了做件事」时不要自己订阅，用 `ref.listen`（页面）或 `ref.listenSelf`（Notifier）。
+
+---
+
+## 渲染状态：一律走 `AsyncView`
+
+**页面渲染 `AsyncValue` 一律走 `core/ui/async_view.dart` 的 `AsyncView`**，不要用
+`AsyncValue.when`，也不要手写 `isLoading` / `hasError` 分支。
+
+`AsyncValue` 允许「既有值又有错」（刷新失败时旧值还在），所以判定顺序有硬约束：
+
+| `AsyncValue` 的形态 | `AsyncView` 渲染 |
+| --- | --- |
+| 有值 + `isRefreshing`（`ref.refresh`） | `refreshing`，缺省 `data(旧值)` |
+| 有值 + `isReloading`（依赖变化 / `invalidate(asReload: true)`） | `reloading`，缺省 `data(旧值)` |
+| 有值、稳定 | `data` |
+| 出错 + `isRefreshing` | `refreshing`，缺省 `error` |
+| 出错 + `isReloading` | `reloading`，缺省 `error` |
+| 出错、稳定 | `error` |
+| 无值无错 | `loading` |
+
+1. **判定顺序不能改**：必须先判 `isRefreshing` / `isReloading`，再看值，最后才是错误。
+   顺序一换，中间态就被旧值（或错误）吞掉了。
+2. **旧值为 `null` 视同没有数据**：`hasValue` 只看「有没有那份记录」，`data(null)` 也算有值；
+   而屏幕上要的是「真的有东西可渲染」，所以 `AsyncView` 额外判了一次 `value != null`。
+
+`refreshing` / `reloading` / `data(null)` 这三条各有一条测试钉在
+`test/core/ui/async_view_test.dart`，**行为不能静默丢**。
+
+### 页面侧的两个配套要求
+
+1. **空状态也要能刷新。** `RefreshIndicator` 得存在于树里，刷新才有可能被触发；空态直接
+   返回 `EmptyWidget` 就是「列表为空 → 想刷新 → 刷不动」的死胡同。做法是用
+   `CustomScrollView` + `SliverFillRemaining` 包成可滚动的，再套 `RefreshIndicator`。
+2. **显式给 `AlwaysScrollableScrollPhysics`。** 刷新依赖子级可滚动（实测换成
+   `NeverScrollableScrollPhysics` 后页面刷新测试全挂）；显式声明就不必赌「内容撑不满一屏时
+   默认 physics 是否接受下拉」——这一点会随 Flutter 版本和平台变化。
+
+两处的金标准都在 `features/sample/page/sample_list_page.dart`。
+
+### 为什么不用 `AsyncValue.when`
+
+`when` 的回调是具名且具类型的，签名配错在编译期就是 error（master 那条
+「`AsyncState.map` 的回调签名运行期才校验」的坑**在这里不存在**）。仍然统一走
+`AsyncView` 的理由有两个，都与类型安全无关：
+
+- 它封装了上表的判定顺序，页面不必各自记住「先刷新后错误」
+- `refreshing` / `reloading` / `data(null)` 这三条是项目定制语义，换回 `when` 要让每个
+  页面重写一遍（两条可选回调是给「后台更新时想显示别的东西」用的，缺省退回旧值）
+
+门禁 `avoid_async_state_map` 随 signals 栈一起退役了——这条现在是**约定**，不是拦截
+（退役记录见 [cross-cutting.md](../cross-cutting.md)「代码形态约定」）。
+
+---
+
+## 刷新与重试：不要自己写 request token
+
+```dart
+// 下拉刷新：返回 Future，交给 RefreshIndicator 等它结束
+onRefresh: () => ref.refresh(sampleListProvider.future),
+
+// 重试：丢弃当前状态、重新执行 build
+onRetry: () => ref.invalidate(sampleListProvider),
+```
+
+master 的 `runAsync` 提供了三件事，这里全部由框架提供，**页面与 Notifier 都不该再实现一遍**：
+
+| master 的 `runAsync` 语义 | 本分支 |
+|---|---|
+| 并发时「最后一次胜出」 | provider 重新执行 build 后，上一次仍在飞行中的 future 结果直接作废 |
+| 刷新时保留旧数据（`dataRefreshing`） | `AsyncValue.isRefreshing` + `copyWithPrevious` |
+| `data(null)` 视同没有数据 | `AsyncView` 的 `value != null` 判定（项目定制，需保留） |
+
+两点要知道：
+
+- `ref.refresh(p)`（不带 `.future`）**同步返回刷新后的 `AsyncValue`**（`isRefreshing == true`），
+  逻辑测试用它断言中间态；页面里给 `RefreshIndicator` 用带 `.future` 的那个。
+- 被取代的那次调用仍然会正常完成——它只是不再改写状态。需要按结果分支的方法
+  （如登录成功后跳转）要自己看返回值，不能假设「state 是新的 = 这次成功了」。
+
+---
+
+## 生命周期：`autoDispose` / `keepAlive` / `ref.onDispose`
+
+`@riverpod` **默认 `autoDispose`**：没有监听者时释放。这与 master 的 `@injectable`
+`factory`（每页一个实例、随页面 GC）是同一语义，只是由框架显式管理。
+
+`@Riverpod(keepAlive: true)` 用于**跨页面共享、或重建有代价**的对象。当前清单：
+
+| provider | 为什么 keepAlive |
+|---|---|
+| `core/providers.dart` 的 `prefs` / `secureStorage` / `database` / `fileStorage` / `userPreferences` / `authStorage` | 基础设施单例；`authStorage` 还持有跨页面存活的令牌缓存 |
+| `core/auth/session.dart` 的 `Session` | 登录态镜像，页面与守卫都要读 |
+| `core/config/app_settings.dart` 的 `AppSettingsNotifier` | 主题等偏好，改一次全 App 受影响 |
+| `core/data/network/dio_client.dart` 的 `networkConfig` / `dio` | **Dio 必须单例**（重建会丢在飞请求、重放状态与 mock 注册） |
+| `app/providers.dart` 的 `router` / `authReevaluate` | 重建路由器会丢掉整个导航栈 |
+| 各 feature 的 `*_providers.dart` | 无状态服务，见上文 |
+
+两条写法：
+
+```dart
+// 1. 飞行中的异步回写前判 mounted：provider 已被释放时写 state 会抛
+if (ref.mounted) state = state.copyWith(isSubmitting: false);
+
+// 2. 主动订阅就要主动退订：登记清理，别指望 GC
+final subscription = storage.userChanges.listen((user) { ... });
+ref.onDispose(subscription.cancel);
+```
+
+`Session`（`core/auth/session.dart`）是第 2 条的范例：它订阅 `AuthStorage.userChanges`，
+在 `ref.onDispose` 里 `cancel`；`routerProvider` 的 `AuthReevaluateListenable`、
+`authStorageProvider` 的 `storage.dispose` 同理。
+
+### master 的 dispose 边界为什么整节作废
+
+master 有一条很长的边界规则（「什么时候才需要 `autoDispose`」，源于 signals 的
+`Computed.dispose()` 只做标记、不遍历 `sources` 退订，VM 一旦订阅全局信号就被钉住）。
+**这条边界在本分支不存在**：`ref.watch` 建立的依赖由 provider 生命周期管理，provider 销毁
+时框架负责退订，不存在「谁把谁钉住」的写法。
+
+保留下来的只有那条**原则**：主动 `listen` 的流、`Listenable`、`StreamController` 必须自己
+在 `ref.onDispose` 里收尾（见上）。
+
+> ⚠️ **`leak_tracker` 看不见 provider 状态对象**：`ProviderContainer` / `Notifier` /
+> `AsyncValue` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`。它追踪的是
+> `State` / `Element` / `ChangeNotifier` 这类 Flutter 对象（`ConsumerWidget` 的 Element
+> 在覆盖范围内）。所以「测试里没报警」**不等于**「状态没有泄漏」——见
+> [cross-cutting.md](../cross-cutting.md)「Memory Leak Detection」。
+
+---
+
+## Consumer 一节（原 hook-guidelines）
+
+> `frontend/hook-guidelines.md` 已删除：整份文件的前提是 `flutter_hooks`，而本分支
+> 不再依赖它。页面的生命周期与副作用写法收到这里。
+
+### 页面模板
+
+金标准是 `features/sample/page/sample_list_page.dart`，形状如下：
+
+```dart
+@RoutePage()
+class SampleListPage extends ConsumerWidget {
+  const new({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(sampleListProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('示例')),
+      body: AsyncView<List<SampleItem>>(
+        state: items,
+        loading: () => const LoadingIndicator(),
+        error: (error, stackTrace) => ErrorText(
+          error: error,
+          onRetry: () => ref.invalidate(sampleListProvider),
+        ),
+        data: (list) => RefreshIndicator(
+          onRefresh: () => ref.refresh(sampleListProvider.future),
+          child: /* 可滚动的列表 / 空态，见上文两条要求 */,
+        ),
+      ),
+    );
+  }
+}
+```
+
+### 原来的 hooks 对应到哪
+
+| master 的 hook | 本分支 |
+|---|---|
+| `useMemoized(() => getIt<VM>())` | 不需要。provider 自己缓存，`ref.watch` 不会重建实例 |
+| `useSignalValue(vm.articles)` | `ref.watch(articlesProvider)` |
+| `useEffect(() { vm.load(); }, [])` | provider 的 `build()`（首屏加载）；真的需要「只跑一次的副作用」就用 `ConsumerStatefulWidget` 的 `initState` |
+| `useEffect` 的 cleanup | `ref.onDispose`（provider 侧）/ `dispose()`（State 侧） |
+| `useState` / 局部 `signal` | `ConsumerStatefulWidget` 的 `setState`，或页面自己的小 Notifier |
+
+### 需要 State 的时候
+
+动画控制器、`initState` 里发起的跳转这类有生命周期的页面用
+`ConsumerStatefulWidget` + `ConsumerState`（范例：`lib/app/pages/splash_page.dart`）。
+注意：
+
+- `ConsumerState` 里**直接就有 `ref`**，不需要从 `build` 参数拿
+- `dispose()` 里照常释放自己创建的 `AnimationController` 等
+- 跳转前判 `mounted`（页面可能在 `await` 期间被 pop）
+
+### 副作用不要写在 `build` 里
+
+导航、`SnackBar`、`showDialog` 都放在事件回调或 `initState` / `ref.listen` 里。`build` 里做
+副作用会随每次重建重复执行；`ref.read` 取值也一样（那是 `avoid_ref_read_in_build` 管的事）。
+
+---
+
+## Testing Requirements
+
+**注入点就是 `ProviderScope(overrides:)`**，页面因此**不需要任何可注入的构造参数**
+（master 的 `final T? viewModel;` 三件套与 ADR-0001 的缓解措施在这里一并失效）。
+
+### 逻辑测试：`ProviderContainer` + `overrides`
+
+```dart
+container = ProviderContainer(
+  retry: noRetry,
+  overrides: [sampleRepositoryProvider.overrideWithValue(repo)],
+);
+addTearDown(container.dispose);
+
+expect(await container.read(sampleListProvider.future), [item]);
+```
+
+用真实的 `AuthStorage` / `UserPreferences`，只替换网络与仓库 —— 它们各自有单元测试，
+页面测试再 mock 一遍既重复、又容易掩盖接线错误（`test/support/app_test_harness.dart`）。
+
+### widget 测试：`wrapPage(page, container: container)`
+
+`wrapPage` 用 `UncontrolledProviderScope` 接上测试自己建的容器。换成 `ProviderScope`
+会另建一个，测试对 provider 的读写就与页面断开了。
+
+### 三条硬约束（都踩过）
+
+1. **widget 测试里不要 `await provider.future`**。widget 测试的时钟是假的，riverpod 的调度
+   任务只有 `tester.pump()` 才跑得动，那个 await 会一直卡到用例超时（10 分钟）。要构造
+   refreshing / reloading 这类中间态，就「先渲染首帧 → 完成 `Completer` → `pump()` → 读状态」。
+2. **容器统一传 `retry: noRetry`**（`test/support/app_test_harness.dart`）。Riverpod 3 默认
+   对失败的 provider 自动重试（200ms 起、指数退避、最多 10 次），在 widget 测试里表现为收尾
+   时报 `A Timer is still pending even after the widget tree was disposed`，并让「仓库被调用
+   了几次」的断言凭空多出几次。**生产保留默认重试，只关测试。**
+3. **autoDispose 的 provider 在两次 `read` 之间会被释放**。逻辑测试要先建一个订阅保住它
+   （`container.listen(p, (_, _) {})`），而且必须在**打桩之后**调用 —— `listen` 会立刻跑一次
+   `build()`，提前调用等于拿一个还没打桩的 mock 去调仓库（mocktail 返回 null，当场类型错）。
+
+### 测试文件路径
+
+跟随源码结构：`test/features/{feature}/{subdir}/` 对应 `lib/features/{feature}/{subdir}/`。
+
+---
+
+## Common Mistakes
 
 | 错误 | 正确做法 |
 | --- | --- |
-| 在 `build()` 中 `var vm = ArticleViewModel()` | 使用 `getIt` + `useMemoized` |
-| 用 `signal` 存 API 数据 | 用 `asyncSignal`（自带 loading/error/data 三态） |
-| 在 widget 里直接 `vm.articles.value = x` | **编译不过**（信号对外是 `ReadonlySignal`，没有 setter）；写入走 ViewModel 方法 |
-| 派生状态存成新 signal | 用 `computed()` 或 getter |
-| `computed` 读了全局 signal，却没加 `autoDispose` | 加 `options: ComputedOptions<T>(autoDispose: true)`（见「什么时候才需要 dispose」） |
-| 一次改多个信号，逐条赋值 | 先把 `await` 做完，再用 `batch()` 一次提交 |
-| 用 `futureSignal` 承载「点按钮才发起」的请求 | 命令式加载用 `asyncSignal` + `runAsync`（见「为什么不用 futureSignal」） |
-| 任务返回 `Result<void, _>` 却用 `runAsync` | 用 `runAsyncVoid(..., onSuccess: 值)`，否则 `T` 塌成 `void` 并抛 `TypeError` |
-| 跨组件共享 feature 状态 | 放到 Global State（core/） |
+| 页面写 `ref.read(xxxProvider)` 取值 | 用 `ref.watch`（`ref.read` 不建立订阅，变了不重建）；门禁 `avoid_ref_read_in_build` 会拦 |
+| 在方法里 `ref.watch` | 方法里用 `ref.read`；需要跟随变化用 `ref.listen` |
+| 在 `Notifier` 外部写 `state` | 写入只能在 Notifier 内，对外只暴露方法 |
+| 异步失败时抛包装异常 | 抛 `Failure` 本身，否则 `ErrorText` 只剩「未知错误」 |
+| 把 `Failure` 的类型信息丢掉、只存字符串 | `AsyncValue.error` 存对象，文案在展示层翻译（[backend/error-handling.md](../backend/error-handling.md)） |
+| 一个字段一个 Notifier | 一份存储 / 同生命周期 / 页面一起读的偏好做成一个快照（`AppSettings`） |
+| 页面自己维护 loading / request token | 用 `AsyncView` + `ref.refresh` / `ref.invalidate` |
+| 用 `AsyncValue.when` 渲染三态 | 用 `AsyncView`（判定顺序与 `data(null)` 语义已封装） |
+| 空列表直接返回 `EmptyWidget` | 包成可滚动 + `AlwaysScrollableScrollPhysics`，否则刷新是死路 |
+| 给「无状态服务」不加 `keepAlive` | 加 `@Riverpod(keepAlive: true)`，否则每次 `ref.read` 都重建 |
+| `ref.onDispose` 里漏掉流订阅 | 订阅了就要退订（`session.dart` 是范例） |
+| 跨页面共享状态放进某个 feature 的 Notifier | 放到 `core/`（共享层严格克制，见 [directory-structure.md](./directory-structure.md)） |

@@ -14,7 +14,7 @@ This project uses a **typed Result pattern** instead of bare exceptions for all 
 
 ## Error Types
 
-### Result Type (`lib/core/base/result.dart`)
+### Result Type (`packages/app_core/lib/base/result.dart`)
 
 ```dart
 sealed class Result<T, E> {
@@ -40,7 +40,7 @@ sealed class Result<T, E> {
 
 **Always use `Result.when()`** for exhaustive pattern matching. `getOrThrow` is for tests only.
 
-### Failure Hierarchy (`lib/core/base/failure.dart`)
+### Failure Hierarchy (`packages/app_core/lib/base/failure.dart`)
 
 ```dart
 sealed class Failure implements Exception {
@@ -65,15 +65,15 @@ class UnknownFailure extends Failure { ... }
 | `ServerFailure` | 服务端返回了失败响应（其余 4xx / 5xx） | `notFound`, `invalidRequest`, `conflict`, `serverError`, `requestFailed` |
 | `UnknownFailure` | 无法归类的兜底 | `cancelled`, `unexpected`, `unknown` |
 
-**`Failure` 不携带用户可见文案**：它只有 `code`（`FailureCode` 枚举）与可选的 `statusCode`，文案由展示层按当前语言翻译（`core/ui/failure_message.dart` 的 `localizedMessage`）。因此：
+**`Failure` 不携带用户可见文案**：它只有 `code`（`FailureCode` 枚举）与可选的 `statusCode`，文案由展示层给出（`core/ui/failure_message.dart` 的 `localizedMessage()`，当前是一张中文常量表）。因此：
 
-- core 层不会把语言钉死，切换语言后错误提示也跟着变
+- 数据层与状态层都不会把文案钉死在错误对象里；将来要接多语言，只需换掉展示层那一处（见 [frontend/localization.md](../frontend/localization.md)）
 - 服务端的 `statusMessage`、`DioException.message` 这类原始文本**结构上就没有存放位置**，只进日志 —— 它们可能带 Dart 堆栈、请求 URL、内部字段名，展示给用户既没意义也不安全
-- 新增一个 code，`localizedMessage` 的 switch 会因为不再穷尽而编译报错，同时提醒去补 ARB
+- 新增一个 code，`localizedMessage` 的 switch 会因为不再穷尽而编译报错，提醒去补文案；`test/core/ui/failure_message_test.dart` 还会遍历 `FailureCode.values` 断言每个都有非空文案
 
 已逐一映射的状态码：400 → `invalidRequest`、401 → `unauthorized`、403 → `forbidden`、404 → `notFound`、408 → `timeout`、409 → `conflict`、422 → `invalidPayload`、429 → `tooManyRequests`；其余 5xx → `serverError`（带状态码），其余 4xx → `requestFailed`（带状态码，文案里会显示它）。
 
-### Dio Error Handling (`lib/core/base/failure.dart`)
+### Dio Error Handling (`packages/app_core/lib/base/failure.dart`)
 
 `handleDioError()` converts a `DioException` to the appropriate `Failure` subtype. Services call it directly — there is no alias and no `Failure.fromApiError` factory.
 
@@ -101,27 +101,34 @@ Failure handleDioError(DioException e) {
 
 The Dio client does **not** pre-map errors — mapping happens once, in the Service layer, so there is a single source of truth.
 
-`runCatching` / `runAsync` 的兜底 `catch` 同理：异常写进日志，返回 `FailureCode.unknown`。
+`runCatching` 的兜底 `catch` 同理：异常写进日志，返回 `FailureCode.unknown`。
 
 ### 错误文案怎么到界面上
 
-`runAsync` 写进 `AsyncState.error` 的是 **`Failure` 对象**，不是字符串：
+承载错误的是 **`Failure` 对象**，不是字符串。异步状态里，`AsyncNotifier.build()` 把
+`Result` 的失败侧**抛出去**（抛的就是 `Failure` 本身）：
 
 ```dart
-signal.value = AsyncState.error(failure);
+// lib/features/sample/logic/sample_list_notifier.dart
+return switch (result) {
+  Ok<List<SampleItem>, Failure>(:final data) => data,
+  Err<List<SampleItem>, Failure>(:final error) => throw error,
+};
 ```
 
-展示层再用 `localizedMessage` 翻译：
+`AsyncValue.error` 原样带着它，`AsyncView` 的 `error` 回调再交给 `ErrorText` 翻译：
 
 ```dart
 // ErrorText 内部
 final message = switch (error) {
-  Failure failure => failure.localizedMessage(l10n),
-  _ => l10n.errorUnknown,
+  final Failure failure => failure.localizedMessage(),
+  _ => '未知错误',
 };
 ```
 
-SnackBar 之类的场景直接 `error.localizedMessage(l10n)`。**新代码不要**再引入 `userErrorMessage(failure)` 那种「core 里把文案拼好」的做法。
+SnackBar 之类的场景直接 `error.localizedMessage()`。**新代码不要**：
+- 另造一个包装异常（包一层之后 `ErrorText` 只剩「未知错误」）
+- 引入 `userErrorMessage(failure)` 那种「在数据层把文案拼好」的做法
 
 ---
 
@@ -144,7 +151,7 @@ SnackBar 之类的场景直接 `error.localizedMessage(l10n)`。**新代码不�
 - **重放必须走同一个 Dio**，否则 mock / 日志 / 重试拦截器会被绕过——mock 模式下重放会直接打到真实网络。
 - **刷新请求不携带访问令牌**：部分后端会因为无效的 `Authorization` 直接拒绝整个请求，连刷新都做不了。
 
-以上行为由 `test/core/data/network/token_refresh_test.dart` 覆盖（真实 AuthStorage + TokenRefresher + AuthInterceptor，跑在真实 Dio 管道里，仅替换网络适配器）。
+以上行为由 `packages/app_core/test/data/network/token_refresh_test.dart` 覆盖（真实 `TokenRefresher` + `AuthInterceptor` 跑在真实 Dio 管道里，`TokenStore` 与网络适配器换成测试替身）。
 
 ### 登出语义
 
@@ -158,7 +165,7 @@ SnackBar 之类的场景直接 `error.localizedMessage(l10n)`。**新代码不�
 第 3 步的返回值也不该是服务端调用的结果，否则会出现「提示登出失败、实际已经登出」的矛盾。
 服务端通知失败只记一条 warning。
 
-登出成功后**调用方不需要自己导航**：`AuthStorage` 清空 → 登录态信号翻转 → `AppRouter` 的 `reevaluateListenable` → 守卫把用户送回登录页。自己再跳一次会产生两个 `LoginRoute`。
+登出成功后**调用方不需要自己导航**：`AuthStorage` 清空 → `userChanges` 广播 → `Session` provider 更新 → `AppRouter` 的 `reevaluateListenable` → 守卫把用户送回登录页。自己再跳一次会产生两个 `LoginRoute`。
 
 ---
 
@@ -167,13 +174,12 @@ SnackBar 之类的场景直接 `error.localizedMessage(l10n)`。**新代码不�
 ### Service layer (data boundary)
 
 ```dart
-@LazySingleton(as: ArticleRepository)
-class ArticleService implements ArticleRepository {
-  ArticleService(this._api, this._cache);   // 构造器注入（见 ADR-0001）
+class SampleService implements SampleRepository {
+  new(this._api, this._cache);   // 构造器注入；装配在 sample_providers.dart
 
   @override
-  Future<Result<List<Article>, Failure>> getArticles() async {
-    final result = await runCatching(() => _api.getArticles());
+  Future<Result<List<SampleItem>, Failure>> getItems() async {
+    final result = await runCatching(_api.getItems);
     // 成功 → 刷新缓存；失败 → 回退缓存，未命中才返回原始 Failure
     ...
   }
@@ -188,23 +194,32 @@ class ArticleService implements ArticleRepository {
 2. Catch generic `Exception` last as `FailureCode.unknown`（实践中直接调 `runCatching` 即可）
 3. Never re-throw; always return `Result.failure()`
 
-### ViewModel layer (logic boundary)
+### Notifier layer (logic boundary)
 
-ViewModels do not hand-roll the tri-state transition — use the `runAsync` helper (`lib/core/base/run_async.dart`), which sets the signal to loading, then data or error, and returns the `Result` unchanged:
+状态层不手写三态迁移：`Result` 的失败侧**抛 `Failure` 本身**，剩下的交给
+`AsyncValue` + `AsyncView`：
 
 ```dart
-@injectable
-class ArticleViewModel {
-  final ArticleRepository _repo;
-  final articles = asyncSignal<List<Article>>(AsyncState.loading());
+@riverpod
+class SampleListNotifier extends _$SampleListNotifier {
+  @override
+  Future<List<SampleItem>> build() async {
+    final result = await ref.watch(sampleRepositoryProvider).getItems();
 
-  Future<void> loadArticles() async {
-    await runAsync(articles, () => _repo.getArticles());
+    return switch (result) {
+      Ok<List<SampleItem>, Failure>(:final data) => data,
+      Err<List<SampleItem>, Failure>(:final error) => throw error,
+    };
   }
 }
 ```
 
-There is no separate `currentFailure` signal — the `Failure` **object** is stored on `AsyncState.error(...)` itself, and the UI reads it through `async.map(loading:, error:, data:)`，再用 `localizedMessage(l10n)` 翻译成当前语言的文案（见「错误文案怎么到界面上」）。
+两条：
+
+- 没有单独的 `currentFailure` 字段——`Failure` **对象**就在 `AsyncValue.error` 里，`ErrorText`
+  通过 `localizedMessage()` 给出文案（见「错误文案怎么到界面上」）。
+- **不要**把 `Failure` 包成别的异常，也不要 `throw Exception('...')`：错误码一丢，
+  界面上只剩「未知错误」。
 
 ---
 
@@ -218,6 +233,7 @@ Not applicable — this is a Flutter client project. API error mapping is handle
 
 - ❌ **Throwing exceptions from Service/Repository** — always return `Result.failure()`
 - ❌ **Using `getOrThrow` in production code** — only in tests; use `when()` in production
-- ❌ **Hand-rolling loading/data/error transitions in a ViewModel** — use `runAsync`
+- ❌ **Hand-rolling loading/data/error transitions in a Notifier** — `AsyncNotifier.build()` 从 `Result` 翻译一次就够，渲染交给 `AsyncView`
+- ❌ **把 `Failure` 包成别的异常再抛** — 错误码会丢，界面只剩「未知错误」
 - ❌ **Re-mapping the same `DioException` in multiple layers** — map once, in the Service
 - ❌ **Not handling cancellation** — always include `DioExceptionType.cancel` in the switch

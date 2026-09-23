@@ -110,22 +110,22 @@ flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS schem
 
 ## 6. 代码生成与质量门禁
 
-- [ ] 重新生成产物（模型、DI、路由、l10n、资源引用）：
+- [ ] 重新生成产物（模型、provider、路由、Drift schema）：
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
-flutter gen-l10n
+(cd packages/app_core && dart run build_runner build --delete-conflicting-outputs)
 ```
 
-- [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` /
-      `app_localizations*`）——CI 的 `analyze` job 会跑一遍 codegen 再比对 `git diff`，
+- [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart`，含
+      `packages/app_core` 包内那一份）——CI 的 `analyze` job 会跑一遍 codegen 再比对 `git diff`，
       漏提交会被拦下（策略与时机见 `.trellis/spec/cross-cutting.md`）
 
 - [ ] 门禁全绿：
 
 ```bash
 dart run tool/check_boundaries.dart     # 架构边界
-dart run tool/check_conventions.dart    # 形态约定（AsyncState.map / 注释块上限）
+dart run tool/check_conventions.dart    # 形态约定（build 里禁 ref.read / 注释块上限）
 flutter analyze lib/ test/              # 静态分析
 dart analyze tool/                      # 工具脚本
 flutter test --coverage                 # 单元 + widget 测试（顺带产出覆盖率数据）
@@ -134,8 +134,8 @@ dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/
 flutter test integration_test/          # 端到端冒烟
 ```
 
-- [ ] 新增文案已同时补 `lib/l10n/app_zh.arb` 与 `app_en.arb`
-      （`test/l10n/` 会校验两边 key 对齐）
+- [ ] 新增 `FailureCode` 已在 `core/ui/failure_message.dart` 的 `localizedMessage` 里补上文案
+      （不补会编译失败——`switch` 不再穷尽；`test/core/ui/failure_message_test.dart` 会遍历枚举逐个断言）
 
 - [ ] 依赖过一遍：`dart pub outdated` 看 `Current / Upgradable / Resolvable / Latest` 四列，
       能升的走 `dart pub upgrade`（改动 `pubspec.lock` 后记得重跑测试与 codegen）；
@@ -151,9 +151,8 @@ flutter test integration_test/          # 端到端冒烟
 - [ ] 关掉 `.env` 里的 mock，确认真实接口连通
 - [ ] 权限清单符合实际使用（AndroidManifest / Info.plist 里不要留多余权限）
 - [ ] 隐私政策与合规文案（若上架）已就位
-- [ ] 崩溃/错误上报已接入——`bootstrap.dart` 的 `runZonedGuarded`、
-      `FlutterError.onError`、`PlatformDispatcher.onError` 是天然接入点，
-      现在只是打了日志
+- [ ] 崩溃/错误上报已接入——`bootstrap.dart` 的 `PlatformDispatcher.instance.onError` 与
+      `Logging` 是天然接入点，现在只是打了日志（且 release 下只到 logcat）
 
 > `leak_tracker` 只在 debug 生效（`bootstrap.dart` 用 `assert` 包裹），
 > release 不会有额外开销，无需处理。

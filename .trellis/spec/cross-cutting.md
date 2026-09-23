@@ -25,27 +25,32 @@ dart run tool/check_boundaries.dart     # 退出码 0 = 通过，1 = 有违规
 |------|------|
 | `core/` 不得 import 上层 | `core/**` 不能 import `features/**` 或 `app/**` |
 | 跨 feature 只共享 `data/` | 不能引用其他 feature 的 `page/` / `logic/` |
-| ViewModel 不得用 service locator | `features/*/logic/` 里不得出现 `getIt` / `GetIt.I`（构造器注入，理由见 [ADR-0001](../../docs/adr/ADR-0001.md)） |
-| 页面必须给出可选注入点 | 用 `getIt<*ViewModel>()` 取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
+| `features/*/logic/` 不得手动建容器 | logic 层里不得出现 `ProviderContainer(...)` / `ProviderContainer.test(...)`——依赖从 `ref` 或构造器取 |
+| `features/*/logic/` 不得依赖 Flutter UI | logic 层不得 `import 'package:flutter/material.dart'` |
 | `packages/app_core` 不得依赖状态管理 / DI | 包内不得出现 `signals_*` / `riverpod*` / `get_it` / `injectable` |
 
-前三条是依赖方向，第四条是可测性约定（[ADR-0001](../../docs/adr/ADR-0001.md) 的缓解措施）：页面仍从容器取 ViewModel，但必须留一个只有测试会用的注入口，否则页面测试会被推回 `setUpTestApp()` 装配全局容器——而且**没有任何编译器会提醒**，漏一个页面就少一处，所以用退出码兜住。
+前两条是依赖方向；中间两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`），
+而不是自己建容器、或伸手进 widget 层去拿 `BuildContext`。
 
-第五条是共享基础设施包的**存在前提**：`packages/app_core` 要同时服务 signals 栈与 Riverpod 栈，
+最后一条是共享基础设施包的**存在前提**：`packages/app_core` 要同时服务 signals 栈与 Riverpod 栈，
 包里一旦出现 `signals` / `riverpod`，另一个栈就用不了它，抽包的意义直接归零；
 `get_it` / `injectable` 同理——它们是装配方式，注册归各分支的装配层
 （拆分依据见 `.trellis/tasks/09-22-extract-app-core/design.md` 6.1 / 6.5）。
 
 ```dart
-// ✅ 页面取 ViewModel 的标准三行
-final ArticleViewModel? viewModel;                       // 只有测试会传
-const ArticleListPage({super.key, this.viewModel});      // 参数可选，路由代码不用改
-final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
+// ✅ 依赖从 provider / 构造器进来：logic 层既不认识容器，也不认识 widget
+final repo = ref.watch(sampleRepositoryProvider);            // 订阅：provider 变了跟着变
+await ref.read(userPreferencesProvider).setThemeMode(mode);  // 一次性取值：方法 / 回调里
 ```
 
 放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart`）。
 
-规则 4 只看 `*ViewModel` 类型：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 也由规则 3 直接禁止取容器，不重复报。
+新加的两条判据都是**形态**级、不看语义：规则 3 认的是 `ProviderContainer` 后面紧跟 `(` 或 `.`（构造或静态访问），注释里提到这个词不会误报；规则 4 只认 `package:flutter/material.dart` 这一个 URI —— `foundation` / `widgets` 不管，页面层的 material 也不管（`lib/core/config/app_settings.dart` 为了 `ThemeMode` import material 是正当的）。
+
+> **本分支已退役「页面必须给出可选注入点」**（master 的 [ADR-0001](../../docs/adr/ADR-0001.md) 缓解措施）。
+> 那条规则的前提是「页面从 service locator 取 ViewModel，测试替身只能靠可选构造参数塞进去」；
+> Riverpod 栈的注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段 ——
+> 规则与它的 ADR 一并只对 master（signals 栈）成立。
 
 ### 解析能力与 warning
 
@@ -56,40 +61,36 @@ final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
 | `import` 与 URI 分行 | 以 import/export 开头但没解析出 URI |
 | 条件导入 `import 'a.dart' if (dart.library.io) 'b.dart';`，或 format 把 `as x` / `if (...)` 折到下一行 | 边界规则只检查了第一个 URI |
 
-**warning 不影响退出码**：它说的是「工具看不懂这一行」，不是「这行违规」，硬拦等于把工具的局限变成提交阻塞。拦提交的只有上面三条规则。
+**warning 不影响退出码**：它说的是「工具看不懂这一行」，不是「这行违规」，硬拦等于把工具的局限变成提交阻塞。拦提交的只有规则本身。
 
 两条现实约束：
 
-- 生成文件必须继续豁免——`lib/di/service_locator.config.dart` 里就有一条折行的 `import`，不豁免会天天误报。
+- 生成文件必须继续豁免——生成器的产物只保证「能编译」，不保证遵守本仓库的层次约定（路由要汇总所有 feature 的 `page/`），而且里面的违规没法手工修（要改的是注解 / 源文件）。
 - `test/tool/check_boundaries_test.dart` 的「真实仓库」用例**把 warning 也判失败**：`lib/` 一旦出现 warning，就说明该按 [architecture-review.md](../../docs/architecture-review.md) P4 的触发条件把脚本迁到 `package:analyzer` 的 AST（用 `parseString` 写脚本，执行模型仍是 CI 里的 `dart run`，不是退回 IDE-only 的插件）。
 
 ### 禁止模式
 
 ```dart
-// ❌ ViewModel 里不能用 getIt()
-class ArticleViewModel {
-  final repo = getIt<ArticleRepository>();
-}
+// ❌ logic 层自己建容器：依赖变成「自己搭的一整套环境」，注入口随之消失
+final container = ProviderContainer();
+final repo = container.read(sampleRepositoryProvider);
 
-// ✅ 正确：构造器注入
-class ArticleViewModel {
-  final ArticleRepository repo;
-  ArticleViewModel(this.repo);
-}
+// ✅ 正确：依赖从 ref 取 —— 订阅用 watch，一次性取值用 read
+final repo = ref.watch(sampleRepositoryProvider);
 ```
 
 ```dart
 // ❌ 跨 feature 引用 page/logic
 import 'package:my_app/features/auth/page/login_page.dart';
-import 'package:my_app/features/auth/logic/auth_view_model.dart';
+import 'package:my_app/features/auth/logic/login_notifier.dart';
 
 // ✅ 允许：引用 core，或另一个 feature 的 data 层
-import 'package:my_app/core/models/user.dart';
+import 'package:app_core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';  // data 层可共享
 import 'package:my_app/app/routing/router.dart';
 ```
 
-实际例子：`profile` 需要「登出」这项能力时，引用的是 `features/auth/data/auth_repository.dart`（data 层），不是 auth 的 `logic/auth_view_model.dart`。
+实际例子：`profile` 需要「登出」这项能力时，读的是 `features/auth/data/auth_providers.dart` 暴露的 `authRepositoryProvider`（data 层），而不是 auth 的 `logic/login_notifier.dart`。
 
 ---
 
@@ -103,14 +104,16 @@ dart run tool/check_conventions.dart     # 默认扫 lib/，退出码 0 = 通过
 
 | 规则 | 效果 |
 |------|------|
-| `avoid_async_state_map` | 不得调用 `AsyncState.map`，三态渲染用 `AsyncView`（理由见 [frontend/state-management.md](frontend/state-management.md)「渲染状态」） |
+| `avoid_ref_read_in_build` | `build` 里不得用 `ref.read` 取 provider 值（不建立订阅）；`ref.read(xxx.notifier)` 取 notifier 实例不在管辖内 |
 | `comment_block_too_long` | 连续注释块最多 10 行，超限就把解释搬进 spec |
 
-**为什么这条用 `package:analyzer` 而不是正则**：`AsyncState.map` 的判据是**具名实参**（`data` + `error` 同时出现），正则分不清它和 `list.map(...)` —— 而误报会挡住提交。所以这个脚本用 `parseString` 拿 AST 判断；执行模型仍是 CI 里的 `dart run`，与 [architecture-review.md](../../docs/architecture-review.md) P4 说的「迁到 AST」是同一件事，只是先落在新增的规则上。
+**为什么这条用 `package:analyzer` 而不是正则**：判据落在 AST 的两件事上——「调用点在不在名为 `build` 的方法体内」（方法体里的闭包也算）与「实参是不是 `.notifier`」。正则做不到：dart format 会把 `ref` 与 `.read` 折到两行，而「在不在 build 里」根本不是行内信息。执行模型仍是 CI 里的 `dart run`，与 [architecture-review.md](../../docs/architecture-review.md) P4 说的「迁到 AST」是同一件事。
+
+**为什么豁免 `.notifier`**：`ref.read(loginProvider.notifier)` 取的是 notifier 实例本身，身份稳定、不参与订阅，页面拿它当方法接收者用（`onChanged: notifier.updateEmail`）是正当写法 —— 换成 `ref.watch(...notifier)` 只会白添一次重建。
+
+> 退役记录：`avoid_async_state_map` 随 signals 栈一起退役。它的前提是 `AsyncState.map` 的回调签名（`error` 收到一个还是两个参数）运行期才校验；`AsyncValue.when` 的回调具名且具类型，配错在编译期就是 error。三态渲染仍然统一走 `AsyncView`，但那已是约定而不是门禁。
 
 **为什么注释也进门禁**：长解释留在代码里会和实现抢注意力，且改了一处、另一处就成了假信息（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)）。扫描根与边界脚本一致（`lib` + `packages/app_core/lib`）；`tool/` 脚本的头注释本身就是门禁的设计说明，`test/` 的说明性注释同理，都不扫。
-
-> 判据是纯形态的，不看类型：只要一个 `map` 同时带 `data` 与 `error` 就判违规，自定义的同名 API 会被误报。真遇到再加豁免，别提前放一个用不到的逃生口。
 
 ---
 
@@ -127,7 +130,7 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 1. 树里列出的每个路径都必须真实存在
 2. 树里**已展开**的目录，其实际内容（生成物除外）必须全部列出
 
-「已展开」= 该目录下面还有缩进更深的条目。只写到目录名、不展开子项的（如 `features/article/`）视为刻意省略，不检查其内容；用模板占位符展开的（如 `features/{feature}/`）同样跳过。
+「已展开」= 该目录下面还有缩进更深的条目。只写到目录名、不展开子项的（如 `features/sample/`）视为刻意省略，不检查其内容；用模板占位符展开的（如 `features/{feature}/`）同样跳过。
 
 `targets` 是「文档 → 目录树根」**对**的列表（不是 doc → root 的映射），因为一个文档里可以有多棵树：
 
@@ -191,16 +194,16 @@ dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/
 
 | 类别 | 例子 | 处理 |
 |---|---|---|
-| 抽象声明 / redirecting factory | `article_api.dart`、`article_repository.dart` | 豁免（无可执行行） |
-| 只有 `const` / 纯接口 | `auth_extra_keys.dart`、`token_store.dart` | 豁免（无可执行行） |
+| 抽象声明 / redirecting factory | `sample_api.dart`、`auth_api.dart` | 豁免（无可执行行） |
+| 只有 `const` / 纯接口 | `sample_repository.dart`、`auth_repository.dart`、`auth_extra_keys.dart`、`token_store.dart` | 豁免（无可执行行） |
 | 只被 `integration_test` 执行的入口 | `main.dart`、`bootstrap.dart` | 豁免（`flutter test --coverage` 不含 `integration_test/`） |
 | **本该被测但没测** | —— | **补测试，不许豁免** |
 
-快照（2026-09-22，落这条门禁时的实测）：
+快照（2026-09-23，AI 栈换血收尾时实测）：
 
 | | 手写文件 | 进分母 | 豁免 | 覆盖率 |
 |---|---|---|---|---|
-| 根 `lib/` | 39 | 33 | 6 | 89.4% |
+| 根 `lib/` | 37 | 31 | 6 | 90.0% |
 | `packages/app_core` | 20 | 18 | 2 | 89.8% |
 
 同一个快照里 `lib/app/app.dart` 从「差集里的一个文件」变成了
@@ -298,12 +301,12 @@ dart run dependency_validator     # 退出码 1 = 有问题，0 = 干净
 
 | 形态 | 例子 |
 |------|------|
-| `*.g.dart` | `json_serializable` / `retrofit` / `drift` 的行类 |
+| `*.g.dart` | `json_serializable` / `retrofit` / `drift` 的行类 / **`@riverpod` 生成的 provider** |
 | `*.freezed.dart` | 模型 |
 | `*.gr.dart` | `auto_route` 的路由类 |
-| `*.config.dart` | `injectable` 的 DI 注册 |
+| `*.config.dart` | `injectable` 的 DI 注册（本分支已无：那是 master 的 DI 方案，生成物随它消失） |
 | `*.gen.dart`、路径含 `/gen/` | 资源访问器（当前不存在，`flutter_gen` 已移除） |
-| 路径含 `app_localizations` | `lib/l10n/app_localizations*.dart` |
+| 路径含 `app_localizations` | l10n 生成物（本分支已裁剪 l10n，见 [frontend/localization.md](frontend/localization.md)；口径保留给裁剪前的版本） |
 
 理由：
 
@@ -320,10 +323,10 @@ dart run dependency_validator     # 退出码 1 = 有问题，0 = 干净
 
 | 时机 | 命令 |
 |------|------|
-| 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@injectable` | `dart run build_runner build --delete-conflicting-outputs` |
-| 增删代码文件（含删掉整个 feature） | 同上。删文件后**必须**重跑，否则 DI 注册与路由仍指向已删的类 |
-| 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（l10n 不经过 build_runner） |
-| 升级 / 降级任一 codegen 包（`freezed`、`json_serializable`、`drift_dev`、`retrofit_generator`、`auto_route_generator`、`injectable_generator`、`build_runner`） | `dart run build_runner clean` 后全量重建 |
+| 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@riverpod` | `dart run build_runner build --delete-conflicting-outputs` |
+| 增删代码文件（含删掉整个 feature） | 同上。删文件后**必须**重跑，否则 provider 注册与路由仍指向已删的类 |
+| 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（本分支已无 l10n，见 [frontend/localization.md](frontend/localization.md)） |
+| 升级 / 降级任一 codegen 包（`freezed`、`json_serializable`、`drift_dev`、`retrofit_generator`、`auto_route_generator`、`riverpod_generator`、`build_runner`） | `dart run build_runner clean` 后全量重建 |
 | 升级 Flutter / Dart SDK | 同上 |
 | 切分支、rebase / merge 后生成物冲突 | 解决源文件冲突后全量重建，生成物不手工编辑 |
 | CI 的 `Check generated code is up to date` 失败 | 按上表重跑，把生成物一起提交 |
@@ -336,19 +339,20 @@ CI 的 `analyze` job 有一步（见 `.github/workflows/ci.yml`）：
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
-flutter gen-l10n
-git add -N -- lib          # 让「新增」的生成物也进入 diff
-git diff --exit-code -- lib
+(cd packages/app_core && dart run build_runner build --delete-conflicting-outputs)
+git add -N -- lib packages   # 让「新增」的生成物也进入 diff
+git diff --exit-code -- lib packages
 ```
 
 几个不显然的点：
 
 - **为什么要 `git add -N`**：`git diff --exit-code` 看不见未跟踪文件，而最常见的漂移形态恰恰是「新增一个 `@freezed` 模型 → 多出一个 `.freezed.dart`」——只用 `git diff` 会放过它
-- **为什么只看 `lib/`**：生成物全部落在这里；全仓库 diff 会把 `flutter pub get` 的附带产物一起算进来
+- **为什么扫 `lib packages` 两处**：`app_core` 是独立 package，根目录跑的 `build_runner` 不会碰它，它的生成物只能在包目录内生成；两处都是生成物的落点
 - 比的是 `build_runner build` 写盘后的结果，而不是 `--only-check`：两者等价，但后者要求 `build_runner` ≥ 2.16.0。当前 lock 是 2.16.1（可用），保留 `build` 是为了不把门禁绑死在小版本上
 - **pre-commit 有意不做这一步**：它要跑完整 codegen（本项目量级是几十秒），而 pre-commit 已经跑了 `flutter test --coverage`。漏提交由 CI 兜
-- 这一步排在 `flutter analyze` 之前：生成物缺失时 analyze 会报一堆「找不到 `part`/`AppLocalizations`」的噪声，先跑它能让报错指向真正的原因
+- 这一步排在 `flutter analyze` 之前：生成物缺失时 analyze 会报一堆「找不到 `part` / provider」的噪声，先跑它能让报错指向真正的原因
 - `drift_dev` 生成 schema 需要 `sqlite3` 的动态库（本项目由 `sqlite3` 3.x 的 build hook 提供，`flutter pub get` 会准备）。这一步若在 CI runner 上失败，报错会指向 `sqlite3` / `hooks_runner`，而不是 build_runner 本身
+- **本分支没有 l10n**，所以这一步里**没有** `flutter gen-l10n`：那个命令在缺 `l10n.yaml` 时会直接失败（见 [frontend/localization.md](frontend/localization.md)）
 
 ### 禁止模式
 
@@ -370,7 +374,8 @@ git diff --exit-code -- lib
 现状（快照 2026-09）：
 
 - `pubspec.yaml` 约束 `build_runner: ^2.4.14`，`pubspec.lock` 解析到 **2.16.1**（pub.dev 上 2.x 线最新，无 3.x）
-- 生成器六个：`freezed` / `json_serializable` / `drift_dev` / `retrofit_generator` / `auto_route_generator` / `injectable_generator`；l10n 走 `flutter gen-l10n`，与 build_runner 无关
+- 生成器六个：`freezed` / `json_serializable` / `drift_dev` / `retrofit_generator` / `auto_route_generator` / `riverpod_generator`
+  （master 的 signals 栈把最后一个换成 `injectable_generator`：那个包不在本分支的依赖里）
 - 产物现场可查：`git ls-files lib | grep -E '\.(g|freezed|config|gr)\.dart$'`
 
 ### 升级（要不要升、什么时候重估）
@@ -389,7 +394,7 @@ git diff --exit-code -- lib
 
 | 做法 | 为什么不 |
 |------|---------|
-| 按目录多次调用 `--build-filter=lib/features/xxx/**` | 每次调用都要重新加载 package config、重建 asset graph，固定开销是数十秒量级；而 builder 之间有跨目录依赖（DI 汇总到 `lib/di/service_locator.config.dart`、路由汇总到 `lib/app/routing/router.gr.dart`），拆开跑完还得再跑一次全量才正确 |
+| 按目录多次调用 `--build-filter=lib/features/xxx/**` | 每次调用都要重新加载 package config、重建 asset graph，固定开销是数十秒量级；而 builder 之间有跨目录依赖（路由汇总到 `lib/app/routing/router.gr.dart`、LazyDatabase 与表汇总到 `packages/app_core` 的 `app_database.g.dart`），拆开跑完还得再跑一次全量才正确 |
 | 第三方「缓存 codegen 产物」的包（如 `cached_build_runner` 一类） | 把正确性押在 cache key 上：SDK 版本、依赖版本、`build.yaml`、builder 配置任一变化都可能让缓存与源不匹配，而它**不会报错，只会静默给出旧产物**。build_runner 官方的增量缓存都栽过跟头（workspace 与包构建间切换时的增量不正确，直到 2.15.1 才修）——用第三方缓存换来的秒数，不值得拿生成物正确性去赌 |
 
 **CI 上不要 cache `.dart_tool/build/`**：该目录与 Dart SDK 版本、依赖解析结果强绑定。缓存命中不当时最坏的结果是「检查通过，但仓库里的生成物其实是旧的」——这道门禁的价值全在结论可信，快几秒不值这个风险。
@@ -415,7 +420,7 @@ git diff --exit-code -- lib
 `test/flutter_test_config.dart` 配置了全局泄漏检测：
 
 - 所有 `testWidgets` 自动启用 `LeakTesting`
-- 测试中未 dispose 的 Widget、Controller、信号订阅等会被报告
+- 测试中未 dispose 的 Widget、Controller、流订阅等会被报告
 - 通过 `withIgnored(createdByTestHelpers: true)` 过滤测试辅助创建的对象
 
 ### 检测范围
@@ -423,10 +428,13 @@ git diff --exit-code -- lib
 `leak_tracker` 只能检测到**已接入埋点**的类。好消息是：
 
 - Flutter Framework 的所有 disposable 类都已接入（`FocusNode`、`AnimationController` 等）
-- `SignalBuilder` 等 signals_flutter 组件在 `dispose` 时会自动取消订阅
+- `ConsumerWidget` / `ConsumerStatefulWidget` 最终也是 Flutter `Element`，在覆盖范围内
 - 如果一个泄漏链中包含至少一个已埋点的对象，整个链都会被捕获
 
-> ⚠️ **`leak_tracker` 看不见 signals**：`Signal` / `AsyncSignal` / `Computed` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`。所以「测试里没报警」**不等于**「信号没有泄漏」——信号那条边界见 [frontend/state-management.md](frontend/state-management.md) 的「什么时候才需要 dispose」。
+> ⚠️ **`leak_tracker` 看不见 provider 的状态对象**：`ProviderContainer` / `Notifier` /
+> `AsyncValue` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`。所以「测试里没报警」
+> **不等于**「状态没有泄漏」——真正的兜底是 `autoDispose` 与主动登记的清理
+> （`ref.onDispose`），见 [frontend/state-management.md](frontend/state-management.md)「生命周期」。
 
 ---
 
@@ -442,7 +450,8 @@ flutter test integration_test/
 
 ### CI 运行
 
-CI 使用 `xvfb-run`（虚拟显示）运行集成测试。
+CI 用 `reactivecircus/android-emulator-runner` 在 Android 模拟器上跑（目标平台是
+Android / iOS，没有 `linux/` 平台目录，所以**不要**用 `xvfb-run`）。
 
 ### widget 测试里不要用真实 I/O
 
@@ -451,7 +460,10 @@ CI 使用 `xvfb-run`（虚拟显示）运行集成测试。
 - 断言可能**假通过**：初始值为空时，即使 `refresh()` 从未跑完也成立
 - 操作后的断言会失败，因为 I/O 还没回来
 
-约定：**真实依赖用普通 `test()` 测**（那些测试没有假时钟），**页面测试把依赖 mock 掉、由测试直接推信号值**。范例：`test/features/demo/logic/storage_demo_view_model_test.dart`（真实 FileStorage + 内存数据库）与 `test/features/demo/page/storage_demo_page_test.dart`（mock ViewModel + 推信号）。
+约定：**真实依赖用普通 `test()` 测**（那些测试没有假时钟），**页面测试把依赖 mock 掉、用
+`ProviderScope(overrides:)` 换成假实现**。范例：`test/features/sample/data/sample_dao_test.dart`
+（真实 Drift + 内存数据库）与 `test/features/sample/page/sample_list_page_test.dart`
+（overrides 假仓库 + 驱动 provider 状态）。
 
 另外 `ListView` 只布局可视区内的子节点，视口外的内容 finder 找不到——测长页面时要么放大视口（`tester.view.physicalSize`），要么先滚动。
 
@@ -466,9 +478,9 @@ CI 使用 `xvfb-run`（虚拟显示）运行集成测试。
 
 约束与注意事项：
 
-- **`bootstrap()` 不可重入**：DI 注册与 leak_tracker 启动都只能执行一次。因此整个冒烟流程只在**一个** `testWidgets` 中调用一次 `app.main()`；拆成多个 `testWidgets` 各自启动会在第二次抛「Bad state: Leak tracking is already enabled.」
+- **`bootstrap()` 不可重入**：`prefsProvider` 的 override 与 leak_tracker 启动都只能执行一次。因此整个冒烟流程只在**一个** `testWidgets` 中调用一次 `app.main()`；拆成多个 `testWidgets` 各自启动会在第二次抛「Bad state: Leak tracking is already enabled.」
 - **测试需清理登录态**：`SharedPreferences` 在设备上跨运行保留，测试开头要 `prefs.clear()`，否则上一次运行残留的登录态会让启动直接进主框架
-- **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上都不存在"渲染时联网拉字体"的问题。如果以后引入按需下载字体的方案（如 `google_fonts`），务必在测试里关掉运行时下载（`GoogleFonts.config.allowRuntimeFetching = false`）——否则 `pumpAndSettle` 会卡数分钟且结果不稳定。生产环境更该把字体打进产物，而不是运行时下载
+- **字体**：主题（`packages/app_core/lib/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上都不存在"渲染时联网拉字体"的问题。如果以后引入按需下载字体的方案（如 `google_fonts`），务必在测试里关掉运行时下载（`GoogleFonts.config.allowRuntimeFetching = false`）——否则 `pumpAndSettle` 会卡数分钟且结果不稳定。生产环境更该把字体打进产物，而不是运行时下载
 - `msw_dio_interceptor` 的 mock 由 `.env` 的 `USE_MOCK` 控制（`.env.development` 默认 `true`）。写 mock 规则必踩的坑（必须 `MockRule.regex` 且锚定结尾）见 [backend/network-guidelines.md](backend/network-guidelines.md) 的 Mock 一节
 
 ---

@@ -1,5 +1,23 @@
 # 架构评估（Architecture Review）
 
+> ## ⚠️ 适用范围：仅对 master（signals 栈）成立
+>
+> 本文件评估的是 **get_it + injectable + signals + flutter_hooks** 那一版仓库，文中所有
+> 「最新状态」都停在那个时点。`preset/ai-starter`（Riverpod）分支换掉了状态管理、依赖注入
+> 与页面组合三件事，逐条影响的对应关系如下：
+>
+> | 条目 | 在 ai-starter 分支上 |
+> |---|---|
+> | P1（VM 生命周期 / dispose） | 前提整节作废：`ref.watch` 的依赖由 provider 生命周期管理，不再有「谁把谁钉住」。见 `.trellis/spec/frontend/state-management.md`「生命周期」 |
+> | P3（页面层 `getIt` 的可测性代价） | **已消解**：注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段；规则 4 与 ADR-0001 的缓解措施一并退役 |
+> | P4（边界检查是正则级） | 仍成立，且 `check_conventions.dart` 已按本文的触发条件迁到 `package:analyzer` 的 AST；`check_boundaries.dart` 仍留在正则级 |
+> | P5（`runAsync` 的并发 / 刷新保护） | 由 `AsyncValue.copyWithPrevious` 与本项目的 `AsyncView` 承接（`data(null)` 那条定制语义保留），见 `state-management.md`「刷新与重试」 |
+> | P6（缓存回退无新鲜度标记） | 仍成立（`SampleService` 同样直接返回缓存） |
+> | P2 / P7 | 与状态管理无关，结论不变 |
+>
+> 「真实发生过」的历史叙述（`lib/di/`、`features/demo/`、`lib/l10n/` 等已删除的路径）
+> **保持原文不动**，它们记的是当时的事实。
+>
 > 本脚手架的架构评估、判断依据，以及每条判断在代码演进后的**最新状态**。
 >
 > 首次评估：2026-09-21。本文件是 [ADR-0001](adr/ADR-0001.md) / [ADR-0002](adr/ADR-0002.md) 中「关联候选」的来源。

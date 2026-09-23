@@ -17,9 +17,9 @@
 2. **类 / 文件头：职责 + 指路** —— 一两行讲清它是什么，细节给 spec 路径：
 
    ```dart
-   /// 文章缓存的读写（只碰行类 `DbArticle`，行↔模型转换在 `ArticleService`）。
+   /// 示例缓存的读写（只碰行类 `DbArticle`，行↔模型转换在 `SampleService`）。
    ///
-   /// 为什么在 feature 而不是 core，见 backend/database-guidelines.md「分工」。
+   /// 为什么在 feature 而不是共享包，见 backend/database-guidelines.md「分工」。
    ```
 
 3. **示例可以留** —— 调用方要照着写的形状（JSON 形状、一行用法）留在代码里，其余删掉。
@@ -85,8 +85,8 @@
 
 属于快照的内容：
 
-- 数量断言（「import `Article` 的 9 个文件」）
-- 枚举式清单（「现有 mock 规则：`GET /articles`、`POST /login`…」）
+- 数量断言（「import `SampleItem` 的 9 个文件」）
+- 枚举式清单（「现有 mock 规则：`GET /sample-items`、`POST /login`…」）
 - 盘点式结论（「目前全项目只有两处 `computed`」）
 
 更好的写法是**教怎么查**而不是给答案 —— 例如用 `grep -rn "computed(" lib/` 代替「全项目有两处 `computed`」。确实要给答案的那部分，按上面的格式标注。
@@ -105,7 +105,7 @@
 另外两条值得考虑，但不是必须：
 
 - **说明约束的真实强度** —— 有 lint / 脚本挡着的，和只靠 review 自觉的，值得区分开（例：「`avoid_print` 未启用，这条是 review 约定」）
-- **明说「不存在什么」** ——「没有 `domain/` 层」「没有 per-ViewModel 日志」这类反向断言，比正面描述更能挡住幻觉
+- **明说「不存在什么」** ——「没有 `domain/` 层」「没有 per-Notifier 日志」这类反向断言，比正面描述更能挡住幻觉
 
 ---
 

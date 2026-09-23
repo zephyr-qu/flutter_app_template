@@ -1,34 +1,36 @@
 # Flutter 通用脚手架
 
-一个基于 Flutter 的中小型项目脚手架，采用 **Feature-Sliced Design (FSD)** 架构 + **Signals** 响应式状态管理，集成现代化技术栈，开箱即用。
+一个基于 Flutter 的中小型项目脚手架，采用 **Feature-Sliced Design (FSD)** 架构 + **Riverpod** 状态管理，集成现代化技术栈，开箱即用。
+
+> **这是 `preset/ai-starter` 分支**：状态管理、依赖注入与页面组合三件事换成了 AI 语料最丰富的 Riverpod 栈，
+> 面向「AI 打开仓库就能照着写」的目标。它与 `master`（signals 栈）是**兄弟分支，不互相合并**，
+> 理由与改动清单一律在 `BRANCH.md`（阶段 8 产出）。
 
 ## ✨ 特性
 
 - **FSD 功能切片** — 按业务模块组织代码（page/logic/data），高内聚低耦合
-- **Signals 响应式状态** — 细粒度响应式更新，无需 BuildContext，无 widget 树级重建
+- **Riverpod 状态与依赖** — provider 同时承担状态、装配与生命周期；没有 `lib/di/`，没有 get_it
 - **声明式路由** — `auto_route` 类型安全路由，支持 auth 守卫和参数解析（守卫实时读登录态，会话失效后自动回到登录页）
-- **依赖注入** — `injectable` + `GetIt`，注解驱动自动注册
 - **网络层封装** — `Dio` + `Retrofit` + 智能重试 + Mock 拦截
-- **离线缓存** — 文章接口走「缓存旁路」：成功刷新 Drift 缓存，失败回退缓存，离线仍可阅读
+- **离线缓存** — 示例接口走「缓存旁路」：成功刷新 Drift 缓存，失败回退缓存，离线仍可读取
 - **认证与令牌** — 访问/刷新令牌存平台安全存储（KeyStore / Keychain）；令牌临近过期时主动刷新，401 时刷新并重放原请求，刷新失败才登出（登出不依赖网络）
 - **错误处理** — 统一的 `Result<T, E>` + `Failure` 密封类（携带错误码，文案由 UI 层翻译），`PlatformDispatcher.onError` 兜底
 - **MD3 主题** — `flex_color_scheme`，亮/暗主题完整支持
-- **国际化** — `flutter_localizations` + ARB，内置中文/英文，设置里可切换并持久化
-- **通用组件** — Loading / Error / Empty 三态组件
-- **代码生成** — `freezed` / `json_serializable` / `retrofit_generator`
-- **架构边界检查** — `tool/check_boundaries.dart`（core 不得依赖上层、跨 feature 只共享 data 层、ViewModel 不得用 getIt、页面必须给可选注入点、`app_core` 不得依赖状态管理），跑在 pre-commit 与 CI
-- **代码形态约定** — `tool/check_conventions.dart`（禁用 `AsyncState.map`、注释块 ≤10 行），同样跑在 pre-commit 与 CI
+- **通用组件** — Loading / Error / Empty 三态组件（`AsyncView` 统一三态渲染入口）
+- **代码生成** — `freezed` / `json_serializable` / `retrofit_generator` / `riverpod_generator`
+- **架构边界检查** — `tool/check_boundaries.dart`（core 不得依赖上层、跨 feature 只共享 data 层、logic 不得手动建容器 / 不得 import material、`app_core` 不得依赖状态管理），跑在 pre-commit 与 CI
+- **代码形态约定** — `tool/check_conventions.dart`（build 里禁用 `ref.read` 取值、注释块 ≤10 行），同样跑在 pre-commit 与 CI
 - **覆盖率门禁** — `tool/check_coverage.dart`，只统计手写代码、按行数加权，默认阈值 80%，同样是 pre-commit 与 CI 的一道门
 - **数据库** — `Drift`（SQLite ORM，可选按需使用）
-- **测试基础设施** — `mocktail` 模拟，已含 ViewModel / Widget / 数据库测试
+- **测试基础设施** — `mocktail` 模拟，已含 Notifier / Widget / 数据库测试
 
 ## 🛠️ 技术栈
 
 | 类别 | 技术 |
 | ------ | ------ |
-| 状态管理 | `signals_flutter` `signals_hooks` `flutter_hooks` |
+| 状态管理 | `flutter_riverpod` `riverpod_annotation` `riverpod_generator` |
+| 依赖注入 | Riverpod provider（无独立容器 / 无 `lib/di/`） |
 | 路由 | `auto_route` |
-| 依赖注入 | `get_it` `injectable` |
 | 网络 | `dio` `dio_smart_retry` `retrofit` `pretty_dio_logger` |
 | Mock API | `msw_dio_interceptor` |
 | 数据库 | `drift` `sqlite3`（原生库由 3.x 的 build hook 提供） |
@@ -44,10 +46,11 @@
 ```
 lib/
 ├── main.dart                               # 程序入口
-├── bootstrap.dart                          # 启动初始化（环境 + DI + 异常兜底）
+├── bootstrap.dart                          # 启动初始化（环境 + ProviderScope + 异常兜底）
 │
 ├── app/                                    # 应用层（组合根：只做装配）
-│   ├── app.dart                            # 根组件（主题 + 路由 + l10n 装到一起）
+│   ├── app.dart                            # 根组件（主题 + 路由装到一起）
+│   ├── providers.dart                      # 组合根自己的 provider（AppRouter 等）
 │   ├── routing/                            # 路由配置（组合层）
 │   │   ├── router.dart                     # auto_route 配置 + AuthGuard
 │   │   ├── router.gr.dart                  # 生成的路由类
@@ -57,35 +60,31 @@ lib/
 │       └── not_found_page.dart             # 404
 │
 ├── core/                                   # 只剩「状态耦合的适配层」（基础设施已抽到 packages/app_core）
-│   ├── base/                               # 基础抽象
-│   │   └── run_async.dart                  # runAsync 三态助手（依赖 signals，故留应用侧）
-│   ├── config/                             # 应用配置
-│   │   └── user_preferences.dart           # 用户偏好（信号 + 持久化）
+│   ├── auth/
+│   │   └── session.dart                    # 登录态 provider（AuthStorage.userChanges 的镜像）
+│   ├── config/
+│   │   ├── app_settings.dart               # 偏好快照 + Notifier（主题 / 调试日志 / 页大小）
+│   │   └── user_preferences.dart           # 偏好的裸存储（读写 SharedPreferences）
 │   ├── data/
 │   │   ├── network/
-│   │   │   └── dio_client.dart             # Dio 的 DI 装配 + 应用专属 Mock 规则
+│   │   │   └── dio_client.dart             # Dio 的 provider 装配 + 应用专属 Mock 规则
 │   │   └── storage/
 │   │       └── auth_storage.dart           # 令牌/用户存储（实现 app_core 的 TokenStore）
-│   ├── ui/                                 # 共享 UI（读 l10n，故留应用侧）
-│   │   ├── async_view.dart                 # AsyncState → Widget（三态渲染入口）
-│   │   ├── failure_message.dart            # FailureCode → 用户文案
-│   │   ├── loading_indicator.dart          # LoadingIndicator / ScreenLoadingIndicator
-│   │   └── error_text.dart                 # 错误 + 重试
-│   └── core_module.dart                    # 共享依赖的 DI 装配（@module）
+│   ├── providers.dart                      # 基础设施 provider（prefs / 安全存储 / 数据库 / 文件）
+│   └── ui/                                 # 共享 UI（要读项目文案与主题，故留应用侧）
+│       ├── async_view.dart                 # AsyncValue → Widget（三态渲染入口）
+│       ├── failure_message.dart            # FailureCode → 用户文案
+│       ├── loading_indicator.dart          # LoadingIndicator / ScreenLoadingIndicator
+│       └── error_text.dart                 # 错误 + 重试
 │
-├── features/                               # 业务功能模块
-│   ├── auth/                               # 认证（示例模块）
-│   │   ├── logic/                          # ViewModel（信号 + 业务逻辑）
-│   │   ├── data/                           # API + Service + Models
-│   │   └── page/                           # UI 页面
-│   ├── article/                            # 文章（示例模块）
-│   ├── demo/                               # 本地存储示例（FileStorage + Drift 缓存）
-│   ├── home/                               # 首页
-│   └── profile/                            # 个人中心
-│
-└── di/                                     # 依赖注入注册
-    ├── service_locator.dart                 # configureDependencies() 入口
-    └── service_locator.config.dart          # injectable 自动生成
+└── features/                               # 业务功能模块
+    ├── auth/                               # 认证（示例模块）
+    │   ├── logic/                          # Notifier（状态 + 业务逻辑）
+    │   ├── data/                           # API + Service + Models
+    │   └── page/                           # UI 页面
+    ├── home/                               # 首页 + 主框架
+    ├── profile/                            # 个人中心
+    └── sample/                             # 金标准示例（retrofit / drift / Result 三种 data 形态）
 ```
 
 与状态管理无关的基础设施抽到了本地包，由 signals 栈与 Riverpod 栈共用
@@ -102,16 +101,16 @@ packages/app_core/lib/
 ├── logging/                            # 日志封装 + 调试日志脱敏
 ├── models/                             # User / TokenSet
 ├── theme/                              # 色板 / ThemeData 组装 / 设计 token
-└── ui/                                 # 无 l10n 依赖的共享组件（EmptyWidget）
+└── ui/                                 # 无业务文案的共享组件（EmptyWidget）
 ```
 
 模块内部每层职责：
 
 | 层 | 目录 | 职责 |
 | ---- | ------ | ------ |
-| **UI** | `page/` | 页面组件，获取 ViewModel，绑定信号 |
-| **Logic** | `logic/` | ViewModel，信号管理，业务编排 |
-| **Data** | `data/` | API (Retrofit)，Service，Models (freezed) |
+| **UI** | `page/` | 页面组件（`ConsumerWidget`），`ref.watch` 状态，转事件给 Notifier |
+| **Logic** | `logic/` | Notifier（`@riverpod`），状态 + 业务编排 |
+| **Data** | `data/` | API (Retrofit)，Service，Models (freezed)，DAO (Drift) |
 
 依赖方向：`app → features → core`。`core/` 是基础设施底座，**不得** import `features/` 或 `app/`；`app/` 是组合根，可以 import 任何东西。全局页面（启动页、404）放在 `app/pages/`（而不在 `core/`），所以能用类型安全的路由类导航，不必退回字符串 path。
 
@@ -128,7 +127,6 @@ flutter pub get
 
 # 代码生成（生成物已提交进仓库；改了注解 / 模型后再跑一次即可）
 dart run build_runner build --delete-conflicting-outputs
-flutter gen-l10n        # 只在改了 lib/l10n/*.arb 时需要
 
 # 运行
 flutter run
@@ -142,14 +140,17 @@ flutter test
 
 ### 代码生成（生成物提交策略）
 
-生成物是**提交进仓库**的：`*.g.dart`、`*.freezed.dart`、`*.gr.dart`、`*.config.dart`、`lib/l10n/app_localizations*.dart`。所以 clone 之后不跑 codegen 也能 `flutter analyze` / `flutter test`。
+生成物是**提交进仓库**的：`*.g.dart`（含 `@riverpod` 生成的 provider）、`*.freezed.dart`、`*.gr.dart`。所以 clone 之后不跑 codegen 也能 `flutter analyze` / `flutter test`。
 
-改了注解（`@freezed` / `@JsonSerializable` / `@RoutePage` / `@injectable`、Drift 表）、增删了代码文件，或升级了任一 codegen 依赖之后，**必须重新生成并把生成物一起提交**——CI 会跑一遍 `build_runner build` 再比对 `git diff`，漏提交直接红（`analyze` job 的 `Check generated code is up to date`）。
+改了注解（`@freezed` / `@JsonSerializable` / `@RoutePage` / `@riverpod`、Drift 表）、增删了代码文件，或升级了任一 codegen 依赖之后，**必须重新生成并把生成物一起提交**——CI 会跑一遍 `build_runner build` 再比对 `git diff`，漏提交直接红（`analyze` job 的 `Check generated code is up to date`）。
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs   # 改了注解 / 增删文件
-flutter gen-l10n                                          # 改了 lib/l10n/*.arb
-dart run build_runner clean && dart run build_runner build -d  # 升级 codegen 包 / SDK 后全量重建
+# 根工程
+dart run build_runner build --delete-conflicting-outputs
+# 共享包（独立 package，根目录的 build_runner 不会碰它）
+(cd packages/app_core && dart run build_runner build --delete-conflicting-outputs)
+# 升级 codegen 包 / SDK 后全量重建
+dart run build_runner clean && dart run build_runner build -d
 ```
 
 生成物冲突时不要手工 merge，解决源文件冲突后重跑 codegen 覆盖。完整策略、重新生成时机表、以及 build_runner 升级与「目录级 cache」的评估结论见 [.trellis/spec/cross-cutting.md](.trellis/spec/cross-cutting.md)「代码生成与生成物」。
@@ -199,42 +200,37 @@ flutter build apk --dart-define=env=production \
 
 **release 构建有意留白**，属于目标应用的职责，脚手架不做：release 仍用 debug keystore 签名、未开启 minify/混淆、未做 build flavor、iOS 签名需在 Xcode 配置。发版前按 [docs/release-checklist.md](docs/release-checklist.md) 逐项补齐（签名 / 混淆 / 符号表 / 真实 `BASE_URL` / 权限与上报接入点）。
 
-### 国际化
+### 文案与多语言
 
-文案放在 `lib/l10n/app_zh.arb`（模板语言：中文）与 `app_en.arb`，生成 `AppLocalizations`；`l10n.yaml` 是配置，生成物 `lib/l10n/app_localizations*.dart` 不要手改。
+本分支是**单语言**（中文文案直接写在 widget 里），没有 ARB / `AppLocalizations`：这是
+`tool/prune.dart --l10n=single` 有意裁剪的结果。`Failure` 的用户文案集中在
+`lib/core/ui/failure_message.dart` 的 `switch` 常量表，新增 `FailureCode` 时**不补文案就编译不过**。
 
-```dart
-final l10n = AppLocalizations.of(context);
-Text(l10n.loginButton);
-```
-
-「个人 → 设置 → 语言」可切换跟随系统 / 中文 / English，结果持久化到 `app.locale`，切换后界面立即生效。新增文案先加 `app_zh.arb` 再补 `app_en.arb`（`test/l10n/` 会校验两边 key 对齐）。
-
-错误提示同样走 l10n：`Failure` 只携带 `FailureCode` 而不带文案，由展示层按当前语言翻译，所以切到英文后错误提示也是英文。
+要加回多语言时的步骤（以及为什么它是一条命令而不是一个分支）见
+[.trellis/spec/frontend/localization.md](.trellis/spec/frontend/localization.md)。
 
 ## 📖 示例代码说明
 
-脚手架自带三个完整示例模块，开箱即用（无需后端）：
+脚手架自带两个可照抄的示例模块，开箱即用（无需后端）：
 
 | 模块 | 路径 | 演示内容 |
 |------|------|----------|
 | 认证 | `lib/features/auth/` | 登录 → 存令牌（安全存储）→ 401 自动刷新 → 个人中心读取用户信息 |
-| 文章 | `lib/features/article/` | 列表页 → 详情页，Retrofit + Drift 离线缓存 + 加载三态 |
-| 本地存储 | `lib/features/demo/` | `FileStorage` 文件读写/占用统计 + Drift 缓存填充（入口：个人 → 设置） |
+| 示例 | `lib/features/sample/` | 列表页（`ConsumerWidget` + `AsyncView`）→ Retrofit + Drift 缓存旁路 + provider 装配，**新增 feature 时照抄它** |
+
+另外 `home/`（首页 + 主框架）与 `profile/`（个人中心 / 设置）是可运行但更偏骨架的页面。
 
 - **开箱即用**：`.env.development` 中 `USE_MOCK=true`，由 `msw_dio_interceptor` 拦截请求（Mock 规则见 `lib/core/data/network/dio_client.dart` 的 `_registerMockRules()`），无需后端即可跑通完整数据流。接入真实后端时把 `USE_MOCK` 改成 `false` 即可
-- **学习路径**：`flutter run` 跑起来 → 从 `page/`（UI）→ `logic/`（ViewModel）→ `data/`（API / Service / Model）逐层阅读，新功能模块照此结构复制
-- **删除示例**：确认了解结构后，删除 `lib/features/auth/` 与 `lib/features/article/` 两个目录，并同步清理：
-  1. `lib/app/routing/router.dart` 中的对应路由与 `@RoutePage` 注解
-  2. `lib/core/data/network/dio_client.dart` 中 `_registerMockRules()` 的对应 Mock 规则
-  3. `lib/features/home/page/main_page.dart` 底部导航中的文章 Tab
-  4. `lib/features/profile/page/profile_page.dart` 中对 `AuthViewModel` / `User` 的引用
-  5. 最后执行 `dart run build_runner build` 重新生成 DI 注册
-- **删除本地存储示例**：用不到 `FileStorage` / Drift 缓存时，删掉 `lib/features/demo/`，再清理两处引用：
-  1. `lib/app/routing/router.dart` 中的 `StorageDemoRoute`
-  2. `lib/features/profile/page/profile_page.dart` 中「设置」里的示例入口
+- **学习路径**：`flutter run` 跑起来 → 从 `features/sample/page/`（UI）→ `logic/`（Notifier）→ `data/`（API / Service / DAO / Model）逐层阅读
+- **删除示例**：确认了解结构后，删掉 `lib/features/sample/` 与它的测试，并同步清理：
+  1. `lib/app/routing/router.dart` 中的 `SampleListRoute`
+  2. `lib/core/data/network/dio_client.dart` 中 `_registerMockRules()` 的 `/sample-items` 规则
+  3. `lib/features/home/page/main_page.dart` 底部导航中的「示例」Tab
+  4. `lib/features/home/page/home_page.dart` 的「示例」快捷入口
+  5. 最后执行 `dart run build_runner build` 重新生成路由与 provider
 
-  （注意 `ArticleService` 的离线缓存仍在使用 `AppDatabase`；要连缓存一起删，见 `.trellis/spec/backend/database-guidelines.md`）
+  （`SampleService` 的缓存旁路仍在用 `AppDatabase`；要连缓存一起删，见
+  [.trellis/spec/backend/database-guidelines.md](.trellis/spec/backend/database-guidelines.md)）
 
 ## 🧩 模板占位清单
 
@@ -254,78 +250,86 @@ Text(l10n.loginButton);
 
 - **刚被移除的** —— `shimmer`（骨架屏）、`lottie`（动画）、`flutter_svg`、`flutter_gen`、`device_info_plus`，以及每一个的更轻替代方案
 - **脚手架已留好接入点的** —— 崩溃上报 → `bootstrap.dart` 的三个错误钩子、深链 → `AppRouter` 初始路由、原生启动图 → native 层白屏
-- **按业务需求查表** —— 权限、相机、分享、WebView、图表、二维码… 并标出哪些其实已内置（`intl` 格式化、`RefreshIndicator`、三态组件）
-- **现有选型的替代方案与迁移成本** —— 不想用 signals / auto_route / Drift 时换什么、改动多大
+- **按业务需求查表** —— 权限、相机、分享、WebView、图表、二维码… 并标出哪些其实已内置（`RefreshIndicator`、三态组件）
+- **现有选型的替代方案与迁移成本** —— 不想用 riverpod / auto_route / Drift 时换什么、改动多大
 - **不建议提前引入的** —— 第二套状态管理、`fpdart` 之类的 Either、大型 UI 组件库
 
 它还前置了三条判断规则（基础设施 vs 设计选择、成本不对称、从需求出发），用来判断**清单之外**的包该不该加。
 
 ## 📐 如何添加新功能模块
 
+**结构照抄 `features/sample/`** —— 它是金标准。下面是同样的形状。
+
 ### 目录模板
 
 ```
 features/your_feature/
 ├── logic/
-│   └── your_view_model.dart           # ViewModel（信号 + runAsync）
+│   └── your_notifier.dart             # @riverpod Notifier / AsyncNotifier
 ├── data/
 │   ├── models/                        # 数据模型（@freezed）
 │   ├── your_api.dart                  # Retrofit API 接口（可选）
 │   ├── your_service.dart              # 业务实现
+│   ├── your_providers.dart            # 数据层 provider 装配
 │   └── your_repository.dart           # 仓库抽象接口（按需）
 └── page/
-    └── your_page.dart                 # UI 页面
+    └── your_page.dart                 # UI 页面（ConsumerWidget）
 ```
 
-### ViewModel 模板
+### Notifier 模板（异步数据）
 
 ```dart
-@injectable
-class YourViewModel {
-  final YourService _service;
+// logic/sample_list_notifier.dart 的形状
+part 'your_notifier.g.dart';
 
-  YourViewModel(this._service);
+@riverpod
+class YourNotifier extends _$YourNotifier {
+  @override
+  Future<List<YourItem>> build() async {
+    final result = await ref.watch(yourRepositoryProvider).getItems();
 
-  final items = asyncSignal<List<Item>>(AsyncState.data([]));
-
-  Future<void> load() async {
-    await runAsync(items, () => _service.getItems());
+    // 失败时抛 Failure 本身：AsyncValue.error 要带着它，ErrorText 才翻译得出错误码
+    return switch (result) {
+      Ok<List<YourItem>, Failure>(:final data) => data,
+      Err<List<YourItem>, Failure>(:final error) => throw error,
+    };
   }
 }
 ```
+
+同步状态（表单这类）用 `LoginNotifier` 的形状：`build()` 返回一个不可变快照，写入走方法。
 
 ### 页面模板
 
 ```dart
 @RoutePage()
-class YourPage extends HookWidget {
-  /// 可选注入点——只有测试会传值（ADR-0001；漏了会被 check_boundaries 规则 4 拦）
-  final YourViewModel? viewModel;
-
-  const YourPage({super.key, this.viewModel});
+class YourPage extends ConsumerWidget {
+  const new({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => viewModel ?? getIt<YourViewModel>());
-    final async = useSignalValue(vm.items);
-
-    useEffect(() {
-      vm.load();
-      return null;
-    }, []);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(yourProvider);   // 注意 provider 名：类名去掉 Notifier 后缀
 
     return Scaffold(
-      body: AsyncView<List<Item>>(
-        state: async,
+      appBar: AppBar(title: const Text('标题')),
+      body: AsyncView<List<YourItem>>(
+        state: items,
         loading: () => const LoadingIndicator(),
-        error: (Object error, StackTrace stackTrace) =>
-            ErrorText(error: error, onRetry: vm.load),
-        data: (items) => ListView.builder(/* ... */),
+        error: (error, stackTrace) => ErrorText(
+          error: error,
+          onRetry: () => ref.invalidate(yourProvider),
+        ),
+        data: (list) => RefreshIndicator(
+          onRefresh: () => ref.refresh(yourProvider.future),
+          child: /* 列表 / 空态，两者都要可滚动 */,
+        ),
       ),
     );
   }
 }
 ```
+
+页面**不需要**任何注入点构造参数：测试用 `ProviderScope(overrides:)` 换实现。
 
 ## 🧪 测试
 
@@ -334,7 +338,7 @@ class YourPage extends HookWidget {
 flutter test
 
 # 特定测试文件
-flutter test test/features/article/logic/article_view_model_test.dart
+flutter test test/features/sample/logic/sample_list_notifier_test.dart
 
 # 共享包的测试（独立 package，必须进包目录跑）
 cd packages/app_core && flutter test
@@ -342,15 +346,16 @@ cd packages/app_core && flutter test
 # 覆盖率数据 + 门禁校验
 flutter test --coverage
 (cd packages/app_core && flutter test --coverage)
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
+dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
+  --src=lib --src=packages/app_core/lib
 ```
 
 测试原则：
 
-- ViewModel 测试直接构造，无需 DI：`ArticleViewModel(mockRepo)`
+- 逻辑测试用 `ProviderContainer` + `overrides` 注入假仓库（`test/features/sample/logic/sample_list_notifier_test.dart` 是模板），不需要任何全局注册表
 - 使用 `mocktail` 模拟外部依赖
-- widget 测试用 `test/support/app_test_harness.dart` 的 `wrapPage()`（负责挂 l10n delegate 与主题）；生产页面统一是 `HookWidget` + `useSignalValue` + `AsyncView`，`SignalBuilder` 只是可选路线
-- 取 ViewModel 的页面直接注入假实例：`LoginPage(viewModel: fakeVm)`，不必 `setUpTestApp()`——注入点的存在由 `tool/check_boundaries.dart` 规则 4 保证
+- widget 测试用 `test/support/app_test_harness.dart` 的 `setUpTestApp()` + `wrapPage(page, container:)`；页面统一是 `ConsumerWidget` + `ref.watch` + `AsyncView`
+- widget 测试的三条硬约束：不要 `await provider.future`（假时钟下会挂到超时）、容器传 `retry: noRetry`、`mocktail` 的 `verify` 会消耗命中次数（见 [.trellis/spec/frontend/state-management.md](.trellis/spec/frontend/state-management.md)「Testing Requirements」）
 
 ### 覆盖率门禁
 
@@ -383,15 +388,18 @@ dart run tool/check_boundaries.dart          # 默认扫 lib 与 packages/app_co
 |------|------|
 | core 不得依赖上层 | `core/**` 不能 import `features/**` / `app/**` |
 | 跨 feature 只共享 data 层 | 不能引用其他 feature 的 `page/` / `logic/` |
-| ViewModel 不得用 service locator | `features/*/logic/` 里不能出现 `getIt`，强制构造器注入 |
-| 页面必须给可选注入点 | 用 `getIt<*ViewModel>()` 的页面要同时给出 `final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
+| logic 不得手动建容器 | `features/*/logic/` 里不能出现 `ProviderContainer(...)`，依赖从 `ref` 或构造器取 |
+| logic 不得依赖 Flutter UI | `features/*/logic/` 不能 import `package:flutter/material.dart` |
 | app_core 不得依赖状态管理 | `packages/app_core` 里不能出现 `signals_*` / `riverpod*` / `get_it` / `injectable` |
 
 **扫描根是两处**：`lib` 与 `packages/app_core/lib`。抽包之后只扫 `lib/` 的话，新包就成了边界真空。
 最后一条是共享包的**存在前提**——包里一旦出现 signals / Riverpod，另一个栈就用不了它。
 
 组合根（`lib/app/`）可以引用任何 feature——FSD 的 app 层负责装配。
-倒数第二条不是依赖方向，是可测性约定（[ADR-0001](docs/adr/ADR-0001.md) 的缓解措施）：页面仍从容器取 ViewModel，但必须给测试留一个注入口，否则页面测试只能装配全局容器。`home_page` / `profile_page` 直接取 `AuthStorage` / `UserPreferences`（不是 ViewModel），不在此列。
+中间两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`）。
+页面层的 material 不在管辖内（`lib/core/config/app_settings.dart` 为了 `ThemeMode` import material 是正当的）。
+
+> 上一代（master 的 signals 栈）有一条「页面必须给可选注入点」，对应 [ADR-0001](docs/adr/ADR-0001.md) 的缓解措施。Riverpod 栈的注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段，那条规则与它的 ADR 只对 master 成立。
 
 ## 📏 代码形态约定
 
@@ -403,10 +411,12 @@ dart run tool/check_conventions.dart
 
 | 规则 | 说明 |
 |------|------|
-| 禁用 `AsyncState.map` | 三态渲染用 `AsyncView`（`map` 的 `error` 回调签名运行期才校验，写错整页红屏） |
+| build 里禁用 `ref.read` 取值 | `ref.read` 不建立订阅，provider 变了界面不重建；读值用 `ref.watch`（`ref.read(xxx.notifier)` 取 notifier 调方法不在管辖内） |
 | 注释块 ≤10 行 | 超限就把解释搬进 `.trellis/spec/`，代码里只留一行链接（口径见 `.trellis/spec/guides/comment-guidelines.md`） |
 
-它用 `package:analyzer` 的 `parseString` 判 AST 而不是正则：`AsyncState.map` 的判据是「同时带 `data` 与 `error` 两个具名实参」，正则分不清它和 `list.map(...)`，而误报会挡住提交。已接入 pre-commit 与 CI 的 `analyze` job。
+它用 `package:analyzer` 的 `parseString` 判 AST 而不是正则：「调用点在不在 `build` 方法体里」「实参是不是 `.notifier`」都不是行内信息，而 dart format 还会把 `ref` 与 `.read` 折到两行。已接入 pre-commit 与 CI 的 `analyze` job。
+
+> 上一代的 `avoid_async_state_map` 随 signals 栈退役：`AsyncValue.when` 的回调具名且具类型，配错在编译期就报错，不需要门禁兜运行期分派。
 
 ## 🔧 开发工具
 
@@ -424,22 +434,20 @@ dart run tool/check_conventions.dart
 ### 数据流
 
 ```
-Page (UI) → ViewModel → Service → API (Retrofit)
-                ↕              ↕
-            signals         Result<T, Failure>
-                ↕
-          Widget rebuild
+Page (ConsumerWidget) → Notifier → Repository → Service → API (Retrofit)
+        ↑  ref.watch           ↕              ↕
+        └── AsyncValue ←  Result<T, Failure>  ←  Dao (Drift，缓存旁路)
 ```
 
-- **View Model**：通过构造器注入依赖，管理信号，调用 `runAsync` 处理异步三态
+- **Notifier**：依赖从 `ref` 取（`ref.watch` 装配好的 provider），把 `Result` 翻译成 `AsyncValue`，失败时抛 `Failure` 本身
 - **Service**：业务逻辑实现，返回 `Result<T, Failure>`
-- **Page**：通过 `getIt` 获取 ViewModel，用 `useSignalValue` 绑定信号，不写业务逻辑
+- **Page**：`ConsumerWidget`，`ref.watch` 订阅状态、`ref.refresh` / `ref.invalidate` 刷新重试，不写业务逻辑
 
 ### Feature 间通信
 
-- 跨 feature 数据共享通过 `core/data/storage/` 中的全局信号
+- 跨 feature 数据共享通过 `core/` 暴露的 provider（如 `sessionProvider`、`appSettingsProvider`）
 - 不使用事件总线（调试困难）
-- 不引用其他 feature 的 `page/` 或 `logic/`（lint 规则强制）
+- 不引用其他 feature 的 `page/` 或 `logic/`（`check_boundaries` 强制）
 
 ## 📄 许可证
 

@@ -10,7 +10,7 @@
 
 This project is written in **Dart 3+** with full **null safety** enabled. Type safety is enforced through:
 
-- **Sealed classes** (`sealed class`) for exhaustive pattern matching — `Result`, `Failure`, `AsyncState`
+- **Sealed classes** (`sealed class`) for exhaustive pattern matching — `Result`, `Failure`
 - **`@freezed`** for every model: value semantics (`copyWith` / `==` / `hashCode`) + generated `fromJson` / `toJson`
 - **`strict-casts` / `strict-inference`** plus `always_declare_return_types`（见 `analysis_options.yaml`）
 - **Generic Result type** `Result<T, E>` for typed error handling
@@ -21,19 +21,19 @@ This project is written in **Dart 3+** with full **null safety** enabled. Type s
 
 ### Models (per feature, in `data/models/`)
 
-脚手架里的模型**全部**用 `@freezed`（`Article` / `User` / `LoginRequest` / `LoginResponse`）——没有手写的，也没有直接用 `@JsonSerializable` 的：
+脚手架里的模型**全部**用 `@freezed`（`SampleItem` / `User` / `LoginRequest` / `LoginResponse`）——没有手写的，也没有直接用 `@JsonSerializable` 的：
 
 ```dart
-// lib/features/article/data/models/article.dart
+// lib/features/sample/data/models/sample_item.dart
 @freezed
-sealed class Article with _$Article {
-  const factory Article({
+sealed class SampleItem with _$SampleItem {
+  const factory({
     required int id,
     required String title,
     required String body,
-  }) = _Article;
+  }) = _SampleItem;
 
-  factory Article.fromJson(Map<String, dynamic> json) => _$ArticleFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$SampleItemFromJson(json);
 }
 ```
 
@@ -45,6 +45,9 @@ sealed class Article with _$Article {
 - All fields are `final` and non-nullable (unless explicitly nullable)
 - Constructors use `required` named parameters
 - 生成物 `*.g.dart` / `*.freezed.dart` 与源文件同目录，**不要手改**
+- **构造器不重复类名**：本分支统一写成 `const new({super.key})` / `const factory({...})` /
+  `factory fromJson(...)`（Dart 3.13 允许省略类名的构造器声明），而不是 `const SampleItem({...})`。
+  照抄 `features/sample/` 的形状，不要「顺手改成老写法」。
 
 ### Global types (`core/base/`)
 
@@ -55,10 +58,11 @@ sealed class Failure { ... }        // Error hierarchy
 
 ### Generated types
 
-- `*.g.dart` — JSON serialization、`@injectable`、Retrofit、Drift
+- `*.g.dart` — JSON serialization（`json_serializable`）、Retrofit、Drift、**Riverpod 的 provider**
+  （`@riverpod` 注解生成 `<file>.g.dart`，provider 名由生成器决定）
 - `*.freezed.dart` — `copyWith` / `==` / `hashCode`
 - `*.gr.dart` — auto_route
-- `*.config.dart` — injectable service locator（`lib/di/service_locator.config.dart`）
+- `*.config.dart` — 本分支**不存在**（那是 master 的 `injectable` service locator 生成物）
 - 改完注解跑 `dart run build_runner build`；**never edit generated files manually**
 
 ---
@@ -68,15 +72,15 @@ sealed class Failure { ... }        // Error hierarchy
 Runtime validation follows **primitive validation at the boundary** pattern:
 
 ```dart
-// ViewModel 侧：简单字段校验用 computed getter
-bool get canSubmit => email.value.isNotEmpty && password.value.length >= 6;
+// 状态快照上的 getter（lib/features/auth/logic/login_notifier.dart 的 LoginState）
+bool get canSubmit => email.isNotEmpty && password.length >= 6;
 
 // API 侧：Retrofit 定义。凭据只走请求体，不进 query（见 frontend/quality-guidelines.md）
 @POST('/login')
 Future<LoginResponse> login(@Body() LoginRequest request);
 ```
 
-- Client-side: Simple field validation in ViewModel computed getters
+- Client-side: 简单字段校验做成快照上的 getter（`canSubmit` 这种），不引入校验库
 - Server-side: All complex validation delegated to the backend
 - No schema validation library (no Zod equivalent) — use Dart type system
 
@@ -96,23 +100,26 @@ result.when(
 `Failure` **不携带用户可见文案**（只有 `code` 与可选 `statusCode`），文案在展示层按当前语言翻译：
 
 ```dart
-final message = failure.localizedMessage(AppLocalizations.of(context));
+final message = failure.localizedMessage();
 ```
 
-### Signal state checking
+### Async state checking
 
-用 `AsyncView` 渲染，**不需要 `!` 强解包**——分支由 sealed class 的穷尽 `switch` 保证，`data` / `error` 回调拿到的都是非空类型：
+用 `AsyncView` 渲染，**不需要 `!` 强解包**——`data` 回调拿到的 `T` 非空，`error` 回调拿到的
+`Object` / `StackTrace` 也非空（`AsyncView` 内部判过 `hasValue` / `hasError`）：
 
 ```dart
-final async = useSignalValue(vm.articles);
+final items = ref.watch(sampleListProvider);
 
-AsyncView<List<Article>>(
-  state: async,
+AsyncView<List<SampleItem>>(
+  state: items,
   loading: () => const LoadingIndicator(),
-  error: (Object error, StackTrace stackTrace) => ErrorText(error: error),
-  data: (items) => ListView.builder(...), // items: List<Article>（非空）
+  error: (error, stackTrace) => ErrorText(error: error),
+  data: (list) => ListView.builder(...), // list: List<SampleItem>（非空）
 )
 ```
+
+判定顺序与 `data(null)` 这条定制语义见 [state-management.md](./state-management.md)「渲染状态」。
 
 ### Type-related lints actually enabled
 

@@ -22,7 +22,7 @@ When you copy-paste or rewrite existing logic:
 
 ```bash
 # 找同名 / 近名的定义
-grep -rn "getCachedArticle" lib/
+grep -rn "getCachedItems" lib/
 
 # 找相似逻辑（关键词选项目里独特的那类）
 grep -rn "MockRule" lib/
