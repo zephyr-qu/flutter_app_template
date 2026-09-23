@@ -94,6 +94,9 @@ lib/
 - 登录态由 `AppRouter` 的 `AutoRouteGuard` 在每次导航时实时读取 `AuthStorage`，**不要**因为登录态变化而重建路由器（重建会丢弃导航栈）
 - **初始路由（`SplashPage`）不能有构造参数**：声明式路由无法为它提供参数，会在启动时触发 `argsAs` 抛异常。需要判断登录态就地实时读 `AuthStorage`，不要做成入参
 - 主框架（`features/home/page/main_page.dart`）的标签用 `AutoTabsRouter` 管理，**不要**自己在 `State` 里存 `_currentIndex`：高亮索引必须由路由栈推导，否则当标签是被别处切换的（首页快捷入口、深链、返回栈）时会与实际显示的页面错位。用默认的 IndexedStack 版本，切回来时各标签的状态还在
+- **改动底部导航标签（在 `MainPage._tabs` 增删 / 调序）时，必须同步更新 `test/routing/main_shell_test.dart`**：
+  该测试的「点击底部导航切换标签并更新高亮」用例写死了标签顺序与 `selectedTabIndex` 期望（如「我的」在第几个位置）。
+  标签位移后不更新会让测试红，宽屏 `NavigationRail` 分支同理。把 feature 接进导航时别漏掉这一步——它不在任何 lint / 门禁的拦截范围内，只能靠这条约定兜底
 
 ### 4. Repository 接口按需使用
 

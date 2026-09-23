@@ -26,6 +26,9 @@ class MainPage extends StatelessWidget {
         final colorScheme = Theme.of(context).colorScheme;
         final selected = tabsRouter.activeIndex;
 
+        // 注意：`index` 必须与该 destination 在 `_tabs` 里的位置一致
+        // （首页 0 / 示例 1 / 我的 2 …）。复制粘贴时极易写错导致选中不高亮，
+        // 且无测试拦截——增删标签后逐条核对。
         TextStyle labelStyle(int index) => TextStyle(
           fontWeight: selected == index ? FontWeight.w600 : FontWeight.w400,
         );
