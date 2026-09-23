@@ -97,6 +97,11 @@ dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/
 
 > Windows 上每次 `dart run` 都会被 sqlite3 的 build hook 拖住，整套跑完要 20 分钟量级。
 > 这是预期的，不是卡死。
+>
+> **但注意**：全新 clone 里 sqlite3 的 native lib 若没下下来（本机无外网），
+> `dart run` 会**真卡死**（CPU 0、无限等下载），不是变慢。`flutter analyze` 不受影响（秒回）。
+> 绕过：把主仓库 `.dart_tool/hooks_runner/shared/sqlite3/build/download-*/sqlite3.dll`
+> 拷到副本同路径即可跳过下载。
 
 | # | 门禁 | 退出码 | 备注 |
 |---|---|---|---|
@@ -117,18 +122,55 @@ dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/
 
 | 项 | 结果 |
 |---|---|
-| 执行日期 | |
-| 副本路径 | |
-| 用的版本（A / B） | |
-| 新增的 feature 名 | |
-| 六道门禁 | |
-| DoD 四条（AGENTS.md） | |
-| 结论（通过 / 卡在哪） | |
+| 执行日期 | 2026-09-23 |
+| 副本路径 | `C:\Users\zhyu\AppData\Local\Temp\blind-test-ai-starter`（clone 自 `preset/ai-starter`，HEAD 收尾提交 `43d8c47`） |
+| 用的版本（A / B） | **A**（严格盲测：prompt 只给需求，不提示 `features/sample/`、不提示门禁） |
+| 新增的 feature 名 | 待办事项（todo）：列表页（下拉刷新 / 失败重试 / 离线缓存提示条）+ 详情页（path param）+ 本地库缓存旁路（cache-aside） |
+| 六道门禁 | 10 项全绿（明细见下）；**首轮 1 项红，补 2 处后全绿** |
+| DoD 四条（AGENTS.md） | 通过（含 2 处事后修补，见「卡住的地方」） |
+| 结论（通过 / 卡在哪） | **仓库自足性达标**：盲测 AI 自行从 `AGENTS.md` + `.trellis/spec/` 找到规范与门禁，写出结构与 `features/sample/` 一致、可通过全部门禁的代码；暴露 2 个应在阶段 7 补的点（导航测试联动、labelStyle 索引） |
+
+### 门禁明细（副本内跑，与 `AGENTS.md` 的 `## 改完必跑` 一致）
+
+| # | 门禁 | 退出码 | 备注 |
+|---|---|---|---|
+| 1 | `dart format --set-exit-if-changed lib test tool packages` | 0 | 首轮流式化改了 2 个测试文件，重跑 0 |
+| 2 | `check_boundaries` | 0 | 架构边界检查通过（lib / packages/app_core/lib） |
+| 3 | `check_conventions` | 0 | 约定检查通过 |
+| 4 | `check_readme_tree` | 0 | 目录树与 `lib/` 实际内容一致（3 棵树） |
+| 5 | `dependency_validator` | 0 | 无依赖问题 |
+| 6 | `flutter analyze lib/ test/` | 0 | No issues found |
+| 7 | `dart analyze tool/ && dart analyze packages/` | 0 / 0 | `tool/` 有 10 条 info 在 `tool/prune.dart`（既有文件、非本次改动），info 级不触发非零退出；`packages/` 无问题 |
+| 8 | `flutter test --coverage`（主包） | 0 | 267 个用例全过（首轮 1 个红，见下） |
+| 9 | `(cd packages/app_core && flutter test --coverage)` | 0 | 104 个用例全过 |
+| 10 | `check_coverage`（含 `--src` 差集） | 0 | lib 88.8% / app_core 88.2%，均 ≥ 80% |
+
+> 覆盖率注：新增的 `lib/features/todo/data/todo_api.dart`(0/16) 与 `todo_repository.dart`(0/9)
+> 与 sample 同形态（Retrofit 接口 / 抽象类，单测里被 mock 掉），未直接入测；聚合阈值仍达标，不红。
 
 ### 卡住的地方（逐条）
 
-1.
+1. **`test/routing/main_shell_test.dart` 首轮唯一红项。**
+   盲测 AI 在 `MainPage._tabs` 里插入了「待办」标签（索引 2），把「我的」挤到索引 3，
+   却没同步更新 `main_shell_test` 里写死的 `expect(selectedTabIndex(tester), 2)`（仍期望「我的」在索引 2）。
+   这暴露一个**约定缺口**：把 feature 接进底部导航时，必须联动更新 `main_shell_test` 的标签顺序与索引期望。
+   —— 事后修补：在测试里补了「待办」标签的点击断言，并把「我的」改成索引 3；重跑全绿。
+
+2. **`MainPage` 宽屏 rail 的「我的」标签 `labelStyle(2)` 笔误。**
+   盲测 AI 复制「示例 / 待办」的 `labelStyle(2)` 时，把第 4 个标签「我的」（应为 `labelStyle(3)`）也写成了 `labelStyle(2)`，
+   导致宽屏下「我的」选中时不高亮。这条**无任何门禁 / 测试拦截**（纯视觉、无断言），是 AI 的复制粘贴失误，不算 spec 缺口。
+   —— 事后修补：改成 `labelStyle(3)`；重跑全绿。
+
+3. **环境坑（与盲测判定无关，但会卡住执行，已写进 §5 注意事项）。**
+   全新 clone 的 `dart run` 触发 sqlite3 native-assets build hook 下载 `sqlite3.dll`，本机无外网时**不是慢、是卡死**（CPU 0 无限等）。
+   绕过：把主仓库 `.dart_tool/hooks_runner/shared/sqlite3/build/download-*/sqlite3.dll` 拷到副本同路径即可。
 
 ### 由此需要的 spec 改动（回到阶段 7 补，然后重测）
 
-1.
+1. 在 `frontend/directory-structure.md`（应用层 / 导航）或 `quality-guidelines.md` 补一句：
+   **「新增 / 调整底部导航标签后，必须同步更新 `test/routing/main_shell_test.dart` 的标签顺序与 `selectedTabIndex` 期望」**——
+   让下一只盲测 AI 知道这是联动点，而不是只改 `MainPage`。
+2. （可选，非 spec 缺口）`MainPage` 的 `labelStyle(index)` 与标签位置强耦合、易复制粘贴错；
+   可在 `MainPage` 注释里点明「index 必须与该 destination 在 `_tabs` 里的位置一致」，或在 review checklist 加一条。
+3. （环境）把上面第 3 条 sqlite3 卡死绕过法补进 §5 的注意事项（已完成）。
+
