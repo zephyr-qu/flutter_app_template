@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "核对门禁全绿、覆盖率阈值与 codegen 纪律（先 analyze 收敛再 build_runner）"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "核对搬迁未引入禁止模式、注释块未超限"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "核对 data 层实现未偏离规范（依赖注入改由 provider，无服务定位器残留）"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "核对最终目录结构与 spec/README 一致（check_readme_tree 依赖）"}
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "核对遗留的过期注释已删（drift#3669 绕行说明、跨 package 限制说明）"}

@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "拍平后 lib/core/** 与 test/core/** 的落点、命名与目录树约定；决定文件该放哪"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Drift 表/DAO 约定；本任务恢复 @DriftAccessor 后需按此更新口径（跨 package 限制已消失）"}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "六道门禁、codegen 执行时机、覆盖率 --src 参数与 lcov 收集——本任务改点集中于此"}
+{"file": ".trellis/spec/backend/network-guidelines.md", "reason": "dio_factory / auth_interceptor 等网络层文件搬迁后的路径与依赖口径"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "logging 层搬迁后的路径、logger 依赖声明与用法"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Failure / Result / runCatching 的定位与 import 口径"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "禁止模式速查，确保搬迁只动位置、不改行为"}
