@@ -5,8 +5,8 @@ import 'package:my_app/core/ui/failure_message.dart';
 
 /// 统一错误状态组件。
 ///
-/// [error] 通常是 `runAsync` 放进 `AsyncState.error` 的 [Failure]，按当前语言翻译；
-/// 传别的对象显示通用文案。
+/// [error] 通常是 `AsyncView` 从 `AsyncValue.error` 里传下来的 [Failure]，
+/// 交给 `FailureMessage` 译成文案；传别的对象显示通用文案。
 class ErrorText extends StatelessWidget {
   const new({required this.error, super.key, this.onRetry, this.icon});
 

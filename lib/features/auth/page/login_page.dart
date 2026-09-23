@@ -3,34 +3,26 @@ import 'dart:async';
 import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/ui/failure_message.dart';
-import 'package:my_app/di/service_locator.dart';
-import 'package:my_app/features/auth/logic/auth_view_model.dart';
-import 'package:signals_hooks/signals_hooks.dart';
+import 'package:my_app/features/auth/logic/login_notifier.dart';
 
 /// 登录页——温暖极简的登录体验
+///
+/// 表单状态在 `LoginNotifier` 里：本页只 `ref.watch` 它、把输入事件转成方法调用。
 @RoutePage()
-class LoginPage extends HookWidget {
-  const new({super.key, this.viewModel});
-
-  /// 可选注入点——只有测试会传值。
-  ///
-  /// 生产环境由路由构建 `const LoginPage()`，走下面的 `getIt` 兜底；这样
-  /// 页面测试可以直接注入假 ViewModel，不必先装配全局容器，而路由依然
-  /// 不必感知 DI（代价与取舍见 ADR-0001）。
-  final AuthViewModel? viewModel;
+class LoginPage extends ConsumerWidget {
+  const new({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
 
-    final vm = useMemoized(() => viewModel ?? getIt<AuthViewModel>());
-    final AsyncState<dynamic> userState = useSignalValue(vm.user);
-    final bool canSubmit = useSignalValue(vm.canSubmit);
+    final form = ref.watch(loginProvider);
+    final notifier = ref.read(loginProvider.notifier);
 
     return Scaffold(
       body: Container(
@@ -86,7 +78,7 @@ class LoginPage extends HookWidget {
 
                   // ── Email field ──
                   TextField(
-                    onChanged: vm.updateEmail,
+                    onChanged: notifier.updateEmail,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
@@ -108,7 +100,7 @@ class LoginPage extends HookWidget {
 
                   // ── Password field ──
                   TextField(
-                    onChanged: vm.updatePassword,
+                    onChanged: notifier.updatePassword,
                     obscureText: true,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
@@ -132,7 +124,7 @@ class LoginPage extends HookWidget {
                   SizedBox(
                     width: double.infinity,
                     height: 52,
-                    child: userState.isLoading
+                    child: form.isSubmitting
                         ? Center(
                             child: SizedBox(
                               width: 22,
@@ -144,26 +136,8 @@ class LoginPage extends HookWidget {
                             ),
                           )
                         : FilledButton(
-                            onPressed: canSubmit
-                                ? () {
-                                    unawaited(
-                                      Future.microtask(() async {
-                                        final result = await vm.login();
-                                        if (!context.mounted) return;
-                                        result.when(
-                                          // 进 MainRoute（带底部导航的外壳），
-                                          // 而不是它的子路由 HomeRoute
-                                          success: (_) => context.replaceRoute(
-                                            const MainRoute(),
-                                          ),
-                                          failure: (error) => _showError(
-                                            context,
-                                            error.localizedMessage(),
-                                          ),
-                                        );
-                                      }),
-                                    );
-                                  }
+                            onPressed: form.canSubmit
+                                ? () => unawaited(_submit(context, ref))
                                 : null,
                             style: FilledButton.styleFrom(
                               shape: RoundedRectangleBorder(
@@ -188,6 +162,17 @@ class LoginPage extends HookWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _submit(BuildContext context, WidgetRef ref) async {
+    final result = await ref.read(loginProvider.notifier).login();
+    if (!context.mounted) return;
+
+    result.when(
+      // 进 MainRoute（带底部导航的外壳），而不是它的子路由 HomeRoute
+      success: (_) => context.replaceRoute(const MainRoute()),
+      failure: (error) => _showError(context, error.localizedMessage()),
     );
   }
 

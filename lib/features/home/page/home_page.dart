@@ -2,26 +2,22 @@ import 'package:app_core/models/user.dart';
 import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/di/service_locator.dart';
-import 'package:signals_hooks/signals_hooks.dart';
+import 'package:my_app/core/auth/session.dart';
 
 /// 首页仪表盘——温暖极简的个人总览
 @RoutePage()
-class HomePage extends HookWidget {
+class HomePage extends ConsumerWidget {
   const new({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final auth = getIt<AuthStorage>();
-    // 订阅信号：直接读 .value 只在恰好重建时才更新（本页被主框架常驻，
-    // 用户变化时不会自己重建）
-    final User? user = useSignalValue(auth.currentUser);
+    // 必须 ref.watch：本页被主框架常驻，用户变化时不会自己重建
+    final user = ref.watch(sessionProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('首页'), centerTitle: false),
@@ -121,15 +117,15 @@ class HomePage extends HookWidget {
               children: [
                 Expanded(
                   child: _QuickActionCard(
-                    icon: Icons.article_outlined,
-                    label: '文章',
+                    icon: Icons.widgets_outlined,
+                    label: '示例',
                     color: colorScheme.tertiary,
                     gradientColors: [
                       colorScheme.tertiaryContainer,
                       colorScheme.tertiaryContainer.withValues(alpha: 0.6),
                     ],
                     iconColor: colorScheme.onTertiaryContainer,
-                    onTap: () => context.pushRoute(const ArticleListRoute()),
+                    onTap: () => context.pushRoute(const SampleListRoute()),
                   ),
                 ),
                 const SizedBox(width: 12),

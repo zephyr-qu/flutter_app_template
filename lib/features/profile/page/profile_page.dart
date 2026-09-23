@@ -2,30 +2,26 @@ import 'package:app_core/models/user.dart';
 import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/config/user_preferences.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/auth/session.dart';
+import 'package:my_app/core/config/app_settings.dart';
 import 'package:my_app/core/ui/failure_message.dart';
-import 'package:my_app/di/service_locator.dart';
-import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:signals_hooks/signals_hooks.dart';
+import 'package:my_app/features/auth/data/auth_providers.dart';
 
 /// 个人中心页
 @RoutePage()
-class ProfilePage extends HookWidget {
+class ProfilePage extends ConsumerWidget {
   const new({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    final auth = getIt<AuthStorage>();
-    final preferences = getIt<UserPreferences>();
-    // 用 useSignalValue 订阅；读 .value 不会触发重绘
-    final User? user = useSignalValue(auth.currentUser);
-    final ThemeMode themeMode = useSignalValue(preferences.themeMode);
+    // 必须 ref.watch：读一次快照不会触发重绘
+    final user = ref.watch(sessionProvider);
+    final themeMode = ref.watch(appSettingsProvider).themeMode;
 
     return Scaffold(
       appBar: AppBar(title: const Text('个人'), centerTitle: false),
@@ -102,7 +98,7 @@ class ProfilePage extends HookWidget {
                   icon: Icons.palette_outlined,
                   title: '外观',
                   value: _themeLabel(context, themeMode),
-                  onTap: () => _pickThemeMode(context),
+                  onTap: () => _pickThemeMode(context, ref),
                 ),
                 _Divider(colorScheme: colorScheme),
                 // ── 以下三项是**模板占位**：只列出常见的设置入口，还没有
@@ -129,12 +125,12 @@ class ProfilePage extends HookWidget {
                   onTap: () {},
                 ),
                 _Divider(colorScheme: colorScheme),
-                // 示例入口：演示 core 的 FileStorage 与 Drift 缓存。
-                // 用不到这两个设施时，连同 features/demo/ 一起删掉即可。
+                // 示例入口：features/sample 是新增 feature 的金标准，
+                // 新项目不需要它时连同整个目录一起删掉即可。
                 _SettingItem(
-                  icon: Icons.folder_outlined,
-                  title: '本地存储示例',
-                  onTap: () => context.pushRoute(const StorageDemoRoute()),
+                  icon: Icons.widgets_outlined,
+                  title: '功能示例',
+                  onTap: () => context.pushRoute(const SampleListRoute()),
                 ),
               ],
             ),
@@ -145,7 +141,7 @@ class ProfilePage extends HookWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => _logout(context),
+                onPressed: () => _logout(context, ref),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                   side: BorderSide(
@@ -171,13 +167,12 @@ class ProfilePage extends HookWidget {
     return user.name.isNotEmpty ? user.name[0] : '?';
   }
 
-  Future<void> _logout(BuildContext context) async {
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
     // 引用 auth 的 data 层（跨 feature 只共享数据能力，见 FSD 边界规则）
-    final repository = getIt<AuthRepository>();
-    final result = await repository.logout();
+    final result = await ref.read(authRepositoryProvider).logout();
     if (!context.mounted) return;
 
-    // 成功后不在这里导航：登录态信号翻转后由守卫送回登录页（再跳一次会有两个 LoginRoute）
+    // 成功后不在这里导航：登录态翻转后由守卫送回登录页（再跳一次会有两个 LoginRoute）
     result.when(
       success: (_) {},
       failure: (error) {
@@ -201,13 +196,12 @@ class ProfilePage extends HookWidget {
     };
   }
 
-  /// 弹出主题选择，结果写入 UserPreferences（null = 取消）。
+  /// 弹出主题选择，结果写入 `AppSettingsNotifier`（null = 取消）。
   ///
   /// 这里能直接用 `ThemeMode?`：`system` 本身就是枚举值，不必像语言选择器
   /// 那样另立枚举把 null 让给「跟随系统」。
-  Future<void> _pickThemeMode(BuildContext context) async {
-    final preferences = getIt<UserPreferences>();
-    final current = preferences.themeMode.value;
+  Future<void> _pickThemeMode(BuildContext context, WidgetRef ref) async {
+    final current = ref.read(appSettingsProvider).themeMode;
 
     final choice = await showDialog<ThemeMode>(
       context: context,
@@ -238,8 +232,9 @@ class ProfilePage extends HookWidget {
 
     // 用户点空白处关掉了对话框，不做任何修改
     if (choice == null) return;
+    if (!context.mounted) return;
 
-    preferences.setThemeMode(choice);
+    await ref.read(appSettingsProvider.notifier).setThemeMode(choice);
   }
 }
 

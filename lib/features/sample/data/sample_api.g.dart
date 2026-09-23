@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'article_api.dart';
+part of 'sample_api.dart';
 
 // dart format off
 
@@ -11,8 +11,8 @@ part of 'article_api.dart';
 // ignore_for_file: type=lint
 // ignore_for_file: unnecessary_brace_in_string_interps,no_leading_underscores_for_local_identifiers,unused_element,unnecessary_string_interpolations,unused_element_parameter,avoid_unused_constructor_parameters,unreachable_from_main,avoid_redundant_argument_values
 
-class _ArticleApi implements ArticleApi {
-  _ArticleApi(this._dio, {this.baseUrl, this.errorLogger});
+class _SampleApi implements SampleApi {
+  _SampleApi(this._dio, {this.baseUrl, this.errorLogger});
 
   final Dio _dio;
 
@@ -21,26 +21,26 @@ class _ArticleApi implements ArticleApi {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<List<Article>> getArticles() async {
+  Future<List<SampleItem>> getItems() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<List<Article>>(
+    final _options = _setStreamType<List<SampleItem>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/articles',
+            '/sample-items',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<List<dynamic>>(_options);
-    late List<Article> _value;
+    late List<SampleItem> _value;
     try {
       _value = _result.data!
-          .map((dynamic i) => Article.fromJson(i as Map<String, dynamic>))
+          .map((dynamic i) => SampleItem.fromJson(i as Map<String, dynamic>))
           .toList();
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options, response: _result);
@@ -50,25 +50,25 @@ class _ArticleApi implements ArticleApi {
   }
 
   @override
-  Future<Article> getArticle(int id) async {
+  Future<SampleItem> getItem(int id) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<Article>(
+    final _options = _setStreamType<SampleItem>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/articles/${id}',
+            '/sample-items/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late Article _value;
+    late SampleItem _value;
     try {
-      _value = Article.fromJson(_result.data!);
+      _value = SampleItem.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options, response: _result);
       rethrow;

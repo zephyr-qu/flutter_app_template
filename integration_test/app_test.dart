@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  // 注意：bootstrap()（含 DI 注册与 leak_tracker 启动）不是可重入的，
+  // 注意：bootstrap()（含 prefsProvider 的注入与 leak_tracker 启动）不是可重入的，
   // 因此整个冒烟流程只在同一个 testWidgets 中启动一次应用。
   // 拆成多个 testWidgets 各自调用 app.main() 会在第二次启动时抛
   // 「Bad state: Leak tracking is already enabled.」。
@@ -15,9 +15,6 @@ void main() {
     // 清掉上一次运行残留的登录态，保证每次都从登录页开始
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    // 固定语言：应用默认跟随系统语言，不锁定的话在英文设备上断言会失败
-    // （顺带验证 app.locale 的持久化读取路径）
-    await prefs.setString('app.locale', 'zh');
 
     app.main();
     await tester.pumpAndSettle();

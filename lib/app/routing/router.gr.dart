@@ -11,69 +11,6 @@
 part of 'router.dart';
 
 /// generated route for
-/// [ArticleDetailPage]
-class ArticleDetailRoute extends PageRouteInfo<ArticleDetailRouteArgs> {
-  ArticleDetailRoute({
-    Key? key,
-    required int articleId,
-    List<PageRouteInfo>? children,
-  }) : super(
-         ArticleDetailRoute.name,
-         args: ArticleDetailRouteArgs(key: key, articleId: articleId),
-         initialChildren: children,
-       );
-
-  static const String name = 'ArticleDetailRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      final args = data.argsAs<ArticleDetailRouteArgs>();
-      return ArticleDetailPage(key: args.key, articleId: args.articleId);
-    },
-  );
-}
-
-class ArticleDetailRouteArgs {
-  const ArticleDetailRouteArgs({this.key, required this.articleId});
-
-  final Key? key;
-
-  final int articleId;
-
-  @override
-  String toString() {
-    return 'ArticleDetailRouteArgs{key: $key, articleId: $articleId}';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! ArticleDetailRouteArgs) return false;
-    return key == other.key && articleId == other.articleId;
-  }
-
-  @override
-  int get hashCode => key.hashCode ^ articleId.hashCode;
-}
-
-/// generated route for
-/// [ArticleListPage]
-class ArticleListRoute extends PageRouteInfo<void> {
-  const ArticleListRoute({List<PageRouteInfo>? children})
-    : super(ArticleListRoute.name, initialChildren: children);
-
-  static const String name = 'ArticleListRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      return const ArticleListPage();
-    },
-  );
-}
-
-/// generated route for
 /// [HomePage]
 class HomeRoute extends PageRouteInfo<void> {
   const HomeRoute({List<PageRouteInfo>? children})
@@ -154,6 +91,22 @@ class ProfileRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [SampleListPage]
+class SampleListRoute extends PageRouteInfo<void> {
+  const SampleListRoute({List<PageRouteInfo>? children})
+    : super(SampleListRoute.name, initialChildren: children);
+
+  static const String name = 'SampleListRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return const SampleListPage();
+    },
+  );
+}
+
+/// generated route for
 /// [SplashPage]
 class SplashRoute extends PageRouteInfo<void> {
   const SplashRoute({List<PageRouteInfo>? children})
@@ -165,22 +118,6 @@ class SplashRoute extends PageRouteInfo<void> {
     name,
     builder: (data) {
       return const SplashPage();
-    },
-  );
-}
-
-/// generated route for
-/// [StorageDemoPage]
-class StorageDemoRoute extends PageRouteInfo<void> {
-  const StorageDemoRoute({List<PageRouteInfo>? children})
-    : super(StorageDemoRoute.name, initialChildren: children);
-
-  static const String name = 'StorageDemoRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      return const StorageDemoPage();
     },
   );
 }

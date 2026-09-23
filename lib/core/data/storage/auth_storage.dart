@@ -12,16 +12,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// 令牌整条 [TokenSet]（含绝对过期时刻）序列化成 JSON 存在安全存储的**单个键**下，
 /// 内存里缓存一份，所以 [getAccessToken] / [getRefreshToken] 是同步的。
-/// 一个键 = 一处状态，[saveTokens] / [clearAuth] 不必再维护多份副本的一致性。
 ///
-/// 存储划分与读写失败策略（读软写硬）见 backend/database-guidelines.md。
-///
-/// 实现 [TokenStore] 供 `app_core` 的网络层使用（包不认识状态管理）。
-///
-/// **本类不含任何状态管理依赖**：登录态的响应式镜像由 `core/auth/session.dart` 的
-/// `Session` 负责，它订阅 [userChanges]。这样存储层能脱开 Riverpod 单测，
-/// 而 401 之后也有一条可用的回流通道 —— 拦截器只拿得到 `TokenStore`，
-/// 拿不到任何 provider（见 backend/error-handling.md「登出语义」）。
+/// 实现 [TokenStore] 供 `app_core` 的网络层使用；**本类不含任何状态管理依赖** ——
+/// 登录态的可订阅镜像在 `core/auth/session.dart`，它订阅 [userChanges]。
+/// 存储划分、读写失败策略与这层分工见 backend/database-guidelines.md。
 class AuthStorage implements TokenStore {
   new(this._prefs, this._secure) {
     _loadUserFromStorage();

@@ -3,7 +3,6 @@ import 'package:app_core/base/result.dart';
 import 'package:app_core/base/run_catching.dart';
 import 'package:app_core/logging/logging.dart';
 import 'package:app_core/models/user.dart';
-import 'package:injectable/injectable.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:my_app/features/auth/data/auth_api.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
@@ -11,7 +10,9 @@ import 'package:my_app/features/auth/data/models/login_request.dart';
 import 'package:my_app/features/auth/data/models/login_response.dart';
 
 /// 认证服务实现：调用远程 API，用 [runCatching] 把底层错误转成 [Failure]。
-@LazySingleton(as: AuthRepository)
+///
+/// 由 `auth_providers.dart` 的 `authRepositoryProvider` 装配（master 分支上
+/// 是 `@LazySingleton` 注解）。
 class AuthService implements AuthRepository {
   new(this._api, this._storage);
   final AuthApi _api;

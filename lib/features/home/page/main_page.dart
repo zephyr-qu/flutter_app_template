@@ -13,7 +13,7 @@ class MainPage extends StatelessWidget {
   /// 三个标签对应的路由，顺序即索引
   static const List<PageRouteInfo> _tabs = [
     HomeRoute(),
-    ArticleListRoute(),
+    SampleListRoute(),
     ProfileRoute(),
   ];
 
@@ -66,14 +66,14 @@ class MainPage extends StatelessWidget {
                         ),
                         NavigationRailDestination(
                           icon: Icon(
-                            Icons.article_outlined,
+                            Icons.widgets_outlined,
                             color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                           selectedIcon: Icon(
-                            Icons.article,
+                            Icons.widgets,
                             color: colorScheme.primary,
                           ),
-                          label: Text('文章', style: labelStyle(1)),
+                          label: Text('示例', style: labelStyle(1)),
                         ),
                         NavigationRailDestination(
                           icon: Icon(
@@ -122,14 +122,14 @@ class MainPage extends StatelessWidget {
                   ),
                   NavigationDestination(
                     icon: Icon(
-                      Icons.article_outlined,
+                      Icons.widgets_outlined,
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                     selectedIcon: Icon(
-                      Icons.article,
+                      Icons.widgets,
                       color: colorScheme.primary,
                     ),
-                    label: '文章',
+                    label: '示例',
                   ),
                   NavigationDestination(
                     icon: Icon(

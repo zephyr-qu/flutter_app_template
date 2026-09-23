@@ -3,22 +3,22 @@ import 'dart:async';
 import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
-import 'package:my_app/di/service_locator.dart';
+import 'package:my_app/core/providers.dart';
 
 /// 启动页——带渐入动画的品牌页。
 ///
 /// 不接收 `isAuthenticated` 这类构造参数（初始路由拿不到参数），登录态实时读。
 @RoutePage()
-class SplashPage extends StatefulWidget {
+class SplashPage extends ConsumerStatefulWidget {
   const new({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage>
+class _SplashPageState extends ConsumerState<SplashPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fadeIn;
@@ -64,8 +64,9 @@ class _SplashPageState extends State<SplashPage>
     if (!mounted) return;
 
     // 页面在 app 层，可以直接用路由类（不再依赖 '/' / '/login' 这类字符串 path）
-    // 注意 replaceRoute 是挂在 BuildContext 上的扩展，不是 StackRouter 的成员
-    final isLoggedIn = getIt<AuthStorage>().isLoggedIn;
+    // 注意 replaceRoute 是挂在 BuildContext 上的扩展，不是 StackRouter 的成员。
+    // 守卫用的也是同一处同步判断（见 app/providers.dart 的 routerProvider）。
+    final isLoggedIn = ref.read(authStorageProvider).isLoggedIn;
     await context.replaceRoute(
       isLoggedIn ? const MainRoute() : const LoginRoute(),
     );
