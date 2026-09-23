@@ -5,15 +5,13 @@
 // dart run tool/check_coverage.dart       # 默认阈值 80%
 // dart run tool/check_coverage.dart --min=85
 // dart run tool/check_coverage.dart path/to/lcov.info
-// dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
 //
-// # 带差集检查（--src 与 lcov 按序配对）
-// dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
-//   --src=lib --src=packages/app_core/lib
+// # 带差集检查（--src 指定扫描根）
+// dart run tool/check_coverage.dart coverage/lcov.info --src=lib
 // ```
 //
-// 传多份 lcov 时**逐份独立**校验（不合并）：两份的路径都是相对各自包根的
-// `lib/...`，合并会把命名空间搅在一起；而且包内的低覆盖不该被 lib/ 稀释。
+// 传多份 lcov 时**逐份独立**校验（不合并）：路径都是相对各自包根的 `lib/...`，
+// 合并会把命名空间搅在一起。本分支已单包化，通常只传一份。
 //
 // 只统计**手写**代码：`*.g.dart` / `*.freezed.dart` / DI 注册 / l10n 生成文件的
 // 行数不是人能守的，算进阈值只会稀释门禁。生成文件的判定复用
@@ -22,10 +20,8 @@
 // ── 差集检查（--src）──
 //
 // 覆盖率的分母历来是「lcov 里出现的文件」，于是**一个从未被任何测试加载的文件
-// 不出现、也就不进分母**：新增一个完全没测的大文件不会让阈值下降。抽包之后这个
-// 口子被放大过一次（包内 20 个手写文件只有 8 个进分母，包括三个安全关键的
-// 网络层文件），所以这里补上差集：拿扫描根下的手写文件清单，减去该 lcov 的
-// `SF:` 集合。
+// 不出现、也就不进分母**：新增一个完全没测的大文件不会让阈值下降。所以这里补上
+// 差集：拿扫描根下的手写文件清单，减去该 lcov 的 `SF:` 集合。
 //
 // 差集里的文件按 `0 命中 / 非空行数` **计入分母**（不是只报告）：没有豁免时门禁
 // 自动变严，不必等谁记得加规则。行数是代理值——lcov 里根本没有这些文件，拿不到
@@ -119,23 +115,21 @@ const Map<String, String> loadingExemptions = <String, String>{
   'lib/features/auth/data/auth_api.dart': '同 sample_api：抽象接口，没有可执行行',
   'lib/features/auth/data/auth_repository.dart': '同 sample_repository：纯抽象类',
 
-  // ── app_core：被测试导入、但没有任何可执行行 ──
+  // ── 网络层：被测试导入、但没有任何可执行行 ──
   //
   // 这两个文件确实被加载了（auth_interceptor.dart 的 import 链），却仍然不出现在
   // lcov 里 —— 反过来说明「不在 lcov 里」有两种成因：没被加载，以及没有可执行行。
   // 差集检查只能看见前者，所以这两种要显式写在豁免里（理由即证据）。
-  'packages/app_core/lib/data/network/auth_extra_keys.dart':
+  'lib/core/data/network/auth_extra_keys.dart':
       '只有两个顶层 const String：常量在编译期内联，不产生覆盖率记录',
-  'packages/app_core/lib/data/network/token_store.dart':
+  'lib/core/data/network/token_store.dart':
       'abstract interface + 一个 const Duration：只有声明，没有可执行行',
 };
 
 /// 该文件是否被这条 lcov 记录覆盖。
 ///
-/// 两边的路径基准不同：`SF:` 是**相对包根**的（`lib/data/network/token_store.dart`），
-/// 扫描根是仓库相对路径（`packages/app_core/lib/...`）。用边界感知的后缀匹配对上，
-/// 不需要额外传「这个包的 lib 前缀」；配对是逐份独立的，也不会把
-/// `lib/base/failure.dart` 与 `packages/app_core/lib/base/failure.dart` 混淆。
+/// `SF:` 记录与扫描根路径的基准可能不同（前者相对包根、后者仓库相对），
+/// 用边界感知的后缀匹配把两者对上，不需要额外传前缀。
 bool coversPath(String repoPath, String sfPath) =>
     repoPath == sfPath || repoPath.endsWith('/$sfPath');
 
@@ -329,15 +323,12 @@ const String _usage = r'''
 用法：dart run tool/check_coverage.dart [lcov 路径 ...] [--src=扫描根 ...] [--min=80]
 
 先生成覆盖率数据：
-  flutter test --coverage                          # 根工程 → coverage/lcov.info
-  (cd packages/app_core && flutter test --coverage) # 共享包 → 包内 coverage/lcov.info
+  flutter test --coverage                          # → coverage/lcov.info
 
 默认读取 coverage/lcov.info，默认阈值 80%（手写代码口径，剔除生成文件）。
-可传多份 lcov：每份**独立**校验，任一份不达标即失败。
 
---src 与 lcov 按序配对，开启差集检查：扫描根下没有被这份 lcov 覆盖的手写文件，
+--src 指定扫描根，开启差集检查：扫描根下没有被这份 lcov 覆盖的手写文件，
 按「0 命中 / 非空行数」计入分母（结构上不可能被加载的见脚本里的 loadingExemptions）：
 
-  dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info \
-    --src=lib --src=packages/app_core/lib
+  dart run tool/check_coverage.dart coverage/lcov.info --src=lib
 ''';

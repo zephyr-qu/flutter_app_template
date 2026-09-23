@@ -16,7 +16,7 @@ git stash push -q --keep-index --include-untracked --message "$STASH_NAME" 2>/de
 
 # ── Check formatting ──
 echo "🎨 Checking formatting..."
-dart format --output=none --set-exit-if-changed lib test tool packages
+dart format --output=none --set-exit-if-changed lib test tool
 FORMAT_EXIT=$?
 
 # ── Run architecture boundary check (FSD) ──
@@ -49,35 +49,23 @@ echo "📐 Running dart analyze on tool/..."
 dart analyze tool/
 TOOL_EXIT=$?
 
-# ── Analyze shared package ──
-echo "📐 Running dart analyze on packages/..."
-dart analyze packages/
-PKG_EXIT=$?
-
 # ── Run flutter test（带覆盖率，供下一步门禁使用）──
 echo "🧪 Running flutter test..."
 flutter test --coverage
 TEST_EXIT=$?
 
-# ── app_core 的测试与覆盖率 ──
-# 它是独立 package：根工程跑 flutter test --coverage 时，包内文件的命中不会
-# 被归集（lcov 里一条 packages/ 记录都没有），只能在包目录里单独采集。
-echo "🧪 Running app_core tests..."
-(cd packages/app_core && flutter test --coverage)
-PKGTEST_EXIT=$?
-
-# ── Check coverage threshold（逐份 lcov 独立校验 + 差集检查）──
-# --src 与 lcov 按序配对：扫描根下没有被该 lcov 覆盖的手写文件按 0 计入分母，
+# ── Check coverage threshold（差集检查）──
+# --src 指定扫描根：扫描根下没有被该 lcov 覆盖的手写文件按 0 计入分母，
 # 否则「新增一个完全没测的文件」不会让阈值下降（口径见 .trellis/spec/cross-cutting.md）
 echo "📊 Checking coverage..."
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info --src=lib --src=packages/app_core/lib
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib
 COVERAGE_EXIT=$?
 
 # Restore stashed changes
 git stash pop -q 2>/dev/null || true
 
 # ── Report results ──
-if [ $FORMAT_EXIT -ne 0 ] || [ $BOUNDARY_EXIT -ne 0 ] || [ $CONVENTION_EXIT -ne 0 ] || [ $TREE_EXIT -ne 0 ] || [ $DEP_EXIT -ne 0 ] || [ $ANALYZE_EXIT -ne 0 ] || [ $TOOL_EXIT -ne 0 ] || [ $PKG_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ] || [ $PKGTEST_EXIT -ne 0 ] || [ $COVERAGE_EXIT -ne 0 ]; then
+if [ $FORMAT_EXIT -ne 0 ] || [ $BOUNDARY_EXIT -ne 0 ] || [ $CONVENTION_EXIT -ne 0 ] || [ $TREE_EXIT -ne 0 ] || [ $DEP_EXIT -ne 0 ] || [ $ANALYZE_EXIT -ne 0 ] || [ $TOOL_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ] || [ $COVERAGE_EXIT -ne 0 ]; then
     echo ""
     echo "❌ Pre-commit checks failed!"
     echo "   format:     $([ $FORMAT_EXIT -eq 0 ] && echo '✅' || echo '❌')  (dart format lib test tool packages)"
@@ -87,9 +75,7 @@ if [ $FORMAT_EXIT -ne 0 ] || [ $BOUNDARY_EXIT -ne 0 ] || [ $CONVENTION_EXIT -ne 
     echo "   deps:       $([ $DEP_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   analyze:    $([ $ANALYZE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   tool:       $([ $TOOL_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   package:    $([ $PKG_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   test:       $([ $TEST_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   pkg test:   $([ $PKGTEST_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo "   coverage:   $([ $COVERAGE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
     echo ""
     echo "To skip (emergency only): git commit --no-verify"

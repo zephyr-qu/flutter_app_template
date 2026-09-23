@@ -26,13 +26,9 @@ import 'check_boundaries.dart' show isGeneratedPath;
 
 /// 要检查的「文档 → 目录树根」对。
 ///
-/// 用「对」的列表而不是 doc → root 的映射：一个文档里可以有多棵树
-/// （README 同时画了 `lib/` 与 `packages/app_core/`）。
+/// 用「对」的列表而不是 doc → root 的映射：一个文档里可以有多棵树。
 const targets = <(String, String)>[
   ('README.md', 'lib'),
-  // 根取 `lib/` 而不是 `packages/app_core`：后者的直接子项里有 .dart_tool / build /
-  // coverage / pubspec.lock 这些产物，树里列出它们只会变成噪音。
-  ('README.md', 'packages/app_core/lib'),
   ('.trellis/spec/frontend/directory-structure.md', 'lib'),
 ];
 

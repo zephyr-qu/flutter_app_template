@@ -636,7 +636,7 @@ final List<Replacement> _l10nReplacements = <Replacement>[
   const Replacement(
     'lib/core/config/user_preferences.dart',
     '移除只被语言加载使用的 logging import',
-    "import 'package:app_core/logging/logging.dart';\n",
+    "import 'package:my_app/core/logging/logging.dart';\n",
     '',
   ),
   const Replacement(
