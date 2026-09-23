@@ -208,6 +208,67 @@
 
 ---
 
+**2026-09-23 · 阶段 8 完成（AI 协作契约 + 技能/规则面收敛）**
+
+用户对开工前两个问题的拍板：**① 换成 riverpod 版 ② CI 不临时加 `preset/*` ③ AGENTS.md 更新**；
+对第二轮新发现的两个问题的拍板：**① `.cursor/rules` 只留总纲、其余 5 个删掉 ② 4 个栈冲突技能一并删掉**；
+提交策略：**分批次提交**。
+
+| 动作 | 内容 |
+|---|---|
+| 技能换装 | 删 5 个 `signals-*`（112 文件）+ 4 个栈冲突的 `flutter-*`，装 23 个 `riverpod-*`（`serverpod/skills-registry` 的 `skills/riverpod/*`，25 文件）。`.agents/skills/` 由 27 个目录变成 41 个，`skills-lock.json` 同步（顺带清掉里面的僵尸条目 `signals_hooks`——lock 有 28 条而磁盘只有 27 个目录） |
+| `.cursor/rules/` | 删 5 个（`architecture-boundaries` / `data-layer` / `quality-gates` / `state-management` / `ui-pages`），只留并重写 `project-conventions.mdc`（总纲 + 必读指路 + 不存在的东西） |
+| `AGENTS.md` | 块内改掉三处事实错误（11/13/16 行）；`TRELLIS:END` **之后**新增契约块：必读三份 / `features/sample/` 照抄表 / 禁止模式速查 / `## 改完必跑` / DoD |
+| `BRANCH.md` | 新建：基点 `4150ee6`、换掉的三件事、**明确没换的**（主题 / auto_route / dio+retrofit / freezed / drift / l10n / `packages/app_core` 零改动）、为什么不回流、CI 决策与残余风险、六道门禁 |
+| `--delete-conflicting-outputs` | 从 5 处清掉（`ci.yml` ×3、`README.md` ×4、`release-checklist.md` ×2、`cross-cutting.md` ×4、`rename-checklist.md` ×1），并把 `cross-cutting.md` 里「不加它构建**直接失败**」这句**假话**改成实测结论 |
+| 盲测材料 | `.trellis/tasks/09-22-preset-ai-starter/research/blind-test.md`：隔离副本的造法、严格盲测（A）与 PRD 字面（B）两版 prompt、观察点表、六道门禁核对表、结果记录段 |
+
+**四条判断与实测**
+
+1. **`.cursor/rules/` 是比技能目录更严重的一处**，而且它不在任何清单里。6 个文件整份是 signals 口径，
+   其中 `project-conventions.mdc` 与 `architecture-boundaries.mdc` 是 `alwaysApply: true`；
+   `ui-pages.mdc` 给的模板是 `HookWidget` + `useMemoized(() => getIt<XxxViewModel>())` + `useSignalValue`，
+   `data-layer.mdc` 是 `@LazySingleton` / `@module` / `CoreModule`。技能要 AI 主动读，规则默认进上下文。
+   处置选了「删 5 留 1」而不是全部重写：**真正防漂移的是 `.trellis/spec/` + 门禁脚本**，
+   这 6 个文件是第二份真相，而换栈七个阶段没人发现它们过期，正是「第二份真相」的代价。
+2. **`npx skills` 的三个实测坑**（都先在临时目录验过，没在仓库里试错）：
+   - 不加 `--agent universal` 会往**9 个** agent 目录各写一份（`.claude`/`.codebuddy`/`.kiro`/`.lingma`/`.pi`/`.qoder`/`.trae`/`.zcode`），与 Trellis 的 `.pi/skills`、`.codebuddy` 打架；
+   - `--skill 'riverpod-*'` **不支持通配**，也不支持逗号分隔，只能重复 `--skill <名字>`；
+   - `npx skills remove` **不可靠**（报 "Successfully removed 1 skill(s)"，文件与 lock 条目都还在），
+     所以删除走文件系统 + 手工剪 `skills-lock.json`，删完用 `npx skills list` 对账。
+3. **`--delete-conflicting-outputs` 已定论**（这次查的是 build_runner 2.16.1 的源码，不是猜）：
+   `lib/src/build_runner_command_line.dart` 里它被列进 `removedOptions`，
+   注释原文是 `// Removed options, kept to not break old command lines.`——
+   传进去不报错、也不起作用，只在输出里多一条 warning（2.15.0 的 changelog 也是这么写的）。
+   它当年要解决的事从那版起是**默认行为**，旧行为的开关换成了 `--keep-modified-outputs`。
+   所以文档与 CI 里的引用可以放心去掉，`cross-cutting.md` 那句「不加它直接失败」是既成假话。
+4. **审计方法本身有个坑，值得记下来**：`Grep` / ripgrep **默认跳过点号目录**
+   （`.trellis` / `.cursor` / `.github` / `.agents` / `.commandcode`）。
+   前一版对 `signals` 与 l10n 的「全仓库扫描」因此是**漏的**——`.cursor/rules/` 的 6 个文件、
+   `.github/workflows/ci.yml` 里的 flag、`cross-cutting.md` 的口径，一个都没进结果。
+   以后做这类一致性审计，要么显式把点号目录列为搜索根，要么用 `git grep`（它按 git 索引走，不吃这套）。
+   另外 `-g '!{a,b}/**'` 这种带 `!` 的组合 glob 也会让结果失真，别用。
+
+**顺带查实、但本轮不动的一处**：`.commandcode/taste/taste/taste.md` 第 23 行是「widget 要响应式读 signals
+（`useSignalValue` / `HookWidget`）」。那是工具自动学的用户画像文件，手改会被覆盖，所以只记录不修改。
+
+**阶段 8 门禁实测（2026-09-23）**
+
+| 门禁 | 结果 | 说明 |
+|---|---|---|
+| `dart format --set-exit-if-changed` | 0 changed（132 文件） | 复跑 |
+| `check_readme_tree` | ✅ 3 棵树一致 | 复跑（README 改过） |
+| `check_boundaries` | ✅（`lib` + `packages/app_core/lib`） | 复跑 |
+| `check_conventions` | ✅（`lib` + `packages/app_core/lib`） | 复跑 |
+| `dependency_validator` | ✅ No dependency issues | 复跑 |
+| `flutter analyze lib/` / `flutter test` / `check_coverage` | **本阶段未重跑** | 阶段 8 只碰 `.agents/` `.cursor/` `AGENTS.md` `BRANCH.md` `.trellis/` `docs/` `README.md` `ci.yml`，`lib/` `test/` `packages/` 一个字节都没改（`git diff --name-only` 可核），这三道不可能受影响 |
+
+**下一步（必须由用户在另一个会话里做）**：跑 `research/blind-test.md` 的盲测 DoD。
+A 版不通过就先跑 B 版区分「入口不显眼」还是「规范缺失」，再把卡点写回该文件的第 6 节，
+按需回到阶段 7 补 spec 后重测。**这条不达标则本任务未完成。**
+
+---
+
 ## 基线与取舍
 
 | 项 | 实测（2026-09-22，`lib/` 手写文件 39 个） |
@@ -393,6 +454,9 @@ python ./.trellis/scripts/task.py set-branch 09-22-preset-ai-starter preset/ai-s
 2. **CI 的触发分支仍是 `branches: [master]`**（`.github/workflows/ci.yml`，阶段 6 提出，仍未决）：
    推 `preset/ai-starter` 不会跑任何 CI，而本分支的提交约定是 `--no-verify` —— 六道门禁全靠本地自觉。
    要不要临时加上 `preset/*`？
+
+> **两条都已决，见上文「阶段 8 完成」**：① 换成 riverpod 版（并且顺带删掉 4 个栈冲突的 `flutter-*`）；
+> ② **不加** `preset/*`，本分支的 CI 空转是刻意接受的代价，残余风险记在 `BRANCH.md`。
 
 ### `## 改完必跑` 命令块（AGENTS.md 里要落的版本）
 
