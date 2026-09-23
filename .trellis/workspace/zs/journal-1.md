@@ -262,3 +262,40 @@ Extracted an explicit `lib/app/` application layer (composition root) and flatte
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: 09-23-flatten-app-core: 拍平 app_core 回 lib/core
+
+**Date**: 2026-09-23
+**Task**: 09-23-flatten-app-core: 拍平 app_core 回 lib/core
+**Branch**: `preset/ai-starter`
+
+### Summary
+
+在 preset/ai-starter 上把 packages/app_core 拍平回 lib/core（单包化），master 不动。23 lib + 17 test 文件迁位、65 文件 import 前缀改写、包依赖转直接依赖、SampleDao 恢复 @DriftAccessor、删 packages/；门禁与 CI 收敛为单包口径；README/AGENTS/BRANCH/spec 同步。六道门禁全绿（346 passed、覆盖率 90.0%）。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e6f63d8` | (see git log) |
+| `088254c` | (see git log) |
+| `9ec2389` | (see git log) |
+| `6f36b53` | (see git log) |
+| `c883637` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
