@@ -196,3 +196,36 @@ Extracted an explicit `lib/app/` application layer (composition root) and flatte
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: preset/ai-starter: Riverpod 栈 + AI 协作契约
+
+**Date**: 2026-09-23
+**Task**: preset/ai-starter: Riverpod 栈 + AI 协作契约
+**Branch**: `preset/ai-starter`
+
+### Summary
+
+完成 preset/ai-starter 兄弟分支：阶段 0-8 全部落地（依赖换 Riverpod 3、删 DI/hooks、features/sample 金标准、门禁改 Riverpod 口径、spec 与文档重写、AGENTS.md 升为 AI 协作契约 + BRANCH.md）。盲测 DoD（版本 A）通过，2 个约定缺口已补回 directory-structure.md / main_page.dart 并复跑全绿。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6fdb67f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
