@@ -43,8 +43,8 @@ linter:
 # `features/auth/logic`，而 analyze 一直报告「No issues found」）。
 # 所以它们在 CI 与 pre-commit 里以脚本方式跑：
 #
-#   dart run tool/check_boundaries.dart    # 依赖方向 + 页面必须给出 ViewModel 注入点
-#   dart run tool/check_conventions.dart   # 禁用 AsyncState.map、注释块上限
+#   dart run tool/check_boundaries.dart    # 依赖方向 + logic 层不得手动建容器 / 不得依赖 Flutter UI
+#   dart run tool/check_conventions.dart   # build 里禁用 ref.read 取值、注释块上限
 #
 # 细节见 tool/ 下的脚本与 .trellis/spec/cross-cutting.md。
 

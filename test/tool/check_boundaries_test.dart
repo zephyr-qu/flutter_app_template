@@ -136,167 +136,108 @@ void main() {
     });
   });
 
-  group('ViewModel 里不能用 service locator', () {
-    test('logic 里 getIt<...>() 违规', () {
+  group('logic 里不得手动建容器', () {
+    test('ProviderContainer(...) 违规', () {
       final messages = check(
-        'lib/features/article/logic/article_view_model.dart',
-        'final repo = getIt<ArticleRepository>();',
+        'lib/features/sample/logic/sample_list_notifier.dart',
+        'final container = ProviderContainer();',
       );
 
       expect(messages, hasLength(1));
-      expect(messages.single, contains('构造器注入'));
+      expect(messages.single, contains('ProviderContainer'));
     });
 
-    test('logic 里 GetIt.I<...>() 同样违规', () {
+    test('ProviderContainer.test(...) 同样违规', () {
       expect(
         check(
-          'lib/features/article/logic/article_view_model.dart',
-          'final repo = GetIt.I<ArticleRepository>();',
+          'lib/features/sample/logic/sample_list_notifier.dart',
+          'final container = ProviderContainer.test();',
         ),
         hasLength(1),
       );
     });
 
-    test('page/ 里用 getIt 取 ViewModel 不算规则 1 违规', () {
-      // 页面从容器取 ViewModel 是有意的（ADR-0001），规则 1 只管 features/*/logic；
-      // 页面这边由「可选注入点」那条规则接手，见下一个 group。
-      final messages = check(
-        'lib/features/article/page/article_list_page.dart',
-        'final vm = getIt<ArticleViewModel>();',
-      );
-
-      expect(messages, hasLength(1));
-      expect(messages.single, isNot(contains('构造器注入')));
-      expect(messages.single, contains('可选注入点'));
-    });
-  });
-
-  group('页面必须提供可选注入点', () {
-    // 合规页面 = 字段 + 构造参数 + `??` 兜底（ADR-0001「缓解措施」）
-    const injected = '''
-class ArticleListPage extends HookWidget {
-  final ArticleViewModel? viewModel;
-
-  const ArticleListPage({super.key, this.viewModel});
-
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
-    return const SizedBox.shrink();
-  }
-}
-''';
-
-    test('三件套齐全 —— 放行', () {
-      expect(
-        check('lib/features/article/page/article_list_page.dart', injected),
-        isEmpty,
-      );
-    });
-
-    test('直接 getIt<VM>()，没有注入点 —— 报违规', () {
-      final messages = check(
-        'lib/features/article/page/article_list_page.dart',
-        '''
-class ArticleListPage extends HookWidget {
-  const ArticleListPage({super.key});
-
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => getIt<ArticleViewModel>());
-    return const SizedBox.shrink();
-  }
-}
-''',
-      );
-
-      expect(messages, hasLength(1));
-      expect(messages.single, contains('可选注入点'));
-      expect(messages.single, contains('ArticleViewModel'));
-    });
-
-    test('字段有默认值、构造器没暴露 —— 报违规（这是最隐蔽的写法）', () {
-      // `= null` 让它编译得过，路由也不用改，但测试永远传不进来
-      final messages = check(
-        'lib/features/article/page/article_list_page.dart',
-        '''
-class ArticleListPage extends HookWidget {
-  final ArticleViewModel? viewModel = null;
-
-  const ArticleListPage({super.key});
-
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
-    return const SizedBox.shrink();
-  }
-}
-''',
-      );
-
-      expect(messages, hasLength(1));
-      expect(messages.single, contains('this.viewModel'));
-    });
-
-    test('留了字段却仍直取容器 —— 兜底缺失', () {
-      final messages = check(
-        'lib/features/article/page/article_list_page.dart',
-        '''
-class ArticleListPage extends HookWidget {
-  final ArticleViewModel? viewModel;
-
-  const ArticleListPage({super.key, this.viewModel});
-
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => getIt<ArticleViewModel>());
-    return const SizedBox.shrink();
-  }
-}
-''',
-      );
-
-      expect(messages, hasLength(1));
-      expect(messages.single, contains('兜底'));
-    });
-
-    test('同一类型取两次也只报一次', () {
-      final messages = check(
-        'lib/features/article/page/article_list_page.dart',
-        'final a = getIt<ArticleViewModel>();\n'
-            'final b = getIt<ArticleViewModel>();',
-      );
-
-      expect(messages, hasLength(1));
-    });
-
-    test('取的是依赖而非 ViewModel —— 不在管辖内', () {
+    test('只是提到 ProviderContainer 类型声明，不算建容器', () {
+      // 判据是「建容器」（`ProviderContainer(` / `.`），不是出现这个词
       expect(
         check(
-          'lib/features/home/page/home_page.dart',
-          'final auth = getIt<AuthStorage>();\n'
-              'final preferences = getIt<UserPreferences>();',
+          'lib/features/sample/logic/sample_list_notifier.dart',
+          '// 容器只在测试里出现，页面与 logic 只吃 ref',
         ),
         isEmpty,
       );
     });
 
-    test('logic 里的容器取用只报规则 1，不重复报注入点', () {
+    test('logic 层之外不受这条规则管', () {
+      // 规则 3 只管 features/*/logic：页面与装配层不是它的管辖范围
+      expect(
+        check(
+          'lib/features/sample/page/sample_list_page.dart',
+          'final container = ProviderContainer();',
+        ),
+        isEmpty,
+      );
+      expect(
+        check(
+          'lib/core/providers.dart',
+          'final container = ProviderContainer();',
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group('logic 不得依赖 Flutter UI', () {
+    test('logic 里 import material 违规', () {
       final messages = check(
-        'lib/features/article/logic/article_view_model.dart',
-        'final vm = getIt<ArticleViewModel>();',
+        'lib/features/sample/logic/sample_list_notifier.dart',
+        "import 'package:flutter/material.dart';",
       );
 
       expect(messages, hasLength(1));
-      expect(messages.single, contains('构造器注入'));
+      expect(messages.single, contains('material'));
     });
 
-    test('文件级规则与行级规则同时命中时，按行号输出', () {
-      // 规则 4 的结果在行扫描之前就产生了，排序保证输出顺序与翻文件一致
+    test('page/ 里 import material 是正常的', () {
+      expect(
+        check(
+          'lib/features/sample/page/sample_list_page.dart',
+          "import 'package:flutter/material.dart';",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('core/ 里 import material 是正常的（ThemeMode 就在 material 里）', () {
+      expect(
+        check(
+          'lib/core/config/app_settings.dart',
+          "import 'package:flutter/material.dart';",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('foundation / widgets 不在管辖内', () {
+      expect(
+        check(
+          'lib/features/auth/logic/login_notifier.dart',
+          "import 'package:flutter/foundation.dart';\n"
+              "import 'package:flutter/widgets.dart';",
+        ),
+        isEmpty,
+      );
+    });
+
+    test('报出行号', () {
       final violations = findViolations(
-        path: 'lib/features/article/logic/article_view_model.dart',
+        path: 'lib/features/sample/logic/sample_list_notifier.dart',
         content:
-            "import 'package:my_app/features/auth/page/login_page.dart';\n"
-            'final repo = getIt<ArticleRepository>();',
+            "import 'package:app_core/base/result.dart';\n"
+            "import 'package:flutter/material.dart';",
       );
 
-      expect(violations.map((v) => v.line), [1, 2]);
+      expect(violations.single.line, 2);
     });
   });
 

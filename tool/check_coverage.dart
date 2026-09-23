@@ -110,15 +110,14 @@ List<FileCoverage> handwrittenOnly(Iterable<FileCoverage> files) =>
 /// `integration_test` 加载的入口是典型情况：它们没有可执行行，或 `flutter test
 /// --coverage` 根本不会执行到。
 const Map<String, String> loadingExemptions = <String, String>{
-  // ── 根工程：入口与纯声明（`lib/` 下的手写文件 39 个，其中 38 个进分母） ──
+  // ── 根工程：入口与纯声明 ──
   'lib/main.dart': '一行转发到 bootstrap()，只被 integration_test 执行',
   'lib/bootstrap.dart': '要真实 .env + runApp，只在真机 / integration_test 里跑',
-  'lib/features/article/data/article_api.dart':
+  'lib/features/sample/data/sample_api.dart':
       'Retrofit 抽象接口 + redirecting factory，没有可执行行',
-  'lib/features/article/data/article_repository.dart':
-      '纯 abstract class，没有可执行行',
-  'lib/features/auth/data/auth_api.dart': '同 article_api：抽象接口，没有可执行行',
-  'lib/features/auth/data/auth_repository.dart': '同 article_repository：纯抽象类',
+  'lib/features/sample/data/sample_repository.dart': '纯 abstract class，没有可执行行',
+  'lib/features/auth/data/auth_api.dart': '同 sample_api：抽象接口，没有可执行行',
+  'lib/features/auth/data/auth_repository.dart': '同 sample_repository：纯抽象类',
 
   // ── app_core：被测试导入、但没有任何可执行行 ──
   //

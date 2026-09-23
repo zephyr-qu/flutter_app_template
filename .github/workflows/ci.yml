@@ -20,13 +20,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 生成物（*.g.dart / *.freezed.dart / *.gr.dart / *.config.dart / app_localizations*）
-      # 是提交进仓库的，因此必须与源保持一致。改了注解或增删文件却忘了重新生成时，
-      # 这一步会拦下来。策略与重新生成时机见 .trellis/spec/cross-cutting.md「代码生成与生成物」。
+      # 生成物（*.g.dart / *.freezed.dart / *.gr.dart）是提交进仓库的，因此必须与源
+      # 保持一致。改了注解或增删文件却忘了重新生成时，这一步会拦下来。
+      # 策略与重新生成时机见 .trellis/spec/cross-cutting.md「代码生成与生成物」。
       - name: Check generated code is up to date
         run: |
           dart run build_runner build --delete-conflicting-outputs
-          flutter gen-l10n
           # app_core 是独立 package，生成物（user.freezed.dart / app_database.g.dart 等）
           # 只能在包目录内生成 —— 根目录跑的 build_runner 不会碰它。
           (cd packages/app_core && flutter pub get && dart run build_runner build --delete-conflicting-outputs)
@@ -34,7 +33,7 @@ jobs:
           # 「新增一个 @freezed 模型 → 多出一个 .freezed.dart」这种最常见的漂移。
           git add -N -- lib packages
           git diff --exit-code -- lib packages || {
-            echo "::error::生成物与源不一致（见上方 diff）。本地执行 dart run build_runner build --delete-conflicting-outputs && flutter gen-l10n（app_core 需在包目录内跑 build_runner），并把生成物一起提交。";
+            echo "::error::生成物与源不一致（见上方 diff）。本地执行 dart run build_runner build --delete-conflicting-outputs（app_core 需在包目录内跑），并把生成物一起提交。";
             exit 1;
           }
 
@@ -55,7 +54,7 @@ jobs:
       - name: Check architecture boundaries (FSD)
         run: dart run tool/check_boundaries.dart
 
-      # 页面注入点 / AsyncState.map / 注释块上限（扫 lib/，见 tool/check_conventions.dart）
+      # build 里禁 ref.read 取值 / 注释块上限（扫 lib/，见 tool/check_conventions.dart）
       - name: Check code conventions
         run: dart run tool/check_conventions.dart
 

@@ -24,7 +24,7 @@ echo "🧱 Checking architecture boundaries..."
 dart run tool/check_boundaries.dart
 BOUNDARY_EXIT=$?
 
-# ── Run code convention check (AsyncState.map / 注释块上限) ──
+# ── Run code convention check (build 里禁 ref.read / 注释块上限) ──
 echo "📏 Checking code conventions..."
 dart run tool/check_conventions.dart
 CONVENTION_EXIT=$?

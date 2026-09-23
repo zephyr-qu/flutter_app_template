@@ -7,56 +7,98 @@ import '../../tool/check_conventions.dart';
 /// 末尾的「真实仓库」用例再拿 `lib/` 本身回归一次。
 void main() {
   List<String> messages(String content) => findViolations(
-    path: 'lib/features/article/page/article_list_page.dart',
+    path: 'lib/features/sample/page/sample_list_page.dart',
     content: content,
   ).map((v) => v.message).toList();
 
-  group('禁 AsyncState.map', () {
-    test('带 data / error 两个具名实参的 map 违规', () {
+  group('build 里不得 ref.read', () {
+    /// 一个最小的 `build` 方法外壳；`body` 是方法体。
+    String widgetBuild(String body) =>
+        'class A extends ConsumerWidget {\n'
+        '  Widget build(BuildContext context, WidgetRef ref) {\n'
+        '$body\n'
+        '  }\n'
+        '}';
+
+    test('build 里 ref.read(provider) 违规', () {
       final found = messages(
-        'final widget = async.map(\n'
-        "  data: (v) => Text('\$v'),\n"
-        '  loading: () => const SizedBox(),\n'
-        '  error: (e, st) => ErrorText(error: e),\n'
-        ');',
+        widgetBuild('final name = ref.read(userProvider);'),
       );
 
       expect(found, hasLength(1));
-      expect(found.single, contains('AsyncView'));
+      expect(found.single, contains('ref.watch'));
     });
 
-    test('实参顺序无关：error 在前也照样命中', () {
-      const content =
-          'final x = async.map(error: (e, st) => e, '
-          'loading: () => 0, data: (v) => v);';
-
-      expect(messages(content), hasLength(1));
-    });
-
-    test('Iterable.map 不违规（只有位置参数）', () {
+    test('build 里 ref.read(xxx.notifier) 放行', () {
+      // 取的是 notifier 实例本身（身份稳定、不参与订阅），当方法接收者用是正当写法
       expect(
-        messages('final names = list.map((a) => a.title).toList();'),
+        messages(
+          widgetBuild('final notifier = ref.read(loginProvider.notifier);'),
+        ),
         isEmpty,
       );
     });
 
-    test('只给 data 的 map 不违规 —— 判据是 data + error 同时出现', () {
-      expect(messages('final x = holder.map(data: (v) => v);'), isEmpty);
+    test('dart format 折行后的 ref 换行 .read(...) 也认得出', () {
+      final found = messages(
+        widgetBuild('final name = ref\n        .read(userProvider);'),
+      );
+
+      expect(found, hasLength(1));
+    });
+
+    test('build 里的闭包里 ref.read 一样违规', () {
+      final found = messages(
+        widgetBuild('return Builder(builder: (context) => Text(ref.read(x)));'),
+      );
+
+      expect(found, hasLength(1));
+    });
+
+    test('Notifier 的 build 里 read 也违规（同样漏订阅）', () {
+      final found = messages(
+        'class N extends Notifier<int> {\n'
+        '  int build() => ref.read(baseProvider);\n'
+        '}',
+      );
+
+      expect(found, hasLength(1));
+    });
+
+    test('build 之外 ref.read 放行 —— 回调里取值本来就该用 read', () {
+      expect(
+        messages(
+          'class A extends ConsumerWidget {\n'
+          '  Widget build(BuildContext context, WidgetRef ref) {\n'
+          '    return TextButton(onPressed: () => _go(ref), child: label);\n'
+          '  }\n'
+          '}\n'
+          'Future<void> _go(WidgetRef ref) => ref.read(repoProvider).logout();',
+        ),
+        isEmpty,
+      );
+    });
+
+    test('ref.watch 不受影响', () {
+      expect(
+        messages(widgetBuild('final name = ref.watch(userProvider);')),
+        isEmpty,
+      );
     });
 
     test('报出调用所在行', () {
       final violations = findViolations(
-        path: 'lib/features/article/page/article_list_page.dart',
+        path: 'lib/features/sample/page/sample_list_page.dart',
         content:
-            'void build() {\n'
-            '  final w = async.map(\n'
-            '    data: (v) => Text(v),\n'
-            '    error: (e, st) => ErrorText(error: e),\n'
-            '  );\n'
+            'class A extends ConsumerWidget {\n'
+            '  Widget build(BuildContext context, WidgetRef ref) {\n'
+            '    final name = ref.read(userProvider);\n'
+            '    return Text(name);\n'
+            '  }\n'
             '}',
       );
 
-      expect(violations.single.line, 2);
+      expect(violations.single.line, 3);
     });
   });
 

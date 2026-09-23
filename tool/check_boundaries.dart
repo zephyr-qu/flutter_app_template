@@ -5,10 +5,11 @@
 // dart run tool/check_boundaries.dart lib    # 也可只扫指定根
 // ```
 //
-// 规则与「为什么是脚本而不是 analyzer 插件」见 frontend/quality-guidelines.md。
+// 规则与「为什么是脚本而不是 analyzer 插件」见 .trellis/spec/cross-cutting.md。
 //
 // 五条规则：core/ 不得依赖上层；跨 feature 只共享 data/ 层；
-// features/*/logic 不得用 getIt；从容器取 ViewModel 的页面必须给出可选注入点；
+// features/*/logic 不得手动创建 ProviderContainer；
+// features/*/logic 不得 import package:flutter/material.dart；
 // packages/app_core 不得依赖状态管理 / DI。
 //
 // 脚本另外会对「import/export 行没被正则完整解析」打 warning：warning 只提示、
@@ -43,6 +44,20 @@ const Set<String> forbiddenInCorePackage = {
   'get_it',
   'injectable',
 };
+
+/// 规则 3 的提示语。
+const String _containerMessage =
+    // 中文句子在换行处本来就不加空格，这条规则的前提是英文长句
+    // ignore: missing_whitespace_between_adjacent_strings
+    'features/*/logic 里不得手动创建 ProviderContainer —— 依赖从 ref 或构造器取，'
+    '容器只在测试里出现';
+
+/// 规则 4 的提示语。
+const String _logicUiMessage =
+    // 中文句子在换行处本来就不加空格，这条规则的前提是英文长句
+    // ignore: missing_whitespace_between_adjacent_strings
+    'features/*/logic 不得 import package:flutter/material.dart —— logic 层是纯 Dart，'
+    '出现 material 通常意味着把 Widget / BuildContext 塞进了状态层';
 
 class BoundaryViolation {
   const new({
@@ -107,7 +122,8 @@ void main(List<String> args) {
   exitCode = 1;
 }
 
-/// 检查单个文件的内容，返回其中的违规项与漏检提示（用 [BoundaryViolation.isWarning] 区分）。
+/// 检查单个文件的内容，返回其中的违规项与漏检提示（用 [BoundaryViolation.isWarning] 区分），
+/// 按行号升序。
 ///
 /// [path] 用 `/` 分隔、相对仓库根（如 `lib/features/profile/page/profile_page.dart`）。
 /// 拆成纯函数是为了能用普通 `test()` 覆盖，不必真的去扫整个 `lib/`。
@@ -118,25 +134,22 @@ List<BoundaryViolation> findViolations({
   final violations = <BoundaryViolation>[];
   final lines = content.split('\n');
 
-  // 规则 4 要看整份内容（字段 / 构造器 / 兜底三处分散在文件里），单独跑一遍
-  violations.addAll(_checkViewModelInjection(path: path, lines: lines));
-
   for (var index = 0; index < lines.length; index++) {
     final line = lines[index];
     final lineNumber = index + 1;
 
-    // 规则 1：ViewModel 里不得用 service locator
-    if (_isFeatureLogic(path) && _locatorPattern.hasMatch(line)) {
+    // 规则 3：logic 层里不得手动建容器
+    if (_isFeatureLogic(path) && _containerPattern.hasMatch(line)) {
       violations.add(
         BoundaryViolation(
           file: path,
           line: lineNumber,
-          message: 'features/*/logic 里不得使用 getIt —— 依赖要用构造器注入（见 ADR-0001）',
+          message: _containerMessage,
         ),
       );
     }
 
-    // 规则 2 / 3：import 与 export 的边界
+    // 规则 1 / 2 / 4：import 与 export 的边界
     final directive = _directivePattern.firstMatch(line);
 
     // 行以 import/export 开头，却没在**这一行**里解析出 URI：指令被折行了，
@@ -171,6 +184,17 @@ List<BoundaryViolation> findViolations({
 
     final rawUri = directive.group(2)!;
 
+    // 规则 4：logic 层不得依赖 Flutter UI
+    if (_isFeatureLogic(path) && rawUri == 'package:flutter/material.dart') {
+      violations.add(
+        BoundaryViolation(
+          file: path,
+          line: lineNumber,
+          message: _logicUiMessage,
+        ),
+      );
+    }
+
     // 规则 5：共享基础设施包不得依赖状态管理 / DI
     final forbidden = _checkForbiddenPackage(path: path, uri: rawUri);
     if (forbidden != null) {
@@ -190,98 +214,24 @@ List<BoundaryViolation> findViolations({
     }
   }
 
-  // 规则 4 的文件级结果先入列，按行号排一次，输出才和读者翻文件的顺序一致
-  violations.sort((a, b) {
-    final byLine = a.line.compareTo(b.line);
-    return byLine != 0 ? byLine : a.message.compareTo(b.message);
-  });
-
   return violations;
-}
-
-/// 规则 4：从容器取 ViewModel 的页面必须给出「可选注入点」。
-///
-/// 页面自己走 `getIt<VM>()` 是**有意**的——把它改成必填参数会把路由与 DI 绑死
-/// （见 ADR-0001）。代价落在页面测试上：必须先装配全局容器。ADR 给的缓解是页面
-/// 开一个可选构造参数，容器只做兜底：
-///
-/// ```dart
-/// final ArticleViewModel? viewModel;                        // 只有测试会传
-/// const ArticleListPage({super.key, this.viewModel});
-/// final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
-/// ```
-///
-/// 这三行没有任何编译器保护：少写照样能跑，只是测试被悄悄推回
-/// `setUpTestApp()`——缓解措施就是这样随时间失效的。所以做成门禁。
-///
-/// `features/*/logic/` 不在这里管：那里的 `getIt` 由规则 1 直接禁止。
-List<BoundaryViolation> _checkViewModelInjection({
-  required String path,
-  required List<String> lines,
-}) {
-  if (_isFeatureLogic(path)) return const <BoundaryViolation>[];
-
-  final content = lines.join('\n');
-  final violations = <BoundaryViolation>[];
-
-  for (final entry in _containerViewModelTypes(lines).entries) {
-    final type = entry.key;
-    final missing = <String>[
-      if (!content.contains('final $type? viewModel;'))
-        '字段 `final $type? viewModel;`',
-      if (!content.contains('this.viewModel')) '构造参数 `this.viewModel`',
-      if (!_fallbackPattern(type).hasMatch(content))
-        '`viewModel ?? getIt<$type>()` 兜底',
-    ];
-    if (missing.isEmpty) continue;
-
-    violations.add(
-      BoundaryViolation(
-        file: path,
-        line: entry.value,
-        message: '取 $type 的页面必须给可选注入点（ADR-0001），缺 ${missing.join('、')}',
-      ),
-    );
-  }
-
-  return violations;
-}
-
-/// 文件里从容器取过的 ViewModel 类型 → 首次出现的行号。
-///
-/// 只看 `*ViewModel`：`getIt<AuthStorage>()` / `getIt<UserPreferences>()` 这类
-/// 直接取依赖的页面（`home_page`、`profile_page`）不在本规则的管辖内。
-Map<String, int> _containerViewModelTypes(List<String> lines) {
-  final found = <String, int>{};
-
-  for (var index = 0; index < lines.length; index++) {
-    for (final match in _containerViewModelPattern.allMatches(lines[index])) {
-      found.putIfAbsent(match.group(1)!, () => index + 1);
-    }
-  }
-
-  return found;
 }
 
 final RegExp _directivePattern = RegExp(
   r'''^\s*(import|export)\s+['"]([^'"]+)['"]''',
 );
 
-/// `getIt<XxxViewModel>(...)` / `GetIt.I<XxxViewModel>(...)`：容器取 ViewModel 的调用点。
-final RegExp _containerViewModelPattern = RegExp(
-  r'(?:getIt|GetIt\.I)<\s*(\w+ViewModel)\s*>',
-);
-
-/// 可选注入点的兜底写法：`viewModel ?? getIt<XxxViewModel>()`。
-RegExp _fallbackPattern(String type) =>
-    RegExp('viewModel\\s*\\?\\s*\\?\\s*getIt<\\s*$type\\s*>');
+/// 手动建容器的调用点：`ProviderContainer(...)` / `ProviderContainer.test(...)`。
+///
+/// 规则 3 的判据。取依赖要靠 `ref` 或构造器注入；`ProviderContainer` 是装配层的
+/// 工具，出现在 `features/*/logic/` 里就意味着状态层自己绕过了注入。
+final RegExp _containerPattern = RegExp(r'\bProviderContainer\s*[.(]');
 
 /// 指令的**开头**，不要求同行有 URI：用来识别「正则没能解析出 URI」的行。
 final RegExp _directiveHeadPattern = RegExp(r'^\s*(?:import|export)\b');
 
 /// 条件导入的 `if` 子句，如 `import 'a.dart' if (dart.library.io) 'b.dart';`。
 final RegExp _conditionalClausePattern = RegExp(r'''\bif\s*\([^)]*\)\s*['"]''');
-final RegExp _locatorPattern = RegExp(r'\b(getIt|GetIt\.I)\s*[<.]');
 final RegExp _featurePattern = RegExp('(?:^|/)features/([^/]+)/');
 
 /// 一条已解析出 URI 的指令，行内还有多少内容没被 [_directivePattern] 覆盖。
@@ -326,7 +276,7 @@ String? _checkImport({required String path, required String target}) {
   // 中文句子在换行处本来就不加空格，这条规则的前提是英文长句
   // ignore: missing_whitespace_between_adjacent_strings
   return '不能引用 features/$toFeature/$layer/ —— 跨 feature 只共享 data 层'
-      '（page/logic 属于 feature 内部，改成用 core 信号或对方 data 层的能力）';
+      '（page/logic 属于 feature 内部，改成用 core 的共享能力或对方 data 层）';
 }
 
 /// 规则 5：`packages/app_core` 不得依赖状态管理 / DI。
