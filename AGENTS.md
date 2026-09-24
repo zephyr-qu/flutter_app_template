@@ -5,75 +5,19 @@ These instructions are for AI assistants working in this project.
 
 ## Project Nature: Personal Flutter Scaffold
 
-This project is a **personal Flutter scaffold/template** for medium-small apps, not a production application. It provides a clean starting point with:
-
-- **Feature-Sliced Design (FSD 简化版)** feature-first structure
-- **Riverpod 3** state management（provider + `ConsumerWidget`；没有 signals / ViewModel）
-- **auto_route** declarative routing
-- **Riverpod provider** dependency injection（没有 DI 容器，`lib/di/` 已删除）
-- **Material Design 3** theming
-- **Retrofit + Dio** API client pattern
-- **Chinese-first UI**（用户可见文案直接写中文，单语言，没有 l10n）+ **English identifiers**、**Chinese comments**
+**个人 Flutter 脚手架（中小型 app 模板，非生产应用）。** 完整说明见 [`README.md`](./README.md)。
 
 ### Starting a New Project From This Scaffold
 
-#### Quick way (automated)
-
-```bash
-dart run tool/init_project.dart
-```
-
-This interactive script updates the following files:
-
-- `pubspec.yaml` → `name`, `description`
-- 全仓库 → `package:<旧名>/` → `package:<新名>/`（含生成物）与根组件类名
-- `android/app/build.gradle.kts` → `namespace`, `applicationId`
-- `android/app/src/main/AndroidManifest.xml` → `android:label`
-- `android/app/src/main/kotlin/**/MainActivity.kt` → `package` 声明（文件同步搬到新目录）
-- `ios/Runner/Info.plist` → `CFBundleDisplayName`, `CFBundleName`
-- `ios/Runner.xcodeproj/project.pbxproj` → `PRODUCT_BUNDLE_IDENTIFIER`（含 `.RunnerTests`）
-
-任一必改点没匹配到就以非零退出码结束，**不写任何文件**（先规划、后写盘）。
-
-非交互用法（不提问，缺失项按默认值推导）：
-
-```bash
-dart run tool/init_project.dart --yes --name=my_next_app \
-  --application-id=com.example.my_next_app
-```
-
-After the script:
-
-```bash
-dart run build_runner build
-flutter analyze
-```
-
-#### Manual way
-
-1. Update `pubspec.yaml` → `name`, then replace `package:<old>/` across the repo
-2. Update `android/app/build.gradle.kts` → `namespace` + `applicationId`
-3. Move `android/app/src/main/kotlin/**/MainActivity.kt` into the directory matching the
-   new namespace and update its `package` declaration（两者必须一致）
-4. Update `android/app/src/main/AndroidManifest.xml` → `android:label`
-5. Update `ios/Runner/Info.plist` → `CFBundleDisplayName`, `CFBundleName`
-6. Update `ios/Runner.xcodeproj/project.pbxproj` → `PRODUCT_BUNDLE_IDENTIFIER`（含 `.RunnerTests`）
-7. Replace the `MyApp` class name in `lib/app/app.dart`, `lib/bootstrap.dart` and its usages
-8. Run `dart run build_runner build` to regenerate configs
+交互 / 非交互改名脚本、`--yes` 用法与「全有或全无」语义见 [`README.md`](./README.md#从脚手架创建新项目)。
 
 ### Pre-commit Hooks
 
-This scaffold includes a pre-commit hook in `.githooks/pre-commit`（格式、架构边界、目录树一致性、依赖声明、analyze、测试覆盖率等多项检查）。
+根 `justfile` 是门禁清单的单一来源，`.githooks/pre-commit` 与 CI 都调用 `just verify`；每道门禁的语义、阈值与理由见 [`README.md`](./README.md#门禁) 与 `.trellis/spec/cross-cutting.md`。
 
-清单以脚本本身为准；每道门禁的语义与阈值见 `.trellis/spec/cross-cutting.md` —— 本文件不再逐项维护，内联的清单一定会过时。
+环境需安装 just >= 1.58.0；激活：`git config core.hooksPath .githooks`
 
-To activate:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-To skip (emergency only): `git commit --no-verify`
+紧急跳过（仅限紧急）：`git commit --no-verify`
 
 ### Working Knowledge
 
@@ -99,11 +43,8 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
      `trellis update` 不会覆盖它。改动时只维护这一段。
      ═══════════════════════════════════════════════════════════════════════════ -->
 
-# AI 协作契约（preset/ai-starter）
+# AI 协作契约
 
-本仓库是 `preset/ai-starter` 分支：状态管理 / 依赖注入 / 页面组合已从
-**signals + get_it + flutter_hooks 换成 Riverpod 3**。分支基线、换掉了什么、
-明确**不换**什么、以及为什么不回流 master，见 [`BRANCH.md`](./BRANCH.md)。
 
 ## 开工前必读三份
 
@@ -113,7 +54,7 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 | 新增或改动 UI、组件、主题 | [`.trellis/spec/frontend/quality-guidelines.md`](.trellis/spec/frontend/quality-guidelines.md) |
 | 新建 feature、增删文件、判断某文件该放哪 | [`.trellis/spec/frontend/directory-structure.md`](.trellis/spec/frontend/directory-structure.md) |
 
-跨层的事（门禁、覆盖率、codegen、集成测试、环境配置）看
+跨层的事（门禁、codegen、集成测试、环境配置）看
 [`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)；
 数据层与网络看 [`.trellis/spec/backend/index.md`](.trellis/spec/backend/index.md)。
 
@@ -132,67 +73,63 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 | `AsyncNotifier` + `AsyncView` 页面 | `lib/features/sample/logic/sample_list_notifier.dart`、`page/sample_list_page.dart` |
 | 对应的四类测试 | `test/features/sample/**` |
 
-## 禁止模式速查（Riverpod 版）
 
-上一代（master 的 signals + get_it 栈）的这些写法在本分支**都不存在**，
-看到它们等于看到 bug：
 
-| ❌ 不要写 | ✅ 本分支的写法 |
-|---|---|
-| `signal(...)` / `computed(...)` / `effect(...)` | `@riverpod` 顶层 provider、`Notifier`、`AsyncNotifier` |
-| `asyncSignal<T>(AsyncState.data(...))` | `AsyncNotifier` 的 `Future<T> build()` → `AsyncValue<T>` |
-| `AsyncState` / `AsyncState.map` | `AsyncValue` + `AsyncView`（**不要**用 `AsyncValue.when`） |
-| `runAsync` / `runAsyncVoid` / `core/base/run_async.dart` | 框架内建：刷新 `ref.refresh(p.future)`、重试 `ref.invalidate(p)` |
-| `getIt<Xxx>()` / `GetIt.I` / `@injectable` / `@LazySingleton` / `@module` / `*.config.dart` | provider + `ProviderScope(overrides:)` |
-| `HookWidget` / `useMemoized` / `useEffect` / `useSignalValue` | `ConsumerWidget` / `ConsumerStatefulWidget` + `ref.watch` / `ref.listen` |
-| `final VM? viewModel;` 这类可选注入点参数 | 不需要：注入口就是 `ProviderScope(overrides:)` |
-| 业务代码里 `ProviderContainer(...)` | `ref`；容器只属于测试与 `bootstrap()`（`check_boundaries` 拦） |
-| `build` 里 `ref.read(p)` 取**值** | `ref.watch(p)`；`ref.read(p.notifier)` 取实例是允许的（`check_conventions` 拦） |
-| `AppLocalizations.of(context)` / ARB / `l10n.x` | 用户可见文案**直接写中文**（本分支已裁剪 l10n） |
-| 手写 `fromJson` / `toJson` | `@freezed` + `json_serializable` 生成 |
-| `features/*/logic/` 里 `import 'package:flutter/material.dart'` | logic 层不认识 widget 层（`check_boundaries` 拦） |
+## 工作原则
 
-## `## 改完必跑`
+- 对外说明、进度和交付默认使用简体中文。
+- 以安全、正确、可维护和最小必要改动解决当前明确问题。
+- 不使用汇报腔、客服腔或无意义套话；简单问题直接回答，复杂问题说明关键取舍与风险。
+- 遵守系统和开发者指令；用户明确要求优先于本文档。同层级规则中，具体规则优先于一般规则，明确例外优先于默认规则。
 
-```bash
-dart run tool/verify.dart
-```
+## 范围与授权
 
-一条命令跑完下面 8 项，**首个失败即停**。4 道脚本门禁在**同一个进程**里依次调用
-（它们都是「纯函数 + 薄 main」），省掉 3 次 `dart run` 的 VM 启动与 sqlite3 build hook
-—— 整块只快几秒（实测 44.7s → 41.0s），大头在 `flutter test` 与两次 analyze；
-真正的收益是「只记一条命令」与「早停」：
+- 严格按用户目标工作，不擅自扩展范围或增加未经请求的功能。
+- 用户明确要求修改、修复、实现、创建或删除时，视为已授权执行范围内的可逆本地变更；完成必要勘察后直接实施和验证，无需再次等待确认。
+- 跨模块、公共接口或数据模型改动先做必要勘察，简要说明方案、影响和验证方式；范围明确且已授权的可逆本地修改继续实施。仅在存在尚未授权的重大兼容性变化、真实数据影响，或无法从需求确定的关键选择时，先确认相关事项。
+- 用户仅要求计划、分析、解释、诊断、Review 或报告状态时，只进行只读检查，不修改环境。
+- 新增依赖的实际安装、数据库写入或迁移执行、真实环境配置或权限变更、提交、推送、合并、发布、部署及其他高风险或不可逆操作，执行前须说明影响并取得明确授权。已有授权覆盖同一操作和范围时不重复询问，工具强制审批除外。
+- 在上述执行步骤前，先完成已授权范围内可供审阅的本地代码、配置草稿、SQL 脚本和必要验证；准备文件不等于授权在真实环境执行。
+- 需要扩大范围，或方案变化会显著影响兼容性、数据、安全或成本时，先确认受影响部分；范围内的常规实现调整自行处理。
+- 信息不足时，低风险、可逆且不改变目标的事项可明确假设后继续；关键选择会显著影响结果、兼容性或风险时先询问。等待期间可继续不依赖该答案的已授权工作。
+- 完成标准是实现用户要求、完成最小充分验证并修复本次改动造成的问题；达到标准后交付，不追加无关重构或美化。遇到阻塞时说明已完成内容、具体阻塞和所需信息，不以反复重试代替判断。
 
-```bash
-dart format --output=none --set-exit-if-changed lib test tool   # 1 格式
-dart run tool/check_boundaries.dart                            # 2 架构边界（lib）
-dart run tool/check_conventions.dart                           # 3 build 里禁 ref.read 取值 / 注释块上限
-dart run tool/check_readme_tree.dart                           # 4 README + spec 的目录树
-flutter analyze lib/ test/                                     # 5
-dart analyze --fatal-infos tool/                               # 6
-flutter test --coverage                                        # 7
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib  # 8 阈值 80%
-```
+## 工程实现
 
-想只跑其中一项就直接跑上面那条命令。语义、阈值与理由见
-[`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)。
+- 按任务需要阅读相关代码、配置、文档和错误信息，不做无关的全项目勘察。
+- 保持现有架构、接口、技术选型、命名、格式和错误处理风格，仅修改目标直接相关的内容。
+- 不覆盖、回退或夹带用户已有改动；仅删除因本次变更而失效的代码。
+- 优先使用现有依赖、标准库和原生能力；避免过度抽象，仅在确有复用、独立业务语义或能显著降低复杂度时提取模块。
+- 可恢复错误就近处理并记录必要上下文；不可恢复错误快速失败并向上抛出。禁止空 `catch`、吞异常或伪成功。
+- 日志只记录必要的入参摘要、分支决策、状态变化和异常，不记录敏感信息或制造高频噪声。
+- 跨层规则变更应同步维护相关校验、类型、接口契约、权限、字段展示和文案。
+- 保持现有接口兼容；新增接口仅返回业务所需字段。
+- 注释、文档和提交说明优先使用中文，专有名词与 API 名称保持原文；文件使用 UTF-8 无 BOM 和 LF。
 
-两条容易漏的：
+## 验证与交付
 
-- 增删了 `lib/` 下的文件或目录后，`README.md` 与 `frontend/directory-structure.md`
-  里的目录树要同步，否则 `check_readme_tree` 会红；
-- 改了注解 / 模型 / 文件增删后要重跑 codegen，并把生成物一起提交 —— CI 会比对这份 diff。
+- 涉及业务逻辑或数据流变化时，检查受影响的入口、核心逻辑、边界、异常和出口；文案或样式修改不扩展为完整业务链路审查。
+- 根据改动范围和风险执行最小充分验证，避免把全量构建、全量测试或真实环境联调作为普通改动的默认步骤。优先覆盖核心业务、回归边界、数据转换、权限、安全和外部集成关键路径。
+- 默认只对本次改动文件执行快速静态检查，并执行低成本的差异检查；修改 XML 或 SQL 时仅补充对应的结构或语法校验。没有相关改动时不运行无关检查；最后一次检查后若只修改了文案、注释或格式，不重复执行高成本验证。
+- 未经用户明确要求，不执行 Maven 编译，也不使用 `javac` 等方式替代编译；默认不连接数据库，不执行真实登录态、第三方服务或生产环境联调。
+- 普通前端页面、样式和局部逻辑改动默认只运行目标文件的 ESLint、类型检查或最相关的单测，按项目现有能力选择其中必要项，不要求全部执行。
+- 前端生产构建默认不运行。仅在用户明确要求，或改动涉及依赖、构建配置、入口、路由装配、全局注册、代码分割、编译兼容性，且轻量检查无法覆盖风险时运行。
+- 不为普通改动主动启动开发服务或浏览器验证；仅在交互、布局、运行时行为必须通过页面确认，或用户明确要求时执行。可视化界面有现成运行环境时，优先验证直接受影响的页面，不做无关页面巡检。
+- Word、PDF、PPT、Excel、打印模板等可视化产物必须优先进行渲染或截图级验证；缺少所需工具时，只能声明已完成的结构校验及其残余风险，不得断言视觉效果正常。
+- 交付时简要说明修改内容、实际执行的验证和与本次改动直接相关的残余风险。无需罗列本就不适用、项目规则默认禁止或用户未要求的 Maven、数据库、部署等未执行项；只有其缺失会影响结论可信度时才说明。
 
-## 完成定义（DoD）
+## 联网与工具
 
-一项改动算完成，必须同时满足：
+- 用户明确禁止联网时不联网。纯本地修改优先使用仓库信息；仅在结论依赖最新状态、版本差异、标准、安全公告、价格、政策或必要信息缺失时查询权威来源。
+- 优先使用官方文档、标准、项目仓库和发行说明，并区分事实、推断和建议；网络不可用时给出保守答案并标注不确定性。
+- 库或框架问题仅在仓库不足以确认所需 API 或版本行为时查询外部文档，Context7 可用且适用时优先使用；仅提到框架名不构成联网理由。用户提供准确官方链接时直接读取，内容不足时再搜索。
+- 本地代码理解、修改和 Review 优先使用 `rg`、源码阅读及项目内验证；需要交互或必须保持原生行为时直接执行相应命令。
+- 复杂架构或跨文件调用链分析可优先使用目标仓库已有的 CodeGraph，并显式传入 `projectPath`；简单定位使用 `rg`。索引结果必须回到当前源码验证，不主动初始化。
+- 工具输出与当前源码、配置或测试冲突时，以项目实际状态为准。
 
-1. 上面那套命令**全部**退出码 0 —— 阈值与规则不许为了「让门禁变绿」而下调；
-2. 新增 / 改动的用户可见代码有测试，且覆盖**错误分支**（只测 happy path 不算）；
-3. 结构与 `lib/features/sample/` 一致；
-4. 文档与代码一致：改了行为就同步 `.trellis/spec/` 或 `README.md`，
-   **不留「照原文做会出错」的说明**。
+## Shell 与 Git
 
-> 本分支的提交约定是 `git commit --no-verify` + **手工跑完上面那套命令**（本地 pre-commit
-> 在 Windows 上单次约 20 分钟，每次 `dart run` 都被 sqlite3 的 build hook 拖住）。
-> 关掉钩子换来的是「必须自己跑并报出结果」的义务，**不是「可以不跑」**。
+- 先获取摘要，再按需展开上下文；避免无过滤的大范围搜索、日志、完整 diff 和高成本命令。
+- 暂存或提交前确认只包含本次目标文件，不包含本地环境文件或用户已有改动。
+- 未经用户明确要求，不创建提交、不推送、不合并、不发布或部署。
+- Git commit message 使用中文，并且严禁添加 `Co-Authored-By`、Claude 贡献者或任何 AI 署名标识。
