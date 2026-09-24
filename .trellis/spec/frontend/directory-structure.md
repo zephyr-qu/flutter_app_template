@@ -6,7 +6,7 @@
 
 ## Overview
 
-This project follows **Feature-Sliced Design (FSD) 简化版** — 按业务功能（auth, home, profile, sample）划分目录，每个 feature 内部自包含三层：
+This project follows **Feature-Sliced Design (FSD) 简化版** — 按业务功能（home, profile, sample）划分目录，每个 feature 内部自包含三层：
 
 ```
 lib/
@@ -16,20 +16,18 @@ lib/
 ├── app/                       # 应用层（组合根：只做装配）
 │   ├── app.dart               #   根组件：主题 / 路由装到一起
 │   ├── providers.dart         #   组合根自己的 provider（AppRouter）
-│   ├── routing/               #   路由：AppRouter + AuthGuard + 登录态桥接（生成物同目录）
+│   ├── routing/               #   路由：AppRouter（生成物同目录）
 │   └── pages/                 #   全局页面：启动页、404（不属于任何 feature）
 │
 ├── core/                      # 基础设施 + 状态耦合的适配层
-│   ├── auth/                  #   登录态 provider（AuthStorage.userChanges 的镜像）
 │   ├── base/                  #   Failure / Result / runCatching
 │   ├── config/                #   配置：偏好快照 + Notifier / 偏好的裸存储 / 网络配置
 │   ├── data/                  #   数据基础设施
 │   │   ├── database/          #     Drift 连接 + schema + 表
-│   │   ├── network/           #     Dio 工厂 / 拦截器 / TokenStore 契约 / 应用侧装配
-│   │   └── storage/           #     令牌/用户存储（AuthStorage） + FileStorage
+│   │   ├── network/           #     Dio 工厂 / 拦截器栈 / 应用侧装配
+│   │   └── storage/           #     FileStorage
 │   ├── logging/               #   日志封装 + 调试日志脱敏
-│   ├── models/                #   User / TokenSet
-│   ├── providers.dart         #   基础设施 provider（prefs / 安全存储 / 数据库 / 文件）
+│   ├── providers.dart         #   基础设施 provider（prefs / 数据库 / 文件）
 │   ├── theme/                 #   色板 / ThemeData 组装 / 设计 token
 │   └── ui/                    #   共享 UI：三态组件 + Failure 文案（本地常量表）
 │
@@ -47,7 +45,7 @@ lib/
         └── page/              # UI 页面（ConsumerWidget / ConsumerStatefulWidget）
             └── {feature}_list_page.dart
 
-#   现有 feature：auth（认证）、home（首页 + 主框架）、profile（个人中心）、
+#   现有 feature：home（首页 + 主框架）、profile（个人中心）、
 #   sample（金标准示例 —— data 三形态 / logic / page 的照抄对象）
 ```
 
@@ -77,11 +75,12 @@ lib/
 - 只放真正跨 feature 复用的基础设施（Dio 客户端、主题常量、本地存储）
 - **过早抽象是个人项目的头号杀手** — 宁可重复写两次，也不要提前抽取不稳定的基类
 - 一个文件被 2+ 个 feature 使用时才考虑提到 core/
-- **模型放哪**：满足下面**任一**条件就放 `lib/core/models/`，否则留在该 feature 的 `data/models/`：
-  1. 被 2+ 个 feature 共享 —— `User`（auth / home / profile 共用，并经 `AuthStorage.currentUser` 暴露）
-  2. core 自己的代码要用它 —— `TokenSet`（`TokenRefresher` 解析它，而 core 不能反向依赖 feature）
+- **模型放哪**：默认留在该 feature 的 `data/models/`（如 `SampleItem`）。满足下面**任一**条件时才
+  新建 `lib/core/models/` 把它提上去：
+  1. 被 2+ 个 feature 共享
+  2. core 自己的代码要用它（core 不能反向依赖 feature）
 
-  对照：`SampleItem` 只有 sample 用、core 也不碰它，所以留在 `features/sample/data/models/`。
+  当前仓库**没有** `lib/core/models/`（认证功能删除后不再有共享模型）——需要时再建。
   不要把 feature 私有的模型塞进 core，也不要让 core 反向 import feature——依赖方向始终是 `features → core`
 - core/ 不包含业务逻辑、不包含状态管理
 
@@ -96,8 +95,9 @@ lib/
   组装而成，而不必先跳过上百行主题定义
 - 全局页面放在 `lib/app/pages/`，可以直接 import `app/routing/router.dart` 用路由类导航（如 `context.router.replaceRoute(const MainRoute())`）——放在 `core/` 就只能退回 `context.router.replacePath('/')` 这类字符串 path
 - `features/` 的页面可以 import `app/routing/router.dart` 使用路由类（如 `const SampleListRoute()`）以获得参数类型安全
-- 登录态由 `AppRouter` 的 `AutoRouteGuard` 在每次导航时实时读取 `AuthStorage`，**不要**因为登录态变化而重建路由器（重建会丢弃导航栈）
-- **初始路由（`SplashPage`）不能有构造参数**：声明式路由无法为它提供参数，会在启动时触发 `argsAs` 抛异常。需要判断登录态就地实时读 `AuthStorage`，不要做成入参
+- **不要**因为某个状态变化而重建路由器 —— 重建会丢掉整个导航栈（`routerProvider` 因此是 `keepAlive`）
+- **初始路由（`SplashPage`）不能有构造参数**：声明式路由无法为它提供参数，会在启动时触发 `argsAs` 抛异常。需要读什么就在页面里实时读，不要做成入参
+- **冷启动的初始 location（`/splash`，常量 `splashRoutePath`）由 `app/providers.dart` 的 `routerProvider` 设置**，不是在路由表里标 `initial: true`——`AutoRoute(initial: true)` 只对**没写 `path`** 的路由生效（auto_route 的 `RouteCollection.fromList` 仅在 `path` 为空时才用 `initial` 生成路径），所以只能从 provider 这一侧设；而且**必须在 `config()` 之前**：`routeInfoProvider` 是 memoized 的（`??=`），`app.dart` 的 build 会调 `config()`，晚一步就改不动了。代价是被深链冷启动时这一行会盖掉深链地址——要「深链优先」，就在返回前判断 `platformDispatcher.defaultRouteName` 是否等于 `/`
 - 主框架（`features/home/page/main_page.dart`）的标签用 `AutoTabsRouter` 管理，**不要**自己在 `State` 里存 `_currentIndex`：高亮索引必须由路由栈推导，否则当标签是被别处切换的（首页快捷入口、深链、返回栈）时会与实际显示的页面错位。用默认的 IndexedStack 版本，切回来时各标签的状态还在
 - **改动底部导航标签（在 `MainPage._tabs` 增删 / 调序）时，必须同步更新 `test/routing/main_shell_test.dart`**：
   该测试的「点击底部导航切换标签并更新高亮」用例写死了标签顺序与 `selectedTabIndex` 期望（如「我的」在第几个位置）。
@@ -115,32 +115,36 @@ lib/
 ❌ 不依赖路由重建（当前页面在栈中时无效）。
 
 ```dart
-// core/auth/session.dart —— 登录态镜像，跨 feature 可读
-// 真源是 core/data/storage/auth_storage.dart（同步可读，路由守卫直接用它）
+// core/config/app_settings.dart —— 主题等偏好，跨 feature 可读
+// 真源是 core/config/user_preferences.dart（同步读 prefs）
 @Riverpod(keepAlive: true)
-class Session extends _$Session {
+class AppSettingsNotifier extends _$AppSettingsNotifier {
   @override
-  User? build() {
-    final storage = ref.watch(authStorageProvider);
-    final subscription = storage.userChanges.listen((user) {
-      if (!ref.mounted) return;
-      state = user;
-    });
-    ref.onDispose(subscription.cancel);
-    return storage.currentUser;
+  AppSettings build() {
+    final prefs = ref.watch(userPreferencesProvider);
+    return AppSettings(
+      themeMode: prefs.themeMode,
+      enableDebugLogging: prefs.enableDebugLogging,
+      defaultPageSize: prefs.defaultPageSize,
+    );
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    state = state.copyWith(themeMode: mode); // 先改内存
+    await ref.read(userPreferencesProvider).setThemeMode(mode); // 再落盘
   }
 }
 
 // Feature B 响应
-final user = ref.watch(sessionProvider);
+final themeMode = ref.watch(appSettingsProvider).themeMode;
 ```
 
 关键约束：
 
 - 共享的 provider 必须是真正的跨 feature 数据。**如果一个状态只在一个 feature 内使用，留在那个 feature 的 `logic/` 里。**
-- core/ 的状态与持久化存储保持单向同步：写入只走存储（`AuthStorage` / `UserPreferences`），
-  再由存储的变化流回流成 provider 状态——**一处通知**比两处各写一次更不容易走岔。
-  范例是 `Session` 与 `AppSettingsNotifier`（两者都只 `ref.read` 存储写盘，不在本地多写一次 `state`）。
+- core/ 的状态与持久化存储保持**单向**：要么「状态在 notifier 里、写入时顺手落盘」（`AppSettingsNotifier`），
+  要么「真源在存储、状态订阅存储的变化流」（当前仓库没有这种，需要时自己建）。
+  **不要两边各写一次** —— 一处通知比两处各写一次更不容易走岔。
 
 ### 6. 数据库：schema 在 core，查询在 feature
 
@@ -185,17 +189,17 @@ features/{feature}/
 
 | 元素 | 规范 | 示例 |
 | --------- | ----------- | ------- |
-| Feature 目录 | snake_case | `auth/`、`sample/` |
-| Dart 源文件 | snake_case | `auth_service.dart` |
-| Repository 接口 | `{feature}_repository.dart` / `{Feature}Repository` | `auth_repository.dart` / `AuthRepository` |
-| Service 实现 | `{feature}_service.dart` / `{Feature}Service` | `auth_service.dart` / `AuthService` |
-| Retrofit API 定义 | `{feature}_api.dart` / `{Feature}Api` | `auth_api.dart` / `AuthApi` |
+| Feature 目录 | snake_case | `sample/`、`home/` |
+| Dart 源文件 | snake_case | `sample_service.dart` |
+| Repository 接口 | `{feature}_repository.dart` / `{Feature}Repository` | `sample_repository.dart` / `SampleRepository` |
+| Service 实现 | `{feature}_service.dart` / `{Feature}Service` | `sample_service.dart` / `SampleService` |
+| Retrofit API 定义 | `{feature}_api.dart` / `{Feature}Api` | `sample_api.dart` / `SampleApi` |
 | Drift DAO（按需） | `{feature}_dao.dart` / `{Feature}Dao` | `sample_dao.dart` / `SampleDao` |
-| provider 装配 | `{feature}_providers.dart` | `auth_providers.dart` / `sample_providers.dart` |
-| Notifier | `{feature}_notifier.dart` / `{Feature}Notifier` | `login_notifier.dart` / `LoginNotifier`（provider 名 `loginProvider`） |
+| provider 装配 | `{feature}_providers.dart` | `sample_providers.dart` |
+| Notifier | `{feature}_notifier.dart` / `{Feature}Notifier` | `sample_list_notifier.dart` / `SampleListNotifier`（provider 名 `sampleListProvider`） |
 | 页面文件 | `{feature}_page.dart` | `sample_list_page.dart` |
 | 页面类 | `{Feature}Page` | `SampleListPage` |
-| 数据模型 | PascalCase | `SampleItem`, `User` |
+| 数据模型 | PascalCase | `SampleItem` |
 | Model 文件 | `{model}.dart` | `sample_item.dart` |
 | 共享组件 | 描述性 PascalCase | `EmptyWidget`, `ErrorText` |
 

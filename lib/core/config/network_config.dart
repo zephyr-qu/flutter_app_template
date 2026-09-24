@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// 网络配置。不可变值对象，由 `NetworkModule.networkConfig()` 注入
+/// 网络配置。不可变值对象，由 `networkConfigProvider` 注入
 /// （见 backend/network-guidelines.md「dotenv 只读一次」）。
 @immutable
 class NetworkConfig {

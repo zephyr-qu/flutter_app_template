@@ -1,51 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:my_app/core/base/result.dart';
 import 'package:my_app/core/config/app_settings.dart';
-import 'package:my_app/core/models/user.dart';
-import 'package:my_app/features/auth/data/auth_providers.dart';
-import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/profile/page/profile_page.dart';
 
 import '../../../support/app_test_harness.dart';
 
-class MockAuthRepository extends Mock implements AuthRepository;
-
 void main() {
-  late MockAuthRepository repo;
   late TestAppContext app;
 
   setUp(() async {
-    repo = MockAuthRepository();
-    when(() => repo.logout())
-        .thenAnswer((_) async => const Result.success(null));
-
-    app = await setUpTestApp(
-      overrides: [authRepositoryProvider.overrideWithValue(repo)],
-    );
+    app = await setUpTestApp();
   });
 
   group('ProfilePage — 渲染', () {
-    testWidgets('未登录时显示「未登录」', (tester) async {
+    testWidgets('头部卡是静态品牌信息（本分支没有用户与登录态）', (tester) async {
       await tester.pumpWidget(
         wrapPage(const ProfilePage(), container: app.container),
       );
 
-      expect(find.text('未登录'), findsOneWidget);
-      expect(find.text('欢迎使用'), findsNothing);
-    });
-
-    testWidgets('已登录时显示用户名与欢迎语', (tester) async {
-      await app.storage.saveUser(const User(id: 1, name: '张三'));
-
-      await tester.pumpWidget(
-        wrapPage(const ProfilePage(), container: app.container),
-      );
-
-      expect(find.text('张三'), findsOneWidget);
+      expect(find.text('My App'), findsOneWidget);
       expect(find.text('欢迎使用'), findsOneWidget);
+      expect(find.byIcon(Icons.spa_outlined), findsOneWidget);
+      // 认证功能已删除：这两样都不该再出现
       expect(find.text('未登录'), findsNothing);
+      expect(find.text('退出登录'), findsNothing);
     });
   });
 
@@ -117,24 +95,6 @@ void main() {
         app.container.read(appSettingsProvider).themeMode,
         ThemeMode.light,
       );
-    });
-  });
-
-  group('ProfilePage — 登出', () {
-    testWidgets('点击退出登录会调用仓库', (tester) async {
-      await app.storage.saveUser(const User(id: 1, name: '张三'));
-      await tester.pumpWidget(
-        wrapPage(const ProfilePage(), container: app.container),
-      );
-
-      // 按钮在页面底部，默认测试视口里需要先滚到可见位置
-      await tester.ensureVisible(find.text('退出登录'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('退出登录'));
-      await tester.pumpAndSettle();
-
-      verify(() => repo.logout()).called(1);
     });
   });
 }

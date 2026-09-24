@@ -2,8 +2,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/auth/session.dart';
-import 'package:my_app/core/models/user.dart';
 import 'package:my_app/core/theme/app_theme_extension.dart';
 
 /// 首页仪表盘——温暖极简的个人总览
@@ -16,8 +14,6 @@ class HomePage extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    // 必须 ref.watch：本页被主框架常驻，用户变化时不会自己重建
-    final user = ref.watch(sessionProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('首页'), centerTitle: false),
@@ -62,14 +58,9 @@ class HomePage extends ConsumerWidget {
                             appTheme.radiusSm,
                           ),
                         ),
-                        child: Center(
-                          child: Text(
-                            _userInitial(user),
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: colorScheme.onPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                        child: Icon(
+                          Icons.spa_outlined,
+                          color: colorScheme.onPrimary,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -78,7 +69,7 @@ class HomePage extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '你好, ${user?.name ?? '用户'}',
+                              '你好, 欢迎回来',
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: colorScheme.onPrimary,
                                 fontWeight: FontWeight.w600,
@@ -125,7 +116,9 @@ class HomePage extends ConsumerWidget {
                       colorScheme.tertiaryContainer.withValues(alpha: 0.6),
                     ],
                     iconColor: colorScheme.onTertiaryContainer,
-                    onTap: () => context.pushRoute(const SampleListRoute()),
+                    onTap: () =>
+                        AutoTabsRouter.of(context)
+                            .navigate(const SampleListRoute()),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -139,7 +132,9 @@ class HomePage extends ConsumerWidget {
                       colorScheme.secondaryContainer.withValues(alpha: 0.6),
                     ],
                     iconColor: colorScheme.onSecondaryContainer,
-                    onTap: () => context.pushRoute(const ProfileRoute()),
+                    onTap: () =>
+                        AutoTabsRouter.of(context)
+                            .navigate(const ProfileRoute()),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -154,7 +149,9 @@ class HomePage extends ConsumerWidget {
                     ],
                     iconColor: colorScheme.onPrimaryContainer,
                     // 设置区就在个人页，快捷入口直接跳过去，不留空手势
-                    onTap: () => context.pushRoute(const ProfileRoute()),
+                    onTap: () =>
+                        AutoTabsRouter.of(context)
+                            .navigate(const ProfileRoute()),
                   ),
                 ),
               ],
@@ -202,12 +199,6 @@ class HomePage extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _userInitial(User? user) {
-    final name = user?.name;
-    if (name == null || name.isEmpty) return '?';
-    return name[0];
   }
 }
 

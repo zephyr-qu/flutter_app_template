@@ -2,18 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:my_app/app/app.dart';
 import 'package:my_app/core/config/app_settings.dart';
-import 'package:my_app/features/auth/data/auth_providers.dart';
-import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:my_app/features/auth/page/login_page.dart';
+import 'package:my_app/features/home/page/home_page.dart';
 
 import '../support/app_test_harness.dart';
 
-class MockAuthRepository extends Mock implements AuthRepository;
-
-/// 根组件是**组合根**：路由创建、登录态监听、主题装配、主题模式订阅
+/// 根组件是**组合根**：路由创建、主题装配、主题模式订阅
 /// 全在这几十行里。断言本身不多，价值在「装配错了就红」——少接一个 provider、
 /// 路由指向已删的页面、主题模式没被 watch，都会在这里暴露。
 ///
@@ -24,7 +19,7 @@ void main() {
 
   setUp(() {
     // MyApp 内部的 router delegate 由框架持有，测试无法释放
-    // （同 test/routing/auth_redirect_test.dart）
+    // （同 test/routing/main_shell_test.dart）
     LeakTesting.settings = LeakTesting.settings.withIgnored(
       createdByTestHelpers: true,
       allNotDisposed: true,
@@ -33,24 +28,24 @@ void main() {
 
   /// 用真实容器 + 真实路由启动根组件，返回装配上下文供断言使用
   Future<TestAppContext> pumpMyApp(WidgetTester tester) async {
-    final app = await setUpTestApp(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(MockAuthRepository()),
-      ],
-    );
+    final app = await setUpTestApp();
 
     await tester.pumpWidget(
       UncontrolledProviderScope(container: app.container, child: const MyApp()),
     );
     await tester.pumpAndSettle();
+    // 冷启动落在启动页：2.2s 品牌动画之后才进主框架（同 routing/ 下的测试）
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
     return app;
   }
 
-  testWidgets('未登录时根组件落在登录页（守卫按真实登录态重定向）', (tester) async {
+  testWidgets('冷启动经启动页落到主框架（本分支没有登录守卫）', (tester) async {
     final app = await pumpMyApp(tester);
 
-    expect(find.byType(LoginPage), findsOneWidget);
-    expect(app.storage.isLoggedIn, isFalse);
+    expect(find.byType(HomePage), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(app.container.read(appSettingsProvider).themeMode, ThemeMode.system);
   });
 
   testWidgets('themeMode 跟随 AppSettingsNotifier 的状态变化', (tester) async {

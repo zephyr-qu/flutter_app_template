@@ -32,7 +32,6 @@ NetworkConfig networkConfig(Ref ref) => NetworkConfig.fromEnv(dotenv.env);
 @Riverpod(keepAlive: true)
 Dio dio(Ref ref) => createDio(
   config: ref.watch(networkConfigProvider),
-  tokenStore: ref.watch(authStorageProvider),
   enableDebugLogging: ref.watch(userPreferencesProvider).enableDebugLogging,
   isMock: ref.watch(networkConfigProvider).isMock,
   registerMockRules: _registerMockRules,
@@ -41,7 +40,7 @@ Dio dio(Ref ref) => createDio(
 /// 注册内置 Mock 规则。
 ///
 /// 规则留在应用侧而不是 `dio_factory.dart` 里：它们是本应用的具体端点，工厂不该知道
-/// `/sample-items` / `/login` 这类业务路径（见 design 6.5）。
+/// `/sample-items` 这类业务路径。
 ///
 /// 必须用 `MockRule.regex` 且锚定 URL 结尾 —— `MockRule(path: ...)` 永远打不中，
 /// 会静默失效并打到真实网络（原因见 backend/network-guidelines.md）。
@@ -68,29 +67,6 @@ void _registerMockRules() {
         'id': 1,
         'title': '示例条目一',
         'body': '这是脚手架的金标准示例数据。',
-      }),
-    ),
-  );
-  MockRegistry.register(
-    MockRule.regex(
-      pattern: r'/login$',
-      method: 'POST',
-      handler: (_) => MockResponse.json({
-        'user': {'id': 1, 'name': '开发者'},
-        'accessToken': 'mock-access-token',
-        'refreshToken': 'mock-refresh-token',
-        'expiresIn': 3600,
-      }),
-    ),
-  );
-  MockRegistry.register(
-    MockRule.regex(
-      pattern: r'/refresh$',
-      method: 'POST',
-      handler: (_) => MockResponse.json({
-        'accessToken': 'mock-access-token-refreshed',
-        'refreshToken': 'mock-refresh-token-rotated',
-        'expiresIn': 3600,
       }),
     ),
   );

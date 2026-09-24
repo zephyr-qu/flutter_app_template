@@ -9,11 +9,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:my_app/app/providers.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/base/result.dart';
-import 'package:my_app/core/models/token_set.dart';
-import 'package:my_app/core/models/user.dart';
 import 'package:my_app/core/theme/app_theme.dart';
-import 'package:my_app/features/auth/data/auth_providers.dart';
-import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/home/page/home_page.dart';
 import 'package:my_app/features/profile/page/profile_page.dart';
 import 'package:my_app/features/sample/data/models/sample_item.dart';
@@ -22,8 +18,6 @@ import 'package:my_app/features/sample/data/sample_repository.dart';
 import 'package:my_app/features/sample/page/sample_list_page.dart';
 
 import '../support/app_test_harness.dart';
-
-class MockAuthRepository extends Mock implements AuthRepository;
 
 class MockSampleRepository extends Mock implements SampleRepository;
 
@@ -37,35 +31,25 @@ void main() {
   late TestAppContext app;
 
   setUp(() {
-    // 真实 MyApp/AppRouter 内部的 delegate 由此处无法释放，见 auth_redirect_test
+    // 真实 MyApp/AppRouter 内部的 delegate 无法释放（同 test/app/app_test.dart）
     LeakTesting.settings = LeakTesting.settings.withIgnored(
       createdByTestHelpers: true,
       allNotDisposed: true,
     );
   });
 
-  /// 以「已登录」状态启动，落到主框架
+  /// 冷启动（经启动页）落到主框架
   Future<void> pumpShell(WidgetTester tester) async {
     final sampleRepo = MockSampleRepository();
     when(sampleRepo.getItems)
         .thenAnswer((_) async => const Result.success(<SampleItem>[]));
 
     app = await setUpTestApp(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(MockAuthRepository()),
-        sampleRepositoryProvider.overrideWithValue(sampleRepo),
-      ],
+      overrides: [sampleRepositoryProvider.overrideWithValue(sampleRepo)],
     );
-
-    await app.storage.saveTokens(
-      const TokenSet(accessToken: 'token', refreshToken: 'refresh'),
-    );
-    await app.storage.saveUser(const User(id: 1, name: '张三'));
 
     final container = app.container;
-    final routerConfig = container
-        .read(routerProvider)
-        .config(reevaluateListenable: container.read(authReevaluateProvider));
+    final routerConfig = container.read(routerProvider).config();
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -91,7 +75,7 @@ void main() {
   int selectedTabIndex(WidgetTester tester) =>
       tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex;
 
-  testWidgets('已登录时进入主框架并停在首页标签', (tester) async {
+  testWidgets('冷启动经启动页进入主框架并停在首页标签', (tester) async {
     await pumpShell(tester);
 
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -131,6 +115,19 @@ void main() {
 
     expect(find.byType(SampleListPage), findsOneWidget);
     expect(selectedTabIndex(tester), 1);
+  });
+
+  testWidgets('首页快捷入口走的就是上面那条路（点真实卡片，不是模拟）', (tester) async {
+    await pumpShell(tester);
+
+    // 真实调用点：首页「个人」快捷卡片
+    await tester.tap(find.text('个人'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProfilePage), findsOneWidget);
+    expect(selectedTabIndex(tester), 2);
+    // 底部导航还在：快捷入口是切标签，不是 push 一个没有外壳的新页面
+    expect(find.byType(NavigationBar), findsOneWidget);
   });
 
   testWidgets('宽屏走侧边导航栏，高亮同样跟随路由栈', (tester) async {

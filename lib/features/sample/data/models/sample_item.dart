@@ -7,7 +7,7 @@ part 'sample_item.g.dart';
 ///
 /// 新增模型照抄本文件：`@freezed` + `fromJson`，结构约定见
 /// frontend/type-safety.md。只有被 2+ feature 共用、或 core 自己要用的模型
-/// 才提到 `lib/core/models/`（如 `User`）。
+/// 才提到 `lib/core/models/`（当前仓库还没有这个目录，需要时再建）。
 @freezed
 sealed class SampleItem with _$SampleItem {
   const factory({

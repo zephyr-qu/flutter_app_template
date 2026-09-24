@@ -1,6 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:msw_dio_interceptor/msw_dio_interceptor.dart';
 import 'package:my_app/core/data/network/dio_client.dart';
@@ -11,8 +10,8 @@ import '../../../support/app_test_harness.dart' show noRetry;
 import '../../../support/scripted_http_adapter.dart';
 
 /// 应用侧的 Dio 装配。`dio_client.dart` 只做三件本应用专属的事：从 dotenv 取
-/// 配置、按偏好决定调试日志、注册内置 Mock 规则；拦截器栈本身（顺序、重试、
-/// 刷新）由 `interceptor_stack_test.dart` 覆盖，这里只管「装配对不对」。
+/// 配置、按偏好决定调试日志、注册内置 Mock 规则；拦截器栈本身（顺序、重试）
+/// 由 `dio_factory_test.dart` 覆盖，这里只管「装配对不对」。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -22,7 +21,6 @@ void main() {
     // 关掉调试日志：`dioProvider` 会按用户偏好挂 PrettyDioLogger，
     // 否则每个响应都会被打到测试输出里
     SharedPreferences.setMockInitialValues({'app.debug.logging': false});
-    FlutterSecureStorage.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
   });
 

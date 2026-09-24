@@ -2,12 +2,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/routing/router.dart';
-import 'package:my_app/core/auth/session.dart';
 import 'package:my_app/core/config/app_settings.dart';
-import 'package:my_app/core/models/user.dart';
 import 'package:my_app/core/theme/app_theme_extension.dart';
-import 'package:my_app/core/ui/failure_message.dart';
-import 'package:my_app/features/auth/data/auth_providers.dart';
 
 /// 个人中心页
 @RoutePage()
@@ -19,8 +15,6 @@ class ProfilePage extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final appTheme = AppThemeExtension.of(context);
-    // 必须 ref.watch：读一次快照不会触发重绘
-    final user = ref.watch(sessionProvider);
     final themeMode = ref.watch(appSettingsProvider).themeMode;
 
     return Scaffold(
@@ -52,31 +46,27 @@ class ProfilePage extends ConsumerWidget {
                   CircleAvatar(
                     radius: 44,
                     backgroundColor: colorScheme.primary,
-                    child: Text(
-                      _userInitial(user),
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: colorScheme.onPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Icon(
+                      Icons.spa_outlined,
+                      size: 40,
+                      color: colorScheme.onPrimary,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user?.name ?? '未登录',
+                    'My App',
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (user != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '欢迎使用',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '欢迎使用',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -130,60 +120,18 @@ class ProfilePage extends ConsumerWidget {
                 _SettingItem(
                   icon: Icons.widgets_outlined,
                   title: '功能示例',
-                  onTap: () => context.pushRoute(const SampleListRoute()),
+                  // 切到「示例」标签，而不是 push 一个没有底部导航的新页面
+                  onTap: () =>
+                      AutoTabsRouter.of(context)
+                          .navigate(const SampleListRoute()),
                 ),
               ],
             ),
 
-            const SizedBox(height: 32),
-
-            // ── Logout button ──
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => _logout(context, ref),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                  side: BorderSide(
-                    color: colorScheme.error.withValues(alpha: 0.4),
-                  ),
-                  foregroundColor: colorScheme.error,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(appTheme.radiusSm),
-                  ),
-                ),
-                child: const Text('退出登录'),
-              ),
-            ),
             const SizedBox(height: 40),
           ],
         ),
       ),
-    );
-  }
-
-  String _userInitial(User? user) {
-    if (user == null) return '?';
-    return user.name.isNotEmpty ? user.name[0] : '?';
-  }
-
-  Future<void> _logout(BuildContext context, WidgetRef ref) async {
-    // 引用 auth 的 data 层（跨 feature 只共享数据能力，见 FSD 边界规则）
-    final result = await ref.read(authRepositoryProvider).logout();
-    if (!context.mounted) return;
-
-    // 成功后不在这里导航：登录态翻转后由守卫送回登录页（再跳一次会有两个 LoginRoute）
-    result.when(
-      success: (_) {},
-      failure: (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.localizedMessage()),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      },
     );
   }
 

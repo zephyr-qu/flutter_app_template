@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_app/core/config/user_preferences.dart';
-import 'package:my_app/core/data/storage/auth_storage.dart';
 import 'package:my_app/core/providers.dart';
 import 'package:my_app/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +14,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 typedef TestAppContext = ({
   ProviderContainer container,
   SharedPreferences prefs,
-  AuthStorage storage,
   UserPreferences preferences,
 });
 
@@ -30,9 +27,8 @@ Duration? noRetry(int retryCount, Object error) => null;
 
 /// 装配一个测试容器。
 ///
-/// 用**真实的** `AuthStorage` / `UserPreferences`——它们各自有单元测试，
-/// 页面测试再 mock 一遍既重复、又容易掩盖接线错误。要换掉的是网络与仓库，
-/// 通过 [overrides] 逐个替换具体 provider。
+/// 用**真实的** `UserPreferences`——它有自己的单元测试，页面测试再 mock 一遍既重复、
+/// 又容易掩盖接线错误。要换掉的是网络与仓库，通过 [overrides] 逐个替换具体 provider。
 ///
 /// `prefsProvider` 必须 override：它没有默认实现（理由见 `core/providers.dart`）。
 /// 容器在测试结束后自动 dispose，调用方不必写 tearDown。
@@ -40,7 +36,6 @@ Future<TestAppContext> setUpTestApp({
   List<Override> overrides = const [],
 }) async {
   SharedPreferences.setMockInitialValues({});
-  FlutterSecureStorage.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
   final container = ProviderContainer(
@@ -49,13 +44,9 @@ Future<TestAppContext> setUpTestApp({
   );
   addTearDown(container.dispose);
 
-  final storage = container.read(authStorageProvider);
-  await storage.ready;
-
   return (
     container: container,
     prefs: prefs,
-    storage: storage,
     preferences: container.read(userPreferencesProvider),
   );
 }

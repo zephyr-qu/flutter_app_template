@@ -2,75 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:my_app/app/pages/splash_page.dart';
 import 'package:my_app/app/providers.dart';
-import 'package:my_app/core/models/token_set.dart';
-import 'package:my_app/core/models/user.dart';
 import 'package:my_app/core/theme/app_theme.dart';
-import 'package:my_app/features/auth/data/auth_providers.dart';
-import 'package:my_app/features/auth/data/auth_repository.dart';
-import 'package:my_app/features/auth/page/login_page.dart';
 import 'package:my_app/features/home/page/home_page.dart';
 
 import '../../support/app_test_harness.dart';
 
-class MockAuthRepository extends Mock implements AuthRepository;
-
-/// 启动页：入场动画本身，以及 2.2s 后按登录态选择落点这条分支。
+/// 启动页：入场动画本身，以及 2.2s 后进主框架这条跳转。
 ///
-/// ⚠️ 现状提醒：splash **没有被接进启动链路**。根路由里 `/` 被 `MainRoute`
-/// 占着，冷启动的初始 location 又是 `/`；而 `AutoRoute(initial: true)` 只对
-/// **没写 `path`** 的路由生效（见 auto_route 的 `RouteCollection.fromList`），
-/// 所以实际启动是 `/` → MainRoute →（未登录）守卫重定向到登录页，
-/// SplashPage 根本不会被渲染。
-///
-/// 因此这里在装配时把初始 location 指到 `/splash`，用来守住页面自身的行为
-/// （渲染 / 动画 / 分流 / mounted 守卫）。产品侧要真正显示启动页，也得走同一条路：
-/// 让初始 location 落在 `/splash`（见 `pumpSplash` 的注释）。
+/// 冷启动确实落在这一页：`app/providers.dart` 的 `routerProvider` 把初始 location
+/// 指到 `/splash`。（`AutoRoute(initial: true)` 对写了 `path` 的路由不生效 —— 见
+/// auto_route 的 `RouteCollection.fromList`，所以只能从 provider 那一侧接。）
+/// 本文件因此**不自己指定初始 location**：测的是产品真正走的装配。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     // 本测试构建真实的 AppRouter：RouterDelegate 没有 dispose()，auto_route
-    // 内部的 delegate / 守卫观察者无法在测试里释放。只放宽「未释放」，
-    // notGCed 检测保持开启。同 routing/ 下的两个测试。
+    // 内部的 delegate 无法在测试里释放。只放宽「未释放」，notGCed 检测保持开启。
     LeakTesting.settings = LeakTesting.settings.withIgnored(
       createdByTestHelpers: true,
       allNotDisposed: true,
     );
   });
 
-  /// 装配容器并以 [loggedIn] 的登录态启动 splash 页面。
-  Future<void> pumpSplash(WidgetTester tester, {required bool loggedIn}) async {
-    final app = await setUpTestApp(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(MockAuthRepository()),
-      ],
-    );
-
-    if (loggedIn) {
-      await app.storage.saveTokens(const TokenSet(accessToken: 'token'));
-      await app.storage.saveUser(const User(id: 1, name: '张三'));
-    }
-
-    final container = app.container;
-    // 把初始 location 指到 `/splash`。auto_route 的 provider 是 lazy 且只建
-    // 一次（`??=`），所以必须在 config() 之前实例化它。
-    final router = container.read(routerProvider)
-      ..routeInfoProvider(
-        initialRouteInformation: RouteInformation(uri: Uri.parse('/splash')),
-      );
-    final routerConfig = router.config(
-      reevaluateListenable: container.read(authReevaluateProvider),
-    );
+  /// 装配容器与真实路由，从启动页开始。
+  Future<void> pumpSplash(WidgetTester tester) async {
+    final container = (await setUpTestApp()).container;
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp.router(
           theme: buildLightTheme(),
-          routerConfig: routerConfig,
+          routerConfig: container.read(routerProvider).config(),
         ),
       ),
     );
@@ -108,25 +74,24 @@ void main() {
       animationOf<SlideTransition>(tester).position.value;
 
   testWidgets('渲染品牌区与加载指示器', (tester) async {
-    await pumpSplash(tester, loggedIn: false);
+    await pumpSplash(tester);
 
     expect(find.byType(SplashPage), findsOneWidget);
     expect(find.text('My App'), findsOneWidget);
-    // tagline 走 AppLocalizations，缺 delegate 的话这里会直接抛
+    // tagline 是直接写死的中文字面量（本分支没有 l10n）
     expect(find.text('简洁 · 优雅 · 实用'), findsOneWidget);
     expect(find.byIcon(Icons.spa_outlined), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     // 还没到 2.2s，应当停在启动页
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(LoginPage), findsNothing);
     expect(find.byType(HomePage), findsNothing);
 
     await drainRedirectTimer(tester);
   });
 
   testWidgets('入场动画从初始态推进到终态', (tester) async {
-    await pumpSplash(tester, loggedIn: false);
+    await pumpSplash(tester);
 
     // 第一帧：还没淡入、logo 略小、内容偏下
     expect(fadeOpacity(tester), moreOrLessEquals(0, epsilon: 0.01));
@@ -148,29 +113,19 @@ void main() {
     await drainRedirectTimer(tester);
   });
 
-  testWidgets('未登录时 2.2s 后落到登录页', (tester) async {
-    await pumpSplash(tester, loggedIn: false);
-
-    await tester.pump(const Duration(seconds: 3));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(LoginPage), findsOneWidget);
-    expect(find.byType(SplashPage), findsNothing);
-  });
-
-  testWidgets('已登录时 2.2s 后落到主框架（而不是裸的首页）', (tester) async {
-    await pumpSplash(tester, loggedIn: true);
+  testWidgets('2.2s 后落到主框架（带底部导航）', (tester) async {
+    await pumpSplash(tester);
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
 
     expect(find.byType(HomePage), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.byType(LoginPage), findsNothing);
+    expect(find.byType(SplashPage), findsNothing);
   });
 
   testWidgets('2.2s 内被销毁时不再跳转', (tester) async {
-    await pumpSplash(tester, loggedIn: false);
+    await pumpSplash(tester);
     expect(find.byType(SplashPage), findsOneWidget);
 
     // 计时器到期前把整棵树换掉：`if (!mounted) return` 必须拦住这次

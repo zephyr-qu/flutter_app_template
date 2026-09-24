@@ -5,7 +5,7 @@ import 'package:my_app/core/config/app_settings.dart';
 import 'package:my_app/core/theme/app_theme.dart';
 
 /// 应用根组件 —— **只做接线**：
-/// 路由与重评估触发器来自 `app/providers.dart`，主题来自 `core/theme/app_theme.dart`，
+/// 路由来自 `app/providers.dart`，主题来自 `core/theme/app_theme.dart`，
 /// 主题模式来自 `appSettingsProvider`（改设置立刻生效）。
 ///
 /// 外层必须已经包好 `ProviderScope`（含 `prefsProvider` 的 override）——
@@ -16,11 +16,10 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final reevaluate = ref.watch(authReevaluateProvider);
     final themeMode = ref.watch(appSettingsProvider).themeMode;
 
     return MaterialApp.router(
-      routerConfig: router.config(reevaluateListenable: reevaluate),
+      routerConfig: router.config(),
       debugShowCheckedModeBanner: false,
       theme: _lightTheme,
       darkTheme: _darkTheme,

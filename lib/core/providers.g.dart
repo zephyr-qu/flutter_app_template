@@ -14,13 +14,13 @@ part of 'providers.dart';
 /// Riverpod 里「单例」就是一个 `keepAlive` 的 provider，不需要额外的注册表，
 /// 也就不需要 `lib/di/`（见 BRANCH.md）。
 ///
-/// **不得**在这里读取 `dotenv`：`NetworkConfig` 只有 `NetworkModule` 一个来源
-/// （约定见 backend/network-guidelines.md）。
-/// 用户偏好 / 令牌存储的底层存储。
+/// **不得**在这里读取 `dotenv`：`NetworkConfig` 只有 `networkConfigProvider`
+/// 一个来源（约定见 backend/network-guidelines.md）。
+/// 用户偏好的底层存储。
 ///
 /// **必须**由 `bootstrap()` 用 `overrides` 注入（`prefsProvider.overrideWithValue`）：
 /// `SharedPreferences.getInstance()` 是异步的，而它的消费者
-/// （`UserPreferences` / `AuthStorage`）都是同步构造的。用 `FutureProvider`
+/// （`UserPreferences`）是同步构造的。用 `FutureProvider`
 /// 会把 `AsyncValue` 一路传染到页面，等于让「启动期解析一次」变成「处处异步」。
 ///
 /// 直接 `ref.watch` 它会抛异常——这是有意的：漏了 override 应该立刻炸，
@@ -35,13 +35,13 @@ final prefsProvider = PrefsProvider._();
 /// Riverpod 里「单例」就是一个 `keepAlive` 的 provider，不需要额外的注册表，
 /// 也就不需要 `lib/di/`（见 BRANCH.md）。
 ///
-/// **不得**在这里读取 `dotenv`：`NetworkConfig` 只有 `NetworkModule` 一个来源
-/// （约定见 backend/network-guidelines.md）。
-/// 用户偏好 / 令牌存储的底层存储。
+/// **不得**在这里读取 `dotenv`：`NetworkConfig` 只有 `networkConfigProvider`
+/// 一个来源（约定见 backend/network-guidelines.md）。
+/// 用户偏好的底层存储。
 ///
 /// **必须**由 `bootstrap()` 用 `overrides` 注入（`prefsProvider.overrideWithValue`）：
 /// `SharedPreferences.getInstance()` 是异步的，而它的消费者
-/// （`UserPreferences` / `AuthStorage`）都是同步构造的。用 `FutureProvider`
+/// （`UserPreferences`）是同步构造的。用 `FutureProvider`
 /// 会把 `AsyncValue` 一路传染到页面，等于让「启动期解析一次」变成「处处异步」。
 ///
 /// 直接 `ref.watch` 它会抛异常——这是有意的：漏了 override 应该立刻炸，
@@ -61,13 +61,13 @@ final class PrefsProvider
   /// Riverpod 里「单例」就是一个 `keepAlive` 的 provider，不需要额外的注册表，
   /// 也就不需要 `lib/di/`（见 BRANCH.md）。
   ///
-  /// **不得**在这里读取 `dotenv`：`NetworkConfig` 只有 `NetworkModule` 一个来源
-  /// （约定见 backend/network-guidelines.md）。
-  /// 用户偏好 / 令牌存储的底层存储。
+  /// **不得**在这里读取 `dotenv`：`NetworkConfig` 只有 `networkConfigProvider`
+  /// 一个来源（约定见 backend/network-guidelines.md）。
+  /// 用户偏好的底层存储。
   ///
   /// **必须**由 `bootstrap()` 用 `overrides` 注入（`prefsProvider.overrideWithValue`）：
   /// `SharedPreferences.getInstance()` 是异步的，而它的消费者
-  /// （`UserPreferences` / `AuthStorage`）都是同步构造的。用 `FutureProvider`
+  /// （`UserPreferences`）是同步构造的。用 `FutureProvider`
   /// 会把 `AsyncValue` 一路传染到页面，等于让「启动期解析一次」变成「处处异步」。
   ///
   /// 直接 `ref.watch` 它会抛异常——这是有意的：漏了 override 应该立刻炸，
@@ -107,67 +107,6 @@ final class PrefsProvider
 }
 
 String _$prefsHash() => r'7bba4ee6a360f9e2d776ce6b4b5a6d95f802a0c8';
-
-/// 敏感数据（访问令牌）的平台安全存储。
-///
-/// v11 的默认配置已经是安全的（Android: KeyStore 包装的 AES-GCM，API 23+；
-/// iOS/macOS: Keychain），无需额外传 options。
-
-@ProviderFor(secureStorage)
-final secureStorageProvider = SecureStorageProvider._();
-
-/// 敏感数据（访问令牌）的平台安全存储。
-///
-/// v11 的默认配置已经是安全的（Android: KeyStore 包装的 AES-GCM，API 23+；
-/// iOS/macOS: Keychain），无需额外传 options。
-
-final class SecureStorageProvider
-    extends
-        $FunctionalProvider<
-          FlutterSecureStorage,
-          FlutterSecureStorage,
-          FlutterSecureStorage
-        >
-    with $Provider<FlutterSecureStorage> {
-  /// 敏感数据（访问令牌）的平台安全存储。
-  ///
-  /// v11 的默认配置已经是安全的（Android: KeyStore 包装的 AES-GCM，API 23+；
-  /// iOS/macOS: Keychain），无需额外传 options。
-  SecureStorageProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'secureStorageProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$secureStorageHash();
-
-  @$internal
-  @override
-  $ProviderElement<FlutterSecureStorage> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  FlutterSecureStorage create(Ref ref) {
-    return secureStorage(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(FlutterSecureStorage value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<FlutterSecureStorage>(value),
-    );
-  }
-}
-
-String _$secureStorageHash() => r'0cd1b80f91784467390034386f925a0be155bfbd';
 
 @ProviderFor(database)
 final databaseProvider = DatabaseProvider._();
@@ -314,58 +253,3 @@ final class UserPreferencesProvider
 }
 
 String _$userPreferencesHash() => r'f6398449cab22aa2003fdf229ab484af5751e799';
-
-/// 认证存储：实现 `core/data/network/token_store.dart` 的 `TokenStore`，令牌与用户都从这里进出。
-///
-/// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
-/// 可订阅的镜像在 `core/auth/session.dart`。
-
-@ProviderFor(authStorage)
-final authStorageProvider = AuthStorageProvider._();
-
-/// 认证存储：实现 `core/data/network/token_store.dart` 的 `TokenStore`，令牌与用户都从这里进出。
-///
-/// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
-/// 可订阅的镜像在 `core/auth/session.dart`。
-
-final class AuthStorageProvider
-    extends $FunctionalProvider<AuthStorage, AuthStorage, AuthStorage>
-    with $Provider<AuthStorage> {
-  /// 认证存储：实现 `core/data/network/token_store.dart` 的 `TokenStore`，令牌与用户都从这里进出。
-  ///
-  /// 注意它与「登录态 provider」的分工：**真源在这里**（同步可读，路由守卫直接用），
-  /// 可订阅的镜像在 `core/auth/session.dart`。
-  AuthStorageProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'authStorageProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$authStorageHash();
-
-  @$internal
-  @override
-  $ProviderElement<AuthStorage> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  AuthStorage create(Ref ref) {
-    return authStorage(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AuthStorage value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AuthStorage>(value),
-    );
-  }
-}
-
-String _$authStorageHash() => r'63b681d7e3e7c800186f404106939ec809e27958';

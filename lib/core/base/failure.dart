@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:my_app/core/logging/logging.dart';
 
 /// 失败原因码。只描述「是什么错」，文案在展示层翻译；新增 code 后
-/// `FailureMessage.localizedMessage` 的 switch 会因不穷尽而报错，记得补 ARB。
+/// `core/ui/failure_message.dart` 的 switch 会因不穷尽而报错，记得补文案。
 enum FailureCode {
   /// 超时（连接 / 发送 / 接收）
   timeout,

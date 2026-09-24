@@ -5,20 +5,14 @@ import 'package:dio_smart_retry/dio_smart_retry.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:msw_dio_interceptor/msw_dio_interceptor.dart';
 import 'package:my_app/core/config/network_config.dart';
-import 'package:my_app/core/data/network/auth_interceptor.dart';
 import 'package:my_app/core/data/network/dio_factory.dart';
-import 'package:my_app/core/models/token_set.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import '../../../support/scripted_http_adapter.dart';
-import '../../support/fake_token_store.dart';
 
-/// `createDio` 是**两个栈共用**的那层装配：拦截器顺序承载两条语义
-/// （Retry 不吞 401、重放走完整条链），改顺序会静默改变线上行为，
-/// 所以这里既钉住拦截器清单，也在真实 Dio 管道里跑一遍。
-///
-/// lib 侧 `NetworkModule.dio()` 的装配由根侧的
-/// `test/core/data/network/interceptor_stack_test.dart` 覆盖。
+/// `createDio` 是网络层的装配：拦截器顺序承载语义（Retry 在解码之前判定、
+/// Mock 命中即短路），改顺序会静默改变线上行为，所以这里既钉住拦截器清单，
+/// 也在真实 Dio 管道里跑一遍。
 const _config = NetworkConfig(baseUrl: 'http://test.local', retries: 2);
 
 /// 只取 [createDio] 装上去的拦截器。
@@ -29,7 +23,6 @@ const _config = NetworkConfig(baseUrl: 'http://test.local', retries: 2);
 List<Interceptor> appInterceptors(Dio dio) => dio.interceptors
     .where(
       (i) =>
-          i is AuthInterceptor ||
           i is RetryInterceptor ||
           i is InterceptorsWrapper ||
           i is MockInterceptor,
@@ -60,10 +53,6 @@ class _PlainTextAdapter implements HttpClientAdapter {
 }
 
 void main() {
-  late FakeTokenStore store;
-
-  setUp(() => store = FakeTokenStore());
-
   Dio build({
     bool isMock = false,
     bool enableDebugLogging = false,
@@ -72,7 +61,6 @@ void main() {
   }) {
     final dio = createDio(
       config: _config,
-      tokenStore: store,
       enableDebugLogging: enableDebugLogging,
       isMock: isMock,
       registerMockRules: registerMockRules,
@@ -82,11 +70,10 @@ void main() {
   }
 
   group('拦截器栈', () {
-    test('顺序固定为 Auth → 解码 → Retry', () {
+    test('顺序固定为 解码 → Retry', () {
       final dio = build();
 
       expect(appInterceptors(dio).map((i) => i.runtimeType.toString()), [
-        'AuthInterceptor',
         'InterceptorsWrapper',
         'RetryInterceptor',
       ]);
@@ -139,32 +126,7 @@ void main() {
   });
 
   group('真实管道语义', () {
-    test('401 交给 AuthInterceptor：刷新后重放，不被 Retry 吞掉', () async {
-      await store.saveTokens(
-        const TokenSet(accessToken: 'expired', refreshToken: 'refresh-1'),
-      );
-      final adapter = ScriptedHttpAdapter()
-        ..on('/articles', [
-          401,
-          {'ok': true},
-        ])
-        ..on('/refresh', [
-          {'accessToken': 'fresh', 'refreshToken': 'refresh-2'},
-        ]);
-
-      final response = await build(adapter: adapter)
-          .get<Map<String, dynamic>>('/articles');
-
-      expect(response.data, {'ok': true});
-      // 原始一次 + 重放一次。若 RetryInterceptor 把 401 也拿去重试，
-      // 第二次就会直接消费脚本里的 200，刷新次数会变成 0
-      expect(adapter.requestCount('/articles'), 2);
-      expect(adapter.requestCount('/refresh'), 1);
-      expect(store.getAccessToken(), 'fresh');
-    });
-
-    test('5xx 交给 RetryInterceptor，且不触碰刷新流程', () async {
-      await store.saveTokens(const TokenSet(accessToken: 'valid'));
+    test('5xx 交给 RetryInterceptor，重试后成功', () async {
       final adapter = ScriptedHttpAdapter()
         ..on('/articles', [
           503,
@@ -176,8 +138,6 @@ void main() {
 
       expect(response.data, {'ok': true});
       expect(adapter.requestCount('/articles'), 2);
-      expect(adapter.requestCount('/refresh'), 0);
-      expect(store.getAccessToken(), 'valid');
     });
 
     test('text/plain 但内容是 JSON 时被兜底解码成 Map', () async {
