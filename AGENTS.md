@@ -125,7 +125,7 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 | 想看什么 | 文件 |
 |---|---|
 | Retrofit API 定义 | `lib/features/sample/data/sample_api.dart` |
-| Drift 查询（**不用** `@DriftAccessor`，见 `database-guidelines.md`） | `lib/features/sample/data/sample_dao.dart` |
+| Drift 查询（**用** `@DriftAccessor`，见 `database-guidelines.md`） | `lib/features/sample/data/sample_dao.dart` |
 | Service（`Result` + 错误映射） | `lib/features/sample/data/sample_service.dart` |
 | Repository 抽象 + provider 装配 | `lib/features/sample/data/sample_repository.dart`、`sample_providers.dart` |
 | `@freezed` 模型 | `lib/features/sample/data/models/sample_item.dart` |
@@ -155,16 +155,28 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 ## `## 改完必跑`
 
 ```bash
-dart format lib test tool
-dart run tool/check_boundaries.dart
-dart run tool/check_conventions.dart
-dart run tool/check_readme_tree.dart
-dart run dependency_validator
-flutter analyze lib/ test/
-dart analyze tool/
-flutter test --coverage
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib
+dart run tool/verify.dart
 ```
+
+一条命令跑完下面 9 项，**首个失败即停**。4 道脚本门禁在**同一个进程**里依次调用
+（它们都是「纯函数 + 薄 main」），省掉 3 次 `dart run` 的 VM 启动与 sqlite3 build hook
+—— 整块只快几秒（实测 44.3s → 39.1s），大头在 `flutter test` 与两次 analyze；
+真正的收益是「只记一条命令」与「早停」：
+
+```bash
+dart format --output=none --set-exit-if-changed lib test tool   # 1 格式
+dart run tool/check_boundaries.dart                            # 2 架构边界（lib）
+dart run tool/check_conventions.dart                           # 3 build 里禁 ref.read 取值 / 注释块上限
+dart run tool/check_readme_tree.dart                           # 4 README + spec 的目录树
+dart run dependency_validator                                  # 5 声明与使用一致
+flutter analyze lib/ test/                                     # 6
+dart analyze tool/                                             # 7
+flutter test --coverage                                        # 8
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib  # 9 阈值 80%
+```
+
+想只跑其中一项就直接跑上面那条命令。语义、阈值与理由见
+[`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)。
 
 两条容易漏的：
 

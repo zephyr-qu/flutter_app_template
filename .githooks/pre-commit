@@ -2,9 +2,14 @@
 #
 # Pre-commit hook for my_app scaffold.
 #
-# Runs flutter analyze and flutter test before allowing commits.
-# Install with: git config core.hooksPath .githooks
+# 一条命令跑完整个门禁块：`tool/verify.dart`。
+# 它把 4 道脚本门禁放进同一个进程（省掉 4 次 `dart run` 的 VM 启动 + sqlite3 build
+# hook），并按 AGENTS.md「改完必跑」的顺序执行、**首个失败即停**。
 #
+# 清单、阈值与「为什么这么做」见 .trellis/spec/cross-cutting.md。
+# 只跑其中某一项时直接手跑对应命令，见 AGENTS.md 的「改完必跑」。
+#
+# Install with: git config core.hooksPath .githooks
 # To skip checks (emergency only):
 #   git commit --no-verify
 
@@ -14,70 +19,15 @@ echo "🔍 Running pre-commit checks..."
 STASH_NAME="pre-commit-$(date +%s)"
 git stash push -q --keep-index --include-untracked --message "$STASH_NAME" 2>/dev/null || true
 
-# ── Check formatting ──
-echo "🎨 Checking formatting..."
-dart format --output=none --set-exit-if-changed lib test tool
-FORMAT_EXIT=$?
-
-# ── Run architecture boundary check (FSD) ──
-echo "🧱 Checking architecture boundaries..."
-dart run tool/check_boundaries.dart
-BOUNDARY_EXIT=$?
-
-# ── Run code convention check (build 里禁 ref.read / 注释块上限) ──
-echo "📏 Checking code conventions..."
-dart run tool/check_conventions.dart
-CONVENTION_EXIT=$?
-
-# ── Check documented directory trees against actual lib/ ──
-echo "🌳 Checking directory trees in docs..."
-dart run tool/check_readme_tree.dart
-TREE_EXIT=$?
-
-# ── Run dependency check (unused / undeclared) ──
-echo "📦 Checking dependencies..."
-dart run dependency_validator
-DEP_EXIT=$?
-
-# ── Run flutter analyze on lib/ and test/ ──
-echo "📐 Running flutter analyze..."
-flutter analyze lib/ test/
-ANALYZE_EXIT=$?
-
-# ── Analyze tool scripts ──
-echo "📐 Running dart analyze on tool/..."
-dart analyze tool/
-TOOL_EXIT=$?
-
-# ── Run flutter test（带覆盖率，供下一步门禁使用）──
-echo "🧪 Running flutter test..."
-flutter test --coverage
-TEST_EXIT=$?
-
-# ── Check coverage threshold（差集检查）──
-# --src 指定扫描根：扫描根下没有被该 lcov 覆盖的手写文件按 0 计入分母，
-# 否则「新增一个完全没测的文件」不会让阈值下降（口径见 .trellis/spec/cross-cutting.md）
-echo "📊 Checking coverage..."
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib
-COVERAGE_EXIT=$?
+dart run tool/verify.dart
+VERIFY_EXIT=$?
 
 # Restore stashed changes
 git stash pop -q 2>/dev/null || true
 
-# ── Report results ──
-if [ $FORMAT_EXIT -ne 0 ] || [ $BOUNDARY_EXIT -ne 0 ] || [ $CONVENTION_EXIT -ne 0 ] || [ $TREE_EXIT -ne 0 ] || [ $DEP_EXIT -ne 0 ] || [ $ANALYZE_EXIT -ne 0 ] || [ $TOOL_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ] || [ $COVERAGE_EXIT -ne 0 ]; then
+if [ $VERIFY_EXIT -ne 0 ]; then
     echo ""
-    echo "❌ Pre-commit checks failed!"
-    echo "   format:     $([ $FORMAT_EXIT -eq 0 ] && echo '✅' || echo '❌')  (dart format lib test tool packages)"
-    echo "   boundaries: $([ $BOUNDARY_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   conventions:$([ $CONVENTION_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   docs tree:  $([ $TREE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   deps:       $([ $DEP_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   analyze:    $([ $ANALYZE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   tool:       $([ $TOOL_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   test:       $([ $TEST_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo "   coverage:   $([ $COVERAGE_EXIT -eq 0 ] && echo '✅' || echo '❌')"
-    echo ""
+    echo "❌ Pre-commit checks failed!（上面最后一步就是失败的那道门禁）"
     echo "To skip (emergency only): git commit --no-verify"
     exit 1
 fi
