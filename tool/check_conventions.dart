@@ -33,7 +33,12 @@ const String _refReadMessage =
 /// 规则 2 的提示语尾部。
 const String _commentBlockTail = '解释搬到 spec，代码里只留一行链接';
 
-void main(List<String> args) {
+void main(List<String> args) => exitCode = run(args);
+
+/// 跑一遍检查，返回退出码（0 = 通过）。
+///
+/// 拆出来是为了让 `tool/verify.dart` 能在**同一个进程**里依次调四道脚本门禁。
+int run(List<String> args) {
   final roots = args.where((arg) => !arg.startsWith('-')).toList();
   final targets = roots.isEmpty ? defaultRoots : roots;
   final violations = <BoundaryViolation>[];
@@ -51,14 +56,14 @@ void main(List<String> args) {
 
   if (violations.isEmpty) {
     stdout.writeln('✅ 形态约定检查通过（${targets.join(' ')}）');
-    return;
+    return 0;
   }
 
   stderr.writeln('❌ 形态约定违规 ${violations.length} 处：');
   for (final violation in violations) {
     stderr.writeln('  • $violation');
   }
-  exitCode = 1;
+  return 1;
 }
 
 /// 检查单个文件，返回全部约定违规（按行号排序）。

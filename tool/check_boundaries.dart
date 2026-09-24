@@ -63,7 +63,13 @@ class BoundaryViolation {
   String toString() => '$file:$line  ${isWarning ? '⚠️ ' : ''}$message';
 }
 
-void main(List<String> args) {
+void main(List<String> args) => exitCode = run(args);
+
+/// 跑一遍检查，返回退出码（0 = 通过）。
+///
+/// 从 `main` 拆出来是为了让 `tool/verify.dart` 能在**同一个进程**里依次调用四道
+/// 脚本门禁 —— 每次 `dart run` 都要重启 VM 并重跑一遍 sqlite3 的 build hook。
+int run(List<String> args) {
   final roots = args.isNotEmpty ? args : defaultRoots;
   final violations = <BoundaryViolation>[];
 
@@ -94,14 +100,14 @@ void main(List<String> args) {
   if (errors.isEmpty) {
     final suffix = warnings.isEmpty ? '' : '，另有 ${warnings.length} 条疑似漏检提示';
     stdout.writeln('✅ 架构边界检查通过（${roots.join('、')}）$suffix');
-    return;
+    return 0;
   }
 
   stderr.writeln('❌ 架构边界违规 ${errors.length} 处：');
   for (final violation in errors) {
     stderr.writeln('  • $violation');
   }
-  exitCode = 1;
+  return 1;
 }
 
 /// 检查单个文件的内容，返回其中的违规项与漏检提示（用 [BoundaryViolation.isWarning] 区分），

@@ -13,7 +13,7 @@
 // 传多份 lcov 时**逐份独立**校验（不合并）：路径都是相对各自包根的 `lib/...`，
 // 合并会把命名空间搅在一起。本分支已单包化，通常只传一份。
 //
-// 只统计**手写**代码：`*.g.dart` / `*.freezed.dart` / DI 注册 / l10n 生成文件的
+// 只统计**手写**代码：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` 这些生成物的
 // 行数不是人能守的，算进阈值只会稀释门禁。生成文件的判定复用
 // `tool/check_boundaries.dart` 的 [isGeneratedPath]，避免两处定义漂移。
 //
@@ -112,18 +112,6 @@ const Map<String, String> loadingExemptions = <String, String>{
   'lib/features/sample/data/sample_api.dart':
       'Retrofit 抽象接口 + redirecting factory，没有可执行行',
   'lib/features/sample/data/sample_repository.dart': '纯 abstract class，没有可执行行',
-  'lib/features/auth/data/auth_api.dart': '同 sample_api：抽象接口，没有可执行行',
-  'lib/features/auth/data/auth_repository.dart': '同 sample_repository：纯抽象类',
-
-  // ── 网络层：被测试导入、但没有任何可执行行 ──
-  //
-  // 这两个文件确实被加载了（auth_interceptor.dart 的 import 链），却仍然不出现在
-  // lcov 里 —— 反过来说明「不在 lcov 里」有两种成因：没被加载，以及没有可执行行。
-  // 差集检查只能看见前者，所以这两种要显式写在豁免里（理由即证据）。
-  'lib/core/data/network/auth_extra_keys.dart':
-      '只有两个顶层 const String：常量在编译期内联，不产生覆盖率记录',
-  'lib/core/data/network/token_store.dart':
-      'abstract interface + 一个 const Duration：只有声明，没有可执行行',
 };
 
 /// 该文件是否被这条 lcov 记录覆盖。
@@ -205,10 +193,16 @@ List<FileCoverage> lowestCovered(List<FileCoverage> files, int count) {
   return sorted.take(count).toList();
 }
 
-void main(List<String> args) {
+void main(List<String> args) => exitCode = run(args);
+
+/// 跑一遍检查，返回退出码（0 = 通过）。
+///
+/// 拆出来是为了让 `tool/verify.dart` 能在**同一个进程**里依次调四道脚本门禁。
+/// 注意它**依赖 `coverage/lcov.info`**：调用方必须先跑过 `flutter test --coverage`。
+int run(List<String> args) {
   if (args.contains('--help') || args.contains('-h')) {
     stdout.writeln(_usage);
-    return;
+    return 0;
   }
 
   final paths = args.where((arg) => !arg.startsWith('-')).toList();
@@ -222,14 +216,12 @@ void main(List<String> args) {
     stderr
       ..writeln('❌ --src 个数（${srcs.length}）与 lcov 个数（${inputs.length}）不一致：')
       ..writeln('   --src 与位置参数按序配对，1 份 lcov 配 1 个扫描根；只想校验阈值就别传 --src。');
-    exitCode = 1;
-    return;
+    return 1;
   }
   final emptySrc = srcs.indexWhere((src) => src.trim().isEmpty);
   if (emptySrc >= 0) {
     stderr.writeln('❌ --src= 后面是空的（第 ${emptySrc + 1} 个）');
-    exitCode = 1;
-    return;
+    return 1;
   }
 
   var failed = false;
@@ -297,7 +289,7 @@ void main(List<String> args) {
     failed = true;
   }
 
-  if (failed) exitCode = 1;
+  return failed ? 1 : 0;
 }
 
 double? _minFrom(List<String> args) {
@@ -319,7 +311,7 @@ bool _isUnder(String path, String prefix) =>
     path == prefix ||
     path.startsWith(prefix.endsWith('/') ? prefix : '$prefix/');
 
-const String _usage = r'''
+const String _usage = '''
 用法：dart run tool/check_coverage.dart [lcov 路径 ...] [--src=扫描根 ...] [--min=80]
 
 先生成覆盖率数据：

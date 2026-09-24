@@ -220,7 +220,12 @@ List<String> findTreeViolations({
 bool _isUnder(String path, String dir) =>
     dir.isEmpty || path.startsWith('$dir/');
 
-void main(List<String> args) {
+void main(List<String> args) => exitCode = run(args);
+
+/// 跑一遍检查，返回退出码（0 = 通过）。
+///
+/// 拆出来是为了让 `tool/verify.dart` 能在**同一个进程**里依次调四道脚本门禁。
+int run(List<String> args) {
   final selected = args.isEmpty
       ? targets
       : targets.where((target) => args.contains(target.$1)).toList();
@@ -253,14 +258,14 @@ void main(List<String> args) {
 
   if (violations.isEmpty) {
     stdout.writeln('✅ 目录树与实际内容一致（${selected.length} 棵）');
-    return;
+    return 0;
   }
 
   stderr.writeln('❌ 目录树与实际不符 ${violations.length} 处：');
   for (final violation in violations) {
     stderr.writeln('  • $violation');
   }
-  exitCode = 1;
+  return 1;
 }
 
 List<String> _childNames(String dir) {
