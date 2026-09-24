@@ -45,4 +45,4 @@ Repository 接口与 Service 实现并存时，用例见 `lib/features/sample/`�
 
 - `.g.dart` / `.freezed.dart` / `.gr.dart` 与源文件同目录，**never edited manually**
 - `@riverpod` 也生成 `.g.dart`（provider 声明本身）—— 改过注解或增删 provider 后跑 `just codegen`
-- 本分支**没有** `*.config.dart`：`injectable` 的 service locator 生成物随 master 的 DI 方案一起消失了
+- 本项目**没有** `*.config.dart`：不使用 `injectable`，没有 service locator 生成物

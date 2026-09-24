@@ -44,11 +44,7 @@ Configured once inside the facade (`lib/core/logging/logging.dart`):
 class Logging {
   static final _logger = Logger(
     printer: PrettyPrinter(
-      methodCount: 0,       // no method trace for info/warning
-      errorMethodCount: 8,  // stack depth shown for errors
-      lineLength: 120,
-      colors: true,
-      printEmojis: true,
+      methodCount: 0, // 不打印调用栈（0 = 关闭）
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );
@@ -60,7 +56,7 @@ class Logging {
 }
 ```
 
-The pretty-printer applies colours/emojis unconditionally. There is no tree-shaking wrapper, so do not log high-frequency events (per-frame, per-request bodies) in release builds.
+其余参数走 `PrettyPrinter` 默认值。彩色与 emoji 无条件开启，也没有按构建模式做 tree-shaking 的包装，所以不要在 release 里打高频日志（每帧、每请求体）。
 
 ---
 
@@ -77,7 +73,7 @@ The pretty-printer applies colours/emojis unconditionally. There is no tree-shak
 | `failure.dart` | 网络错误的 warning（未映射的状态码、响应缺少状态码等） |
 | `sample_service.dart` / `file_storage.dart` / `user_preferences.dart` | 存储与缓存失败 —— 读失败降级记 warning；写失败按各自的失败策略处理（见 [database-guidelines.md](./database-guidelines.md) 的「读要软，写要硬」） |
 
-`dio_client.dart` 另外会在 `text/plain` 响应体解析 JSON 失败时记一条 warning。
+`dio_factory.dart` 的解码拦截器会在 `text/plain` 响应体解析 JSON 失败时记一条 warning。
 
 HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMode && preferences.enableDebugLogging`。
 

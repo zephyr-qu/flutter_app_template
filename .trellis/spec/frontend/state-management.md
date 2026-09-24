@@ -1,34 +1,30 @@
 # State Management
 
-> 状态怎么管。本文件的结论针对 `preset/ai-starter` 分支（Riverpod 3）。
-> 同仓库的 master 用的是 signals —— 两栈不互相合并，只在必要处对照一句
-> （`BRANCH.md` 是本分支的说明文件，随阶段 8 补齐）。
+> 状态怎么管。Riverpod 3：provider 是唯一的状态载体。
 
 ---
 
 ## Overview
 
-**Provider 是唯一的状态载体**，它同时承担了 master 里三样东西的职责：
+**Provider 同时承担状态、依赖装配与生命周期**：
 
-| master（signals 栈） | 本分支 |
+| 职责 | 落点 |
 |---|---|
-| `signal` / `asyncSignal` / `computed` | `@riverpod` 的 `Notifier` / `AsyncNotifier` / 顶层函数 provider |
-| `get_it` + `@injectable` 注册表 | provider 之间的 `ref.watch` 依赖 |
-| `@Singleton` / `factory` 生命周期 | `@Riverpod(keepAlive: true)` / 默认 `autoDispose` |
+| 状态 | `@riverpod` 的 `Notifier` / `AsyncNotifier` / 顶层函数 provider |
+| 依赖 | provider 之间的 `ref.watch` |
+| 生命周期 | `@Riverpod(keepAlive: true)` / 默认 `autoDispose` |
 
-因此 `lib/di/` 不存在，页面也不再从容器里取 ViewModel：页面是
+没有 `lib/di/`，页面不从容器取 ViewModel：页面是
 `ConsumerWidget` / `ConsumerStatefulWidget`，用 `ref.watch` 订阅。
 
 三个要点：
 
 - **状态私有。** `Notifier` 的 `state` 只有类内能写（Dart 的库私有可见性），页面拿不到
-  写入手段，只能 `ref.watch` 读、调方法改。master 用 `ReadonlySignal` + 私有字段达成的
-  同一件事，在这里是语言本身保证的。
+  写入手段，只能 `ref.watch` 读、调方法改。
 - **没有基类。** 不引入 `BaseNotifier`：异步三态由 `AsyncValue` 承载，刷新/竞态由框架
-  承载，项目侧没有可收敛的样板（与 master 的 [ADR-0002](../../../docs/adr/ADR-0002.md)
-  同一结论，理由不同）。
-- **没有 hooks。** `flutter_hooks` 已从依赖里移除，`HookWidget` / `useMemoized` /
-  `useEffect` / `useSignalValue` 在本分支不存在。对应写法见「Consumer 一节」。
+  承载，项目侧没有可收敛的样板。
+- **没有 hooks。** 不依赖 `flutter_hooks`：没有 `HookWidget` / `useMemoized` /
+  `useEffect`。对应写法见「Consumer 一节」。
 
 ---
 
@@ -88,9 +84,8 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
 }
 ```
 
-- 状态是**不可变快照**（`@immutable` + `copyWith`），不是一组可写字段。master 里
-  「一次改多个信号要用 `batch()`」那条约束在这里**不存在**：一次 `state = ...` 就是一次
-  通知，页面只重建一趟。
+- 状态是**不可变快照**（`@immutable` + `copyWith`），不是一组可写字段。一次 `state = ...`
+  就是一次通知，页面只重建一趟。
 - 写入走方法、不开 setter —— 这是「状态私有」的落地方式。
 - 写入顺序统一是**先改内存、再落盘**：UI 立刻响应，落盘失败只记日志
   （见 [backend/database-guidelines.md](../backend/database-guidelines.md)）。
@@ -193,16 +188,14 @@ class SampleListNotifier extends _$SampleListNotifier {
 
 ### 为什么不用 `AsyncValue.when`
 
-`when` 的回调是具名且具类型的，签名配错在编译期就是 error（master 那条
-「`AsyncState.map` 的回调签名运行期才校验」的坑**在这里不存在**）。仍然统一走
+`when` 的回调是具名且具类型的，签名配错在编译期就是 error。仍然统一走
 `AsyncView` 的理由有两个，都与类型安全无关：
 
 - 它封装了上表的判定顺序，页面不必各自记住「先刷新后错误」
 - `refreshing` / `reloading` / `data(null)` 这三条是项目定制语义，换回 `when` 要让每个
   页面重写一遍（两条可选回调是给「后台更新时想显示别的东西」用的，缺省退回旧值）
 
-门禁 `avoid_async_state_map` 随 signals 栈一起退役了——这条现在是**约定**，不是拦截
-（退役记录见 [cross-cutting.md](../cross-cutting.md)「代码形态约定」）。
+这条现在是**约定**，不是门禁（见 [cross-cutting.md](../cross-cutting.md)「代码形态约定」）。
 
 ---
 
@@ -216,12 +209,12 @@ onRefresh: () => ref.refresh(sampleListProvider.future),
 onRetry: () => ref.invalidate(sampleListProvider),
 ```
 
-master 的 `runAsync` 提供了三件事，这里全部由框架提供，**页面与 Notifier 都不该再实现一遍**：
+刷新与重试的并发语义**全部由框架提供**，页面与 Notifier 都不该再实现一遍：
 
-| master 的 `runAsync` 语义 | 本分支 |
+| 语义 | 落点 |
 |---|---|
 | 并发时「最后一次胜出」 | provider 重新执行 build 后，上一次仍在飞行中的 future 结果直接作废 |
-| 刷新时保留旧数据（`dataRefreshing`） | `AsyncValue.isRefreshing` + `copyWithPrevious` |
+| 刷新时保留旧数据 | `AsyncValue.isRefreshing` + `copyWithPrevious` |
 | `data(null)` 视同没有数据 | `AsyncView` 的 `value != null` 判定（项目定制，需保留） |
 
 两点要知道：
@@ -235,8 +228,7 @@ master 的 `runAsync` 提供了三件事，这里全部由框架提供，**页�
 
 ## 生命周期：`autoDispose` / `keepAlive` / `ref.onDispose`
 
-`@riverpod` **默认 `autoDispose`**：没有监听者时释放。这与 master 的 `@injectable`
-`factory`（每页一个实例、随页面 GC）是同一语义，只是由框架显式管理。
+`@riverpod` **默认 `autoDispose`**：没有监听者时释放，由框架显式管理。
 
 `@Riverpod(keepAlive: true)` 用于**跨页面共享、或重建有代价**的对象。当前清单：
 
@@ -259,18 +251,11 @@ final subscription = someStream.listen((value) { ... });
 ref.onDispose(subscription.cancel);
 ```
 
-当前仓库里没有正在用第 2 条的 provider（认证那套订阅随登录功能一起删掉了）——
-新增流订阅、`Listenable`、控制器时按第 2 条登记即可。
+当前仓库里没有正在用第 2 条的 provider——新增流订阅、`Listenable`、控制器时按第 2 条登记即可。
 
-### master 的 dispose 边界为什么整节作废
-
-master 有一条很长的边界规则（「什么时候才需要 `autoDispose`」，源于 signals 的
-`Computed.dispose()` 只做标记、不遍历 `sources` 退订，VM 一旦订阅全局信号就被钉住）。
-**这条边界在本分支不存在**：`ref.watch` 建立的依赖由 provider 生命周期管理，provider 销毁
-时框架负责退订，不存在「谁把谁钉住」的写法。
-
-保留下来的只有那条**原则**：主动 `listen` 的流、`Listenable`、`StreamController` 必须自己
-在 `ref.onDispose` 里收尾（见上）。
+`ref.watch` 建立的依赖由 provider 生命周期管理，provider 销毁时框架负责退订，
+不存在「谁把谁钉住」的写法。需要记住的只有那条**原则**：主动 `listen` 的流、
+`Listenable`、`StreamController` 必须自己在 `ref.onDispose` 里收尾（见上）。
 
 > ⚠️ **`leak_tracker` 看不见 provider 状态对象**：`ProviderContainer` / `Notifier` /
 > `AsyncValue` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`。它追踪的是
@@ -280,10 +265,9 @@ master 有一条很长的边界规则（「什么时候才需要 `autoDispose`�
 
 ---
 
-## Consumer 一节（原 hook-guidelines）
+## Consumer 一节
 
-> `frontend/hook-guidelines.md` 已删除：整份文件的前提是 `flutter_hooks`，而本分支
-> 不再依赖它。页面的生命周期与副作用写法收到这里。
+> 页面的生命周期与副作用写法收在这里（不使用 `flutter_hooks`）。
 
 ### 页面模板
 
@@ -317,16 +301,6 @@ class SampleListPage extends ConsumerWidget {
 }
 ```
 
-### 原来的 hooks 对应到哪
-
-| master 的 hook | 本分支 |
-|---|---|
-| `useMemoized(() => getIt<VM>())` | 不需要。provider 自己缓存，`ref.watch` 不会重建实例 |
-| `useSignalValue(vm.articles)` | `ref.watch(articlesProvider)` |
-| `useEffect(() { vm.load(); }, [])` | provider 的 `build()`（首屏加载）；真的需要「只跑一次的副作用」就用 `ConsumerStatefulWidget` 的 `initState` |
-| `useEffect` 的 cleanup | `ref.onDispose`（provider 侧）/ `dispose()`（State 侧） |
-| `useState` / 局部 `signal` | `ConsumerStatefulWidget` 的 `setState`，或页面自己的小 Notifier |
-
 ### 需要 State 的时候
 
 动画控制器、`initState` 里发起的跳转这类有生命周期的页面用
@@ -347,7 +321,7 @@ class SampleListPage extends ConsumerWidget {
 ## Testing Requirements
 
 **注入点就是 `ProviderScope(overrides:)`**，页面因此**不需要任何可注入的构造参数**
-（master 的 `final T? viewModel;` 三件套与 ADR-0001 的缓解措施在这里一并失效）。
+（不要加 `final Xxx? viewModel;` 这类字段）。
 
 ### 逻辑测试：`ProviderContainer` + `overrides`
 
@@ -402,5 +376,5 @@ expect(await container.read(sampleListProvider.future), [item]);
 | 用 `AsyncValue.when` 渲染三态 | 用 `AsyncView`（判定顺序与 `data(null)` 语义已封装） |
 | 空列表直接返回 `EmptyWidget` | 包成可滚动 + `AlwaysScrollableScrollPhysics`，否则刷新是死路 |
 | 给「无状态服务」不加 `keepAlive` | 加 `@Riverpod(keepAlive: true)`，否则每次 `ref.read` 都重建 |
-| `ref.onDispose` 里漏掉流订阅 | 订阅了就要退订（`session.dart` 是范例） |
+| `ref.onDispose` 里漏掉流订阅 | 订阅了就要退订（主动 listen 必须在 `ref.onDispose` 里收尾） |
 | 跨页面共享状态放进某个 feature 的 Notifier | 放到 `core/`（共享层严格克制，见 [directory-structure.md](./directory-structure.md)） |

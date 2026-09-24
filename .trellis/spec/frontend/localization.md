@@ -53,7 +53,7 @@ extension FailureMessage on Failure {
 | 在 `Failure` 上加回 `message` | 文案是展示职责；模型层带着用户文案，语言就被钉死在数据里 |
 | 提前抽一层「文案常量表」 | 单语言下它只是多一层间接；真要多语言时该引入的是 l10n，不是自制的表 |
 | 在 core / data 层拼用户可见文案 | 展示层才认识语言（现在没有语言层，但结构要留着给以后） |
-| 以为 `wrapPage()` 需要挂 l10n delegate | 本分支没有 l10n；`wrapPage()` 只挂主题（`buildLightTheme()`） |
+| 以为 `wrapPage()` 需要挂 l10n delegate | 本项目没有 l10n；`wrapPage()` 只挂主题（`buildLightTheme()`） |
 
 ---
 

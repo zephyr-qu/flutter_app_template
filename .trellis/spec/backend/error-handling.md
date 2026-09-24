@@ -130,9 +130,9 @@ SnackBar 之类的场景直接 `error.localizedMessage()`。**新代码不要**�
 - 另造一个包装异常（包一层之后 `ErrorText` 只剩「未知错误」）
 - 引入 `userErrorMessage(failure)` 那种「在数据层把文案拼好」的做法
 
-> 401 / 403 仍按上表映射成 `AuthFailure`（`unauthorized` / `forbidden`），但本分支**不含认证**：
-> 没有任何拦截器会自动重试或刷新令牌，401 会原样走到 Service 层。要加回「令牌 + 401 自动刷新」，
-> 见 [optional-additions.md](../../../docs/optional-additions.md) 的「登录 / 认证」。
+> 401 / 403 仍按上表映射成 `AuthFailure`（`unauthorized` / `forbidden`），但本项目**无认证**：
+> 没有任何拦截器会自动重试或刷新令牌，401 会原样走到 Service 层。需要时自行接入「令牌 + 401 自动刷新」
+> （判断规则见 [optional-additions.md](../../../docs/optional-additions.md)）。
 
 ---
 

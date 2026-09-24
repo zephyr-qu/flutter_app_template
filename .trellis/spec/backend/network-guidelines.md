@@ -18,14 +18,13 @@
 | `lib/core/config/network_config.dart` | 不可变的网络配置（超时、重试次数、mock 开关） |
 | `lib/core/data/network/dio_client.dart` | `networkConfigProvider` / `dioProvider`：取 `dotenv` 配置、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
 
-**本分支不含认证**：没有令牌、没有 401 自动刷新、没有 `TokenStore` 契约。要加回来见
-[optional-additions.md](../../../docs/optional-additions.md) 的「登录 / 认证」。
+**本项目无认证**：没有令牌、没有 401 自动刷新、没有 `TokenStore` 契约。需要时自行接入（判断规则见 [optional-additions.md](../../../docs/optional-additions.md)）。
 
 ---
 
 ## 配置：`dotenv` 只读一次
 
-全项目**只有 `networkConfigProvider` 一处读 `dotenv.env`**（`lib/core/data/network/dio_client.dart`），之后所有消费者拿到的都是同一个不可变 `NetworkConfig`。
+网络配置**只在 `networkConfigProvider` 一处读 `dotenv.env`**（`lib/core/data/network/dio_client.dart`），之后所有消费者拿到的都是同一个不可变 `NetworkConfig`（`bootstrap()._validateEnv` 只做存在性校验，不建配置）。
 
 - 不要写成 `static` 类：`static` + `dotenv.env` 是全局可变状态，测试里没有干净的覆盖点，用例之间会互相污染
 - 测试直接构造自己的实例即可：`const NetworkConfig(baseUrl: 'http://localhost:8080/api')`
@@ -37,7 +36,7 @@
 
 `dioProvider` 是 `@Riverpod(keepAlive: true)`，**不能**给每个 API 客户端各建一个：拦截器栈各一套会让 mock 规则重复注册、调试日志重复输出，在飞请求与重试状态也会被丢掉。
 
-它读的是 `userPreferencesProvider` 而**不是** `appSettingsProvider`：后者一变 provider 就会被重建，而「Dio 必须单例」优先——重建会丢掉在飞请求、重放状态与 mock 注册。代价是调试开关**重启后生效**（与 master 一致）。
+它读的是 `userPreferencesProvider` 而**不是** `appSettingsProvider`：后者一变 provider 就会被重建，而「Dio 必须单例」优先——重建会丢掉在飞请求、重放状态与 mock 注册。代价是调试开关**重启后生效**。
 
 调试日志是**条件注册**的：只在 `kDebugMode && preferences.enableDebugLogging` 时才加 `PrettyDioLogger`。它的日志体会先过 `LogRedactor` 脱敏（`password` / `accessToken` / `refreshToken` 等），约定见 [logging-guidelines.md](./logging-guidelines.md)。
 

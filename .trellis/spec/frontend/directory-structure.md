@@ -51,7 +51,7 @@ lib/
 
 **不存在** `domain/`、`application/`、`shared/`、`core/error/`、`core/local/` 这些目录 —— 它们属于本脚手架迁移走的旧 Clean Architecture 布局。若在别处看到对它们的引用，那处引用是过期的。
 
-与状态管理无关的基础设施（Failure / Result / 日志 / 模型 / 网络 / 数据库 / 主题 / 无文案 UI 组件）在 `lib/core/` 下（`base/` `logging/` `models/` `data/` `theme/` `ui/`）。`master` 曾把这层抽成 `packages/app_core` 包以便 signals / Riverpod 双栈共用；本分支是脚手架、不需要长期维护双栈，已把它拍平回 `lib/core/`（见 `BRANCH.md`），因此是**单包结构**。主题层的两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
+与状态管理无关的基础设施（Failure / Result / 日志 / 模型 / 网络 / 数据库 / 主题 / 无文案 UI 组件）在 `lib/core/` 下（`base/` `logging/` `models/` `data/` `theme/` `ui/`）。**单包结构**：app 代码不抽包，`packages/` 只放独立工具包。主题层的两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
 
 ---
 

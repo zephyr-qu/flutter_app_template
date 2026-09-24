@@ -220,4 +220,4 @@ AsyncView<List<SampleItem>>(
 - ❌ **Business logic in widgets** — Delegate to the Notifier for all state mutations
 - ❌ **在页面里 `ref.read(xxxProvider)` 取值** — 用 `ref.watch`（门禁 `avoid_ref_read_in_build` 会拦）
 - ❌ **用 `AsyncValue.when` 渲染三态** — 用 `AsyncView`（判定顺序与 `data(null)` 语义已封装）
-- ❌ **给页面加 `final Xxx? viewModel;` 注入点** — 那是 master（signals 栈）的做法；本分支的注入点是 `ProviderScope(overrides:)`
+- ❌ **给页面加 `final Xxx? viewModel;` 注入点** — 注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段

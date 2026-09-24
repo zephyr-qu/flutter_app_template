@@ -26,14 +26,11 @@
 
 9. **Feature imports or exports another feature's page/ or logic/** — Only core/ and another feature's data/ are allowed. Also enforced by the `packages/app_lints` plugin (`cross_feature_only_data`); it additionally forbids `core/` importing or exporting `features/` or `app/` (`no_upper_import_in_core`).
 
-10. **凭据放进 URL query** — 密码、令牌这类敏感值只能走**请求体**：query 会进入服务端访问日志、代理日志、浏览器或崩溃上报，等同于明文泄露。本分支不含认证，这条是给将来加回凭证时立的规矩（见 [optional-additions.md](../../../docs/optional-additions.md)）。
+10. **凭据放进 URL query** — 密码、令牌这类敏感值只能走**请求体**：query 会进入服务端访问日志、代理日志、浏览器或崩溃上报，等同于明文泄露。本项目无认证，这条是给将来接入凭证时立的规矩。
 
 11. **页面自己维护 loading / request token** — 首屏加载就是 provider 的 `build()`，刷新与重试退回 `ref.refresh` / `ref.invalidate`。手写序号、`Completer`、竞态判断等于把框架已经保证的事重做一遍，且容易做错。
 
-> 上一代（master 的 signals 栈）有过第 11 条「页面取 ViewModel 却不留可选注入点」与对应的脚本规则 4。
-> 本分支的注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段，那条规则与它的
-> [ADR-0001](../../../docs/adr/ADR-0001.md) 一并只对 master 成立。**不要**再往页面加
-> `final Xxx? viewModel;` 这类构造参数。
+12. **页面加 `final Xxx? viewModel;` 构造注入点** — 注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段。
 
 ---
 
@@ -99,7 +96,7 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 
 - 所有 API 调用返回 `Result<T, Failure>`（业务层不抛异常）
 - 三态由 `AsyncNotifier` + `AsyncView` 承载；**不要在页面里 try/catch 后自己翻译错误**
-- 本分支**没有**认证拦截器：401 / 403 会原样走到 Service 层，按 `failure.dart` 的映射变成 `AuthFailure`（`unauthorized` / `forbidden`），文案见 `core/ui/failure_message.dart`
+- 本项目**没有**认证拦截器：401 / 403 会原样走到 Service 层，按 `failure.dart` 的映射变成 `AuthFailure`（`unauthorized` / `forbidden`），文案见 `core/ui/failure_message.dart`
 - 以上都漏掉的由 `PlatformDispatcher.instance.onError` 兜底并记日志
 
 两条容易被「顺手加回来」的：

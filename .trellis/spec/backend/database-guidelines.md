@@ -14,13 +14,13 @@
 | Relational | `drift`（原生库由 `sqlite3` 3.x 的 build hook 提供） | `AppDatabase`（`lib/core/data/database/app_database.dart`） | Structured, queryable local cache |
 | Files | `path_provider` | `FileStorage`（`lib/core/data/storage/file_storage.dart`） | Binary / large text data |
 
-**不要**把令牌、密码之类的敏感数据放进 `SharedPreferences`——那是明文的 XML/plist，设备被 root / 越狱后可直接读出。本分支**不含认证**、没有凭证要存；将来要存时走平台安全存储（`flutter_secure_storage`），加回步骤见 [optional-additions.md](../../../docs/optional-additions.md) 的「登录 / 认证」。上表三者的实例都由 provider 装配（`lib/core/providers.dart`），业务代码只 `ref.watch`，不自己 new。
+**不要**把令牌、密码之类的敏感数据放进 `SharedPreferences`——那是明文的 XML/plist，设备被 root / 越狱后可直接读出。本项目**无认证**、没有凭证要存；将来要存时走平台安全存储（`flutter_secure_storage`）。上表三者的实例都由 provider 装配（`lib/core/providers.dart`），业务代码只 `ref.watch`，不自己 new。
 
 ---
 
 ## 状态管理与存储的分工
 
-本分支（`preset/ai-starter`，Riverpod）有一条贯穿全部存储的约定：
+本项目有一条贯穿全部存储的约定：
 **存储对象不依赖状态管理，状态由另外一层 provider 负责。**
 
 | 存储对象（`lib/core/`） | 状态层（provider） | 分工 |
@@ -124,10 +124,6 @@ SampleDao sampleDao(Ref ref) => SampleDao(ref.watch(databaseProvider));
 - 行类 `DbArticle` 生成在 `lib/core/data/database/app_database.g.dart`，所以 feature
   的 DAO 需要 `import 'package:my_app/core/data/database/app_database.dart';` 才能拿到它。
 
-> 历史背景：`master` 把表放进 `packages/app_core` 共享包时，`drift_dev` 解析不到另一个
-> package 里的表（drift#3669），DAO 只能绕开 `@DriftAccessor`、直接持有 `AppDatabase`。
-> 本分支已把该包拍平回 `lib/core/`，同包后这个坑不再存在。
-
 ### 加表 / 改表
 
 - **加表**：新建 `tables/db_{name}.dart`，类名加 `Db` 前缀（见下节）→ 在
@@ -218,11 +214,11 @@ class FileStorage {
 }
 ```
 
-它是纯 Dart 类（不带装配注解——本分支用 provider 装配，没有 injectable），
+它是纯 Dart 类（不带装配注解——本项目用 provider 装配，没有 injectable），
 由 `lib/core/providers.dart` 的 `fileStorageProvider` 建成 provider。精确签名见
 `lib/core/data/storage/file_storage.dart`。
 
-> **本分支没有 FileStorage 的示例页**：`features/demo/` 已随示例收敛删除。要看用法就照
+> **没有 FileStorage 的示例页**。要看用法就照
 > `test/core/data/storage/file_storage_test.dart`（真实文件 + 内存路径）写，
 > 需要文件缓存的目标应用再自己建页面。
 

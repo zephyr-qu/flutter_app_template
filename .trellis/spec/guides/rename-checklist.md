@@ -46,8 +46,8 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 ## 之后
 
-1. `just codegen` —— 改了注解 / 增删文件后
-   必须重跑（生成物提交入库，CI 会比对漂移）；纯改名其实已经由脚本覆盖了生成物
+1. `just codegen` —— 改了注解 / 增删文件后必须重跑；生成物不入库，改名后若本地
+   有旧生成物也应重跑一遍（脚本会顺带改掉磁盘上已有生成物里的 `package:` 路径）
 2. `flutter clean && just deps`
 3. `flutter analyze` + `just verify`
 4. 需要图标就 `dart run flutter_launcher_icons`（`assets/icon/icon.png` 得先存在）
@@ -63,8 +63,7 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 ### CI Pipeline / 门禁
 
-门禁清单以根 `justfile` 为准，`.github/workflows/ci.yml` 与 `.githooks/pre-commit`
-都通过它执行（codegen 漂移检查、`packages/app_lints/` 分析插件）。改名不影响这些步骤，
+门禁清单以根 `justfile` 为准，`.github/workflows/ci.yml` 与 `.githooks/pre-commit` 都通过它执行（CI 会先现场跑 codegen；`packages/app_lints/` 分析插件）。改名不影响这些步骤，
 但**插件里硬编码的包名前缀**是例外，见上面的坑。
 
 ### Environment Validation

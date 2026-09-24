@@ -79,8 +79,7 @@ import/export `package:flutter/material.dart`）以及所有门禁、测试基�
    SampleApi sampleApi(Ref ref) => SampleApi(ref.watch(dioProvider));
    ```
 
-   （master 的 `@module` + `@LazySingleton` 在这里没有对应物：provider 本身就是注册表，
-   见 [frontend/state-management.md](../frontend/state-management.md)「三种 Provider 形态」。）
+   （provider 本身就是注册表，见 [frontend/state-management.md](../frontend/state-management.md)「三种 Provider 形态」。）
 
 4. **Repository abstraction is optional** — write `{Feature}Repository` only when there is a genuine multi-implementation need (mock / online switching). Simple features call the Service directly. When both exist, the interface is `{feature}_repository.dart` and the implementation `{feature}_service.dart` — both live in the feature's `data/` layer (there is no `domain/` layer).
 

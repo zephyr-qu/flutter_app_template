@@ -17,10 +17,8 @@ FSD 简化版目录 + **Riverpod 3**（provider + `ConsumerWidget`）+ auto_rout
 **Material 3**（`flex_color_scheme`，只在 `lib/core/theme/`）+ Retrofit/Dio +
 Drift / SharedPreferences + **单语言中文**（没有 l10n）。
 
-> 本分支是 `preset/ai-starter`：从 master 的 signals + get_it + flutter_hooks 换到 Riverpod。
-> 仓库里**已经不存在** `signal*` / `get_it` / `injectable` / `flutter_hooks` / l10n。
-> 凡是拿它们当现状的说明（`docs/` 下的历史文档、`docs/adr/` 里未标注适用范围的段落）
-> 一律先当作过期，换栈前后对照见仓库根 `BRANCH.md`。
+仓库里**没有** `signal*` / `get_it` / `injectable` / `flutter_hooks` / l10n /
+`lib/di/`；不要把它们当现状，也不要凭印象补回来。
 
 ## 硬约束清单
 
@@ -29,7 +27,7 @@ Drift / SharedPreferences + **单语言中文**（没有 l10n）。
 3. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**
    （单语言脚手架，不走 ARB、不引入 `intl`）。
 4. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart`。
-   改注解或模型后 `just codegen`，并把生成物一起提交 —— CI 会比对这个 diff。
+   改注解或模型后 `just codegen`；生成物已 gitignore，不入库。
 5. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
    设计取舍、踩坑、对照表格写 `.trellis/spec/`；连续注释块上限 10 行（约定）。
 6. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、崩溃上报）
@@ -66,14 +64,3 @@ lib/
 - `riverpod_generator` 把 `XxxNotifier` 的 provider 命名成 `xxxProvider`
   （**不是** `xxxNotifierProvider`）—— 没有 lint 兜，写错了要自己发现
 
-## 不存在的东西（不要「补回来」）
-
-- 没有 `domain/` `application/` `shared/` `lib/di/` `lib/l10n/`（旧 Clean Architecture 或 master 的遗留）
-- 没有 signals、没有 `get_it` / `injectable` / `@LazySingleton` / `@module` / `*.config.dart`
-- 没有 `flutter_hooks`：`HookWidget` / `useMemoized` / `useEffect` / `useSignalValue` 都不存在
-- 没有 ViewModel 类、没有 `runAsync`、没有 `AsyncState`、没有 `runZonedGuarded`
-- 没有事件总线；feature 间通信**只能**通过 `core/` 暴露的 provider
-- 没有认证 / 登录：没有 `features/auth/`、没有令牌与安全存储、没有路由守卫、没有 `core/models/`
-  （`User` / `TokenSet` 已随它删除）。需要时按 `docs/optional-additions.md` 的「登录 / 认证」
-  一节加回来，不要凭印象补一套
-- 没有崩溃上报（Sentry / Crashlytics）

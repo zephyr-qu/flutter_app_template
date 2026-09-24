@@ -45,7 +45,7 @@ sealed class SampleItem with _$SampleItem {
 - All fields are `final` and non-nullable (unless explicitly nullable)
 - Constructors use `required` named parameters
 - 生成物 `*.g.dart` / `*.freezed.dart` 与源文件同目录，**不要手改**
-- **构造器不重复类名**：本分支统一写成 `const new({super.key})` / `const factory({...})` /
+- **构造器不重复类名**：本项目统一写成 `const new({super.key})` / `const factory({...})` /
   `factory fromJson(...)`（Dart 3.13 允许省略类名的构造器声明），而不是 `const SampleItem({...})`。
   照抄 `features/sample/` 的形状，不要「顺手改成老写法」。
 
@@ -62,7 +62,7 @@ sealed class Failure { ... }        // Error hierarchy
   （`@riverpod` 注解生成 `<file>.g.dart`，provider 名由生成器决定）
 - `*.freezed.dart` — `copyWith` / `==` / `hashCode`
 - `*.gr.dart` — auto_route
-- `*.config.dart` — 本分支**不存在**（那是 master 的 `injectable` service locator 生成物）
+- `*.config.dart` — 本项目**不存在**（不使用 injectable，没有 service locator 生成物）
 - 改完注解跑 `just codegen`；**never edit generated files manually**
 
 ---
