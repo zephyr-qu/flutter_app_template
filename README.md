@@ -84,7 +84,7 @@ feature 内部三层，依赖方向 `app → features → core`：
 
 ## 🚀 快速开始
 
-环境要求：Flutter >= 3.44.0（开发与 CI 钉 3.47.5，见 `.fvmrc`）、Dart >= 3.13.0。
+环境要求：Flutter >= 3.47.0（开发与 CI 钉 3.47.5，见 `.fvmrc`）、Dart >= 3.13.0。
 
 ```bash
 flutter pub get

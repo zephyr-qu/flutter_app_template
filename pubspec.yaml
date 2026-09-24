@@ -4,9 +4,11 @@ publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  # 下限由依赖集决定（见 pubspec.lock 的 sdks 段），改这里要同步 CI 与 README
+  # 下限由依赖集决定（见 pubspec.lock 的 sdks 段），改这里要同步 CI 与 README。
+  # flutter 下限当前由 auto_route 11.2.0 间接带入的 cupertino_ui / material_ui
+  # （二者均要求 >=3.47.0）决定 —— 升 auto_route 前先看它会把这行抬到哪。
   sdk: ">=3.13.0 <4.0.0"
-  flutter: ">=3.44.0"
+  flutter: ">=3.47.0"
 
 # ──────────────────────────────────────────────
 # 生产依赖（编译和运行期都需要）
@@ -41,7 +43,7 @@ dependencies:
   freezed_annotation: ^3.1.0 # @freezed 注解
 
   # ── Routing（运行时依赖） ──
-  auto_route: ^11.1.0 # @RoutePage 注解
+  auto_route: ^11.2.0 # @RoutePage 注解（11.2.0 起带入 cupertino_ui / material_ui）
 
   # ── Theme ──
   flex_color_scheme: ^8.4.0 # core/theme/app_theme.dart（本分支仅此一处使用）
