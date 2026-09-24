@@ -18,7 +18,16 @@ dart run tool/check_boundaries.dart     # 退出码 0 = 通过，1 = 有违规
 
 **扫描根是 `lib`。**（`master` 是双包结构，那里还要扫 `packages/app_core/lib`——不扫它新包就成了**边界真空**。本分支已单包化。）
 
-**为什么不用 analyzer 插件**：`analysis_server_plugin` 规则只在 IDE 里生效，CLI 与 CI 不执行。历史教训——`features/profile/page` 引用过 `features/auth/logic`，而 `flutter analyze` 一直报告「No issues found」。声明成 `error` 却没有任何东西验证它会触发，比没有规则更糟（给人有门禁的错觉）。
+**为什么不用 analyzer 插件**：门禁跑的是 `flutter analyze lib/ test/`，而 `flutter analyze`（无论传文件还是目录）**不加载** analyzer 插件；`dart analyze` 会加载，但只在传**单个文件**时。实测（Flutter 3.47.5 / Dart 3.13.4，`riverpod_lint` 3.1.9 + `analysis_options.yaml` 顶层 `plugins:`，同一个探针文件）：
+
+| 命令 | 插件生效 |
+|------|---------|
+| `dart analyze lib/x.dart` | ✅ 报诊断，退出码 2 |
+| `dart analyze lib` | ❌ |
+| `flutter analyze lib/x.dart` | ❌ |
+| `flutter analyze lib/ test/` | ❌ |
+
+历史教训——`features/profile/page` 引用过 `features/auth/logic`，而 `flutter analyze` 一直报告「No issues found」：原因就在这里，不是规则写错了，是跑它的那条命令不加载插件。声明成 `error` 却没有任何东西验证它会触发，比没有规则更糟（给人有门禁的错觉）。要用插件就得把门禁改成对每个文件逐个 `dart analyze`——为几条 lint 换掉整条门禁不划算，而边界规则用脚本反而更直白。
 
 | 规则 | 效果 |
 |------|------|

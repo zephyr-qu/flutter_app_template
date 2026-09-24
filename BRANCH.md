@@ -34,10 +34,13 @@ git rev-list --count master..HEAD           # 提交数
 
 围绕这三件事的连带改动：
 
-- 没装 `custom_lint` / `riverpod_lint`：所有版本要么与项目的 `analyzer` 13.3.0 冲突，
-  要么走 `analysis_server_plugin`（IDE-only）。本仓库的立场是**门禁逻辑一律是脚本**，
-  装一个只在 IDE 生效的 lint 会造出「有门禁」的错觉。代价是 provider 命名一类的事
-  没有 lint 兜（`riverpod_generator` 把 `XxxNotifier` 命名成 `xxxProvider`，写页面时容易踩）。
+- 没装 `riverpod_lint`：它自 3.1.0 起用 `analysis_server_plugin`，与项目的 `analyzer` 13.3.0
+  不冲突、装得上——但门禁跑的是 `flutter analyze lib/ test/`，而 `flutter analyze` 不加载
+  analyzer 插件（`dart analyze` 只在传单个文件时加载；实测表见
+  [`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)）。要接它就得把门禁改成
+  逐个文件 `dart analyze`。本仓库的立场是**门禁逻辑一律是脚本**，为几条 lint 换掉整条门禁
+  不划算。代价是 provider 命名一类的事没有 lint 兜（`riverpod_generator` 把 `XxxNotifier`
+  命名成 `xxxProvider`，写页面时容易踩）。
 - `features/article/` 与 `features/demo/` 的业务内容删掉，收敛成一个 **`features/sample/`**
   金标准：它同时覆盖三种 data 形态（Retrofit API / Drift DAO / `Result` 包装的 Service）
   与三种 provider 形态，是 AI 唯一需要照抄的对象。

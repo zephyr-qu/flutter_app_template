@@ -199,7 +199,7 @@ dart run tool/verify.dart     # 一条命令跑完全部 9 项，首个失败即
 | `check_coverage.dart` | 手写代码行覆盖率 ≥ 80%（剔除生成物，按行数加权，扫描根 `lib`）；没被测的新文件一样计入分母 |
 | 其余 | `dart format`、`dependency_validator`、`flutter analyze lib/ test/`、`dart analyze tool/`、`flutter test --coverage` |
 
-两条边界规则用脚本而不是 analyzer 插件，因为插件规则只在 IDE 生效、CLI 与 CI 跑不到。单项重跑就跑上表对应的原始命令；阈值与理由见 [.trellis/spec/cross-cutting.md](.trellis/spec/cross-cutting.md)。`pre-commit` 钩子跑的就是 `verify.dart`。
+两条边界规则用脚本而不是 analyzer 插件：门禁跑的是 `flutter analyze lib/ test/`，而 `flutter analyze` 不加载 analyzer 插件（`dart analyze` 只在传单个文件时加载，实测表见 [.trellis/spec/cross-cutting.md](.trellis/spec/cross-cutting.md)）。单项重跑就跑上表对应的原始命令；阈值与理由见同一份 spec。`pre-commit` 钩子跑的就是 `verify.dart`。
 
 ## 🎨 数据流
 

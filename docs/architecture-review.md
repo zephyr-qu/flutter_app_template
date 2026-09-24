@@ -157,7 +157,9 @@ if (disposed) {
 
 第 1 条就是本节原先设想的写法，实测它**盖不住**条件导入：折行后 `if (...)` 独占一行、不以 `import` 开头，单行写法则第一个 URI 已经匹配成功。所以补了第 2 条（看 `directive.end` 之后还剩什么）。真实仓库中唯一命中该判定的文件是生成的 `lib/di/service_locator.config.dart`，按既有规则豁免——这也是 warning 必须让生成文件继续豁免的直接证据。回归测试 `test/tool/check_boundaries_test.dart` 把 warning 也当失败，命中即代表该按本节触发条件迁 AST。
 
-**澄清**：迁移到 `package:analyzer` 的 `parseString` 是**用 analyzer 的解析能力写脚本**，执行模型仍是 CI 里的 `dart run`——与「analyzer 插件只在 IDE 生效」是两回事，不是退回插件。
+**澄清**：迁移到 `package:analyzer` 的 `parseString` 是**用 analyzer 的解析能力写脚本**，执行模型仍是 CI 里的 `dart run`——与「装一个 analyzer 插件」是两回事，不是退回插件。
+
+> 原文此处写的是「analyzer 插件只在 IDE 生效」。2026-09-24 实测为误：`dart analyze <单个文件>` 会加载插件并产出诊断（退出码 2），不会加载的是 `flutter analyze`（任何形式）与 `dart analyze <目录>`。详见 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)。
 
 **2026-09 追加**：这条路**已经走了一段**。新增的 `tool/check_conventions.dart` 用 `parseString` 直接建 AST——`AsyncState.map` 的判据是「同时带 `data` 与 `error` 两个具名实参」，正则分不清它和 `list.map(...)`，而误报会挡住提交；`package:analyzer` 也因此成为显式 dev_dependency。`check_boundaries.dart` **仍留在正则级**：本节的三条触发信号一条都没亮，它的规则也不需要 AST（口径见 `.trellis/spec/cross-cutting.md`「代码形态约定」）。
 

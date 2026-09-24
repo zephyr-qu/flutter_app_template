@@ -38,10 +38,11 @@ linter:
 # ──────────────────────────────────────────────
 # 架构边界与约定（非 analyzer 规则）
 # ──────────────────────────────────────────────
-# 这两类检查**不是** analyzer 插件：`analysis_server_plugin` 规则只在 IDE 里生效，
-# `dart analyze` 与 `flutter analyze` 都不会执行（历史上 `features/profile` 引用过
-# `features/auth/logic`，而 analyze 一直报告「No issues found」）。
-# 所以它们在 CI 与 pre-commit 里以脚本方式跑：
+# 这两类检查**不是** analyzer 插件，而是脚本——门禁跑的是 `flutter analyze lib/ test/`，
+# 而 `flutter analyze`（无论传文件还是目录）不加载 analyzer 插件；`dart analyze` 会加载，
+# 但只在传**单个文件**时（实测表见 .trellis/spec/cross-cutting.md）。历史上
+# `features/profile/page` 引用过 `features/auth/logic` 而 analyze 报「No issues found」，
+# 就是这个原因。所以它们在 CI 与 pre-commit 里以脚本方式跑：
 #
 #   dart run tool/check_boundaries.dart    # 依赖方向 + logic 层不得手动建容器 / 不得依赖 Flutter UI
 #   dart run tool/check_conventions.dart   # build 里禁用 ref.read 取值、注释块上限

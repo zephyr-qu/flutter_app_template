@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../tool/check_boundaries.dart';
 
 /// 边界检查是脚本 + 纯函数，所以可以用普通 `test()` 覆盖，
-/// 不像 analyzer 插件那样只能靠 IDE 手动验证。
+/// 不像 analyzer 插件那样要挑命令才会触发（`flutter analyze` 根本不加载它）。
 void main() {
   List<String> check(String path, String content) => findViolations(
     path: path,
