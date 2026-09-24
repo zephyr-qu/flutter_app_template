@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 把 [AsyncValue] 渲染成 Widget 的类型安全入口。
 ///
-/// 六种情形的判定顺序、以及「旧值为 null 视同没有数据」这条语义（master 的
-/// `runAsync` 此时直接置 `loading` 而不是 `dataRefreshing`），见
+/// 六种情形的判定顺序、以及「旧值为 null 视同没有数据」这条语义，见
 /// frontend/state-management.md「渲染状态」。**判断顺序不能随便调**。
 ///
 /// 刷新 / 重载时不传 [refreshing] / [reloading] 就退回 [data]（旧内容），

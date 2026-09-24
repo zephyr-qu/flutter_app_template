@@ -15,11 +15,11 @@ void main() {
     // 不等它会让后面的断言跑在启动完成之前
     await app.main();
     await tester.pumpAndSettle();
-    // 冷启动先过启动页：显式推进 2.2s 品牌动画的计时器，别只靠上一步的 settle 兜
+    // 冷启动先过启动页：显式推进 2.2s 跳转计时器，别只靠上一步的 settle 兜
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
 
-    // 1. 启动后经启动页落到主框架（本分支没有登录页）
+    // 1. 启动后经启动页落到主框架（无登录页）
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('首页'), findsWidgets);
     expect(find.text('你好, 欢迎回来'), findsOneWidget);

@@ -61,7 +61,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // 启动页 2.2s 品牌动画
+    // 启动页：跳转计时器 2.2s（入场动画约 1.8s）
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
   }

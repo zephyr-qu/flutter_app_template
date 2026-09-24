@@ -11,7 +11,7 @@ import 'package:path_provider/path_provider.dart';
 /// 的目录，就没法安全地「只清自己的」——见 [clearTemp]。
 ///
 /// **不带装配注解**：本类不依赖任何状态管理库，实例由 `core/providers.dart` 的
-/// `fileStorageProvider` 提供（本分支用 provider 装配，没有 injectable）。
+/// `fileStorageProvider` 提供（本项目用 provider 装配，没有 injectable）。
 class FileStorage {
   /// 应用目录 / 临时目录下用来存放本类文件的子目录名。
   ///

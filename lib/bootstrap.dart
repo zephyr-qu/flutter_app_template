@@ -8,20 +8,18 @@ import 'package:my_app/core/logging/logging.dart';
 import 'package:my_app/core/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Required environment variables for the app.
 const _requiredEnvKeys = ['BASE_URL'];
 
 /// 当前环境名：`--dart-define=env=xxx` 优先，否则按构建模式取
 /// development / production。
 ///
-/// **不能**用 `defaultValue` 兜底，见 backend/quality-guidelines.md「环境配置」。
+/// **不能**用 `defaultValue` 兜底，见 cross-cutting.md「环境配置与 release 构建」。
 String get _activeEnv {
   const defined = String.fromEnvironment('env');
   if (defined.isNotEmpty) return defined;
   return kReleaseMode ? 'production' : 'development';
 }
 
-/// 对应的 .env 文件名
 String get _envFileName => '.env.$_activeEnv';
 
 Future<void> bootstrap() async {

@@ -78,7 +78,7 @@ void main() {
 
     expect(find.byType(SplashPage), findsOneWidget);
     expect(find.text('My App'), findsOneWidget);
-    // tagline 是直接写死的中文字面量（本分支没有 l10n）
+    // tagline 是直接写死的中文字面量（本项目没有 l10n）
     expect(find.text('简洁 · 优雅 · 实用'), findsOneWidget);
     expect(find.byIcon(Icons.spa_outlined), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);

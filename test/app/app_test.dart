@@ -34,13 +34,13 @@ void main() {
       UncontrolledProviderScope(container: app.container, child: const MyApp()),
     );
     await tester.pumpAndSettle();
-    // 冷启动落在启动页：2.2s 品牌动画之后才进主框架（同 routing/ 下的测试）
+    // 冷启动落在启动页：跳转在 2.2s 后执行（动画约 1.8s），之后才进主框架（同 routing/ 下的测试）
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     return app;
   }
 
-  testWidgets('冷启动经启动页落到主框架（本分支没有登录守卫）', (tester) async {
+  testWidgets('冷启动经启动页落到主框架（无登录守卫）', (tester) async {
     final app = await pumpMyApp(tester);
 
     expect(find.byType(HomePage), findsOneWidget);

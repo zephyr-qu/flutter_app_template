@@ -26,7 +26,6 @@ class ProfilePage extends ConsumerWidget {
           children: [
             const SizedBox(height: 20),
 
-            // ── Profile header card ──
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -72,7 +71,6 @@ class ProfilePage extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
 
-            // ── Settings section ──
             Text(
               '设置',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -135,7 +133,7 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  /// 主题名用当前界面语言书写（见 frontend/localization.md）
+  /// 主题名直接写中文（见 frontend/localization.md「文案写在哪」）
   String _themeLabel(BuildContext context, ThemeMode mode) {
     return switch (mode) {
       ThemeMode.system => '跟随系统',
@@ -146,8 +144,8 @@ class ProfilePage extends ConsumerWidget {
 
   /// 弹出主题选择，结果写入 `AppSettingsNotifier`（null = 取消）。
   ///
-  /// 这里能直接用 `ThemeMode?`：`system` 本身就是枚举值，不必像语言选择器
-  /// 那样另立枚举把 null 让给「跟随系统」。
+  /// 这里能直接用 `ThemeMode?`：`system` 本身就是枚举值，
+  /// null 只表示「取消选择」，不必另立一个「跟随系统」哨兵值。
   Future<void> _pickThemeMode(BuildContext context, WidgetRef ref) async {
     final current = ref.read(appSettingsProvider).themeMode;
 
@@ -218,7 +216,7 @@ class _SettingItem extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  /// 可选的当前值（语言/外观选择器在 trailing 上显示它）
+  /// 可选的当前值（外观选择器在 trailing 上显示它）
   final String? value;
   final VoidCallback onTap;
 

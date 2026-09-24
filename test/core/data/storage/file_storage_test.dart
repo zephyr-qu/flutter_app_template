@@ -117,9 +117,7 @@ void main() {
       await storage.saveString('mine.txt', 'mine', useTemp: true);
       expect(await storage.clearTemp(), isTrue);
 
-      // 自己的清掉了
       expect(await storage.readString('mine.txt', useTemp: true), isNull);
-      // 别人的原样保留
       expect(foreignFile.existsSync(), isTrue);
       expect(File('${foreignDir.path}/x.dat').existsSync(), isTrue);
     });

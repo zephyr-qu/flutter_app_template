@@ -13,7 +13,7 @@ void main() {
   });
 
   group('ProfilePage — 渲染', () {
-    testWidgets('头部卡是静态品牌信息（本分支没有用户与登录态）', (tester) async {
+    testWidgets('头部卡是静态品牌信息（无用户与登录态）', (tester) async {
       await tester.pumpWidget(
         wrapPage(const ProfilePage(), container: app.container),
       );

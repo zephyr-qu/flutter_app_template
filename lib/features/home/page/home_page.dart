@@ -22,7 +22,6 @@ class HomePage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Welcome card ──
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -94,7 +93,6 @@ class HomePage extends ConsumerWidget {
             ),
             const SizedBox(height: 28),
 
-            // ── Quick actions ──
             Text(
               '快捷功能',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -159,7 +157,6 @@ class HomePage extends ConsumerWidget {
 
             const SizedBox(height: 32),
 
-            // ── Recent activity placeholder ──
             Text(
               '最近动态',
               style: theme.textTheme.titleMedium?.copyWith(

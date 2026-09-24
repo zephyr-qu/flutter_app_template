@@ -58,7 +58,6 @@ Dio createDio({
 
   dio.interceptors.add(RetryInterceptor(dio: dio, retries: config.retries));
 
-  // Mock 拦截器（仅在 isMock=true 时启用）
   if (isMock) {
     const mockEngine = MockHttpEngine();
     dio.interceptors.add(MockInterceptor(engine: mockEngine));

@@ -35,7 +35,7 @@ class AppSettings {
 /// 偏好的可订阅状态：初值读一次存储，之后由本类负责通知与落盘。
 ///
 /// **写入顺序是「先改内存再落盘」**：UI 立刻响应，落盘失败只记日志
-/// （`SharedPreferences` 的写失败不影响本次会话，与 master 的行为一致）。
+/// （`SharedPreferences` 的写失败不影响本次会话）。
 @Riverpod(keepAlive: true)
 class AppSettingsNotifier extends _$AppSettingsNotifier {
   @override

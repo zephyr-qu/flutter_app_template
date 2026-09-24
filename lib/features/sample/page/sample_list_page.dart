@@ -18,7 +18,7 @@ import 'package:my_app/features/sample/logic/sample_list_notifier.dart';
 /// 3. 刷新 / 重试交给 `ref.refresh` / `ref.invalidate`，页面不持有加载逻辑
 ///
 /// 测试时用 `ProviderScope(overrides:)` 换成假仓库，页面因此**不需要**任何
-/// 注入点构造参数（这是 Riverpod 相对 master 的 getIt 方案省掉的东西）。
+/// 注入点构造参数（依赖通过 `ProviderScope(overrides:)` 换，页面无需注入字段）。
 @RoutePage()
 class SampleListPage extends ConsumerWidget {
   const new({super.key});
@@ -38,7 +38,7 @@ class SampleListPage extends ConsumerWidget {
         ),
         data: (list) {
           // 两个分支都要能下拉刷新：显式给 AlwaysScrollableScrollPhysics，
-          // 空态也要包成可滚动的。见 frontend/state-management.md「刷新时保留旧数据」。
+          // 空态也要包成可滚动的。见 frontend/state-management.md「页面侧的两个配套要求」。
           return RefreshIndicator(
             onRefresh: () => ref.refresh(sampleListProvider.future),
             child: list.isEmpty
@@ -93,7 +93,6 @@ class _SampleCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Number badge ──
             Container(
               width: 40,
               height: 40,
@@ -112,7 +111,6 @@ class _SampleCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-            // ── Content ──
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

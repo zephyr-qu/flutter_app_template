@@ -7,7 +7,7 @@ import 'package:my_app/core/theme/app_theme_extension.dart';
 
 /// 启动页——带渐入动画的品牌页。
 ///
-/// 跑完 2.2s 的品牌动画直接进主框架：本分支没有认证功能，没有登录态可判。
+/// 动画约 1.8s，跳转在 2.2s 后执行；无认证功能，没有登录态可判。
 @RoutePage()
 class SplashPage extends StatefulWidget {
   const new({super.key});
@@ -101,7 +101,6 @@ class _SplashPageState extends State<SplashPage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // ── Logo mark ──
                     Container(
                       width: 88,
                       height: 88,
@@ -124,7 +123,6 @@ class _SplashPageState extends State<SplashPage>
                     ),
                     const SizedBox(height: 28),
 
-                    // ── App name ──
                     Text(
                       'My App',
                       style: theme.textTheme.displayMedium?.copyWith(
@@ -133,7 +131,6 @@ class _SplashPageState extends State<SplashPage>
                     ),
                     const SizedBox(height: 8),
 
-                    // ── Tagline ──
                     Text(
                       '简洁 · 优雅 · 实用',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -143,7 +140,6 @@ class _SplashPageState extends State<SplashPage>
                     ),
                     const SizedBox(height: 48),
 
-                    // ── Loading indicator ──
                     SizedBox(
                       width: 24,
                       height: 24,

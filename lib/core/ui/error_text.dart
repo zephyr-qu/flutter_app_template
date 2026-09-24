@@ -31,7 +31,6 @@ class ErrorText extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Error icon container ──
             Container(
               width: 72,
               height: 72,

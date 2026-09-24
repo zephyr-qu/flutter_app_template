@@ -2,10 +2,6 @@
 
 import 'dart:io';
 
-// ──────────────────────────────────────────────
-// 入口
-// ──────────────────────────────────────────────
-
 void main(List<String> args) {
   exit(runCli(args, root: Directory.current));
 }
@@ -428,8 +424,6 @@ class _Session {
     );
   }
 
-  // ── pubspec ──
-
   void _renamePubspec() {
     const rel = 'pubspec.yaml';
     final text = _read(rel);
@@ -464,8 +458,6 @@ class _Session {
     );
   }
 
-  // ── import 路径 ──
-
   /// `package:<old>/` → `package:<new>/`，全仓库（含生成物，省得再跑 codegen）。
   void _renameImportPaths() {
     final from = 'package:${plan.oldName}/';
@@ -489,8 +481,6 @@ class _Session {
       _failures.add('全仓库找不到 $from —— 确认在仓库根目录运行，且 name 还是旧名');
     }
   }
-
-  // ── 根组件类名 ──
 
   /// `class MyApp` 与新类名不一致时，`app.dart` / `bootstrap.dart` 以及引用它的
   /// 测试都会编译失败，所以整词替换所有 `.dart`。
@@ -519,8 +509,6 @@ class _Session {
       );
     }
   }
-
-  // ── Android ──
 
   void _renameAndroid() {
     const gradle = 'android/app/build.gradle.kts';
@@ -605,8 +593,6 @@ class _Session {
     }
   }
 
-  // ── iOS ──
-
   void _renameIos() {
     const pbxproj = 'ios/Runner.xcodeproj/project.pbxproj';
     final text = _read(pbxproj);
@@ -659,8 +645,6 @@ class _Session {
       required: required,
     );
   }
-
-  // ── 可选 ──
 
   /// 文档、`.gitignore` 等文本里的裸包名，以及 `<旧名>.code-workspace` 文件名。
   ///

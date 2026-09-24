@@ -16,7 +16,7 @@ const String splashRoutePath = '/splash';
 
 /// 应用路由表。
 ///
-/// **没有登录守卫**：本分支已删除认证功能，所有路由都是公开的。
+/// **没有登录守卫**：本项目无认证功能，所有路由都是公开的。
 @AutoRouterConfig()
 class AppRouter extends RootStackRouter {
   @override
@@ -24,10 +24,8 @@ class AppRouter extends RootStackRouter {
 
   @override
   List<AutoRoute> get routes => [
-    // 启动页
     AutoRoute(path: splashRoutePath, page: SplashRoute.page),
 
-    // 主框架（带底部导航）
     AutoRoute(
       path: '/',
       page: MainRoute.page,
@@ -38,7 +36,6 @@ class AppRouter extends RootStackRouter {
       ],
     ),
 
-    // 404
     AutoRoute(path: '*', page: NotFoundRoute.page),
   ];
 }

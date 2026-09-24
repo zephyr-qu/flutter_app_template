@@ -8,9 +8,8 @@ part 'providers.g.dart';
 
 /// 应用级基础设施单例的装配。
 ///
-/// 这一层是 master（signals）分支上 `core/core_module.dart` 的 `@module` 注解的替代：
 /// Riverpod 里「单例」就是一个 `keepAlive` 的 provider，不需要额外的注册表，
-/// 也就不需要 `lib/di/`（见 BRANCH.md）。
+/// 也不需要 `lib/di/`。
 ///
 /// **不得**在这里读取 `dotenv`：`NetworkConfig` 只有 `networkConfigProvider`
 /// 一个来源（约定见 backend/network-guidelines.md）。

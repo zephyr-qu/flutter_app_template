@@ -142,10 +142,6 @@ void main(List<String> args) {
     ..writeln('      单语言分支上它已过期 —— 删掉或改写，并同步 frontend/index.md 的链接');
 }
 
-// ──────────────────────────────────────────────
-// 参数
-// ──────────────────────────────────────────────
-
 class ParsedArgs {
   const new({
     required this.axes,
@@ -621,15 +617,7 @@ final List<Replacement> _l10nReplacements = <Replacement>[
     '',
   ),
   // ── 文档目录树：去掉 l10n/ ──
-  const Replacement(
-    'README.md',
-    'README 目录树去掉 l10n/',
-    '├── l10n/                                   # 国际化文案（ARB + 生成物）\n'
-        '│   ├── app_zh.arb                          #   模板语言：中文\n'
-        '│   └── app_en.arb                          #   第二语言：英文\n'
-        '│\n',
-    '',
-  ),
+  // README 已无目录树，只需改 spec
   const Replacement(
     '.trellis/spec/frontend/directory-structure.md',
     'spec 目录树去掉 l10n/',
@@ -704,13 +692,15 @@ final List<Replacement> _l10nReplacements = <Replacement>[
     'lib/features/profile/page/profile_page.dart',
     '去掉注释里对 _languageLabel 的引用',
     '  /// 与 [_languageLabel] 相反，主题名用当前界面语言书写（见 frontend/localization.md）\n',
-    '  /// 主题名用当前界面语言书写（见 frontend/localization.md）\n',
+    '  /// 主题名直接写中文（见 frontend/localization.md「文案写在哪」）\n',
   ),
   const Replacement(
     'lib/features/profile/page/profile_page.dart',
     '去掉注释里对 _LanguageChoice 的引用',
-    '  /// 那样另立枚举把 null 让给「跟随系统」（见 [_LanguageChoice]）。\n',
-    '  /// 那样另立枚举把 null 让给「跟随系统」。\n',
+    '  /// 这里能直接用 `ThemeMode?`：`system` 本身就是枚举值，不必像语言选择器\n'
+        '  /// 那样另立枚举把 null 让给「跟随系统」（见 [_LanguageChoice]）。\n',
+    '  /// 这里能直接用 `ThemeMode?`：`system` 本身就是枚举值，\n'
+        '  /// null 只表示「取消选择」，不必另立一个「跟随系统」哨兵值。\n',
   ),
 ];
 final List<Removal> _l10nRemovals = <Removal>[

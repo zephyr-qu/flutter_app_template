@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/routing/router.dart';
 
-/// 主框架页面——窄屏（< 800px）底部导航栏、宽屏侧边导航栏。
+/// 主框架页面——窄屏（≤ 800px）底部导航栏、宽屏（> 800px）侧边导航栏。
 ///
 /// 标签用 [AutoTabsRouter] 管理（而非本地 `_currentIndex`），且用默认的
 /// IndexedStack 版本——两条理由见 frontend/directory-structure.md「应用层」。
@@ -36,7 +36,6 @@ class MainPage extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth > 800) {
-              // ── Wide: NavigationRail ──
               return Scaffold(
                 body: Row(
                   children: [
@@ -101,7 +100,6 @@ class MainPage extends StatelessWidget {
               );
             }
 
-            // ── Narrow: Bottom Navigation ──
             return Scaffold(
               body: child,
               bottomNavigationBar: NavigationBar(

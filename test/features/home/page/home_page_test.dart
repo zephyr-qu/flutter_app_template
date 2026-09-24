@@ -12,7 +12,7 @@ void main() {
   });
 
   group('HomePage — 欢迎卡片', () {
-    testWidgets('问候语与头像位是静态内容（本分支没有用户）', (tester) async {
+    testWidgets('问候语与头像位是静态内容（无用户体系）', (tester) async {
       await tester.pumpWidget(
         wrapPage(const HomePage(), container: app.container),
       );
@@ -33,7 +33,6 @@ void main() {
       expect(find.text('快捷功能'), findsOneWidget);
       expect(find.text('最近动态'), findsOneWidget);
       expect(find.text('暂无最近动态'), findsOneWidget);
-      // 快捷入口（中间那个指向 features/sample）
       expect(find.text('示例'), findsOneWidget);
       expect(find.text('个人'), findsOneWidget);
       expect(find.text('设置'), findsOneWidget);

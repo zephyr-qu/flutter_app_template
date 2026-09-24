@@ -50,7 +50,8 @@ enum FailureCode {
   unknown,
 }
 
-/// 四类失败：网络（请求没能正常往返）/ 认证（401、403）/ 服务端（其余 4xx、5xx）/ 兜底。
+/// 四类失败：网络（超时 / 连不上 / 证书失败，含 408）/ 认证（401、403）/
+/// 服务端（多数 4xx、5xx）/ 兜底（取消、无法归类）。
 ///
 /// 「产生 → 分派 → 渲染」的完整流程见 backend/error-handling.md。
 sealed class Failure implements Exception {
@@ -101,7 +102,7 @@ Failure handleDioError(DioException e) {
       return _handleBadResponse(e);
     case DioExceptionType.cancel:
       return const UnknownFailure(code: FailureCode.cancelled);
-    // 枚举的新增成员会掉到这里：穷尽 switch 保证升级 dio 后这里必须一起改
+    // 穷尽 switch：DioExceptionType 新增成员会导致编译失败，升级 dio 后必须在此补映射
     case DioExceptionType.unknown:
       Logging.warning('未分类的网络异常(${e.type.name}): ${e.message}');
       return const UnknownFailure(code: FailureCode.unexpected);

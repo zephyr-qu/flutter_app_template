@@ -28,7 +28,6 @@ class EmptyWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Empty icon container ──
             Container(
               width: 88,
               height: 88,
