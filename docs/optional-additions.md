@@ -54,8 +54,7 @@
 本分支删掉了完整认证（登录页、令牌、401 自动刷新、路由守卫）—— 为什么删见 `BRANCH.md`。
 需要时按下面的顺序加回来，**别只装包**：缺的是那一套接线。
 
-1. `flutter pub add flutter_secure_storage`（令牌走平台安全存储）。要写 `@JsonKey` 时
-   再把 `json_annotation` 加回来
+1. `flutter pub add flutter_secure_storage`（令牌走平台安全存储）
 2. `lib/core/data/storage/auth_storage.dart`：令牌 + 用户的存储（同步 getter + 一条变化流），
    并在 `lib/core/providers.dart` 注册 provider
 3. `lib/core/data/network/`：`TokenStore` 契约 + `AuthInterceptor`（附加 `Authorization`；

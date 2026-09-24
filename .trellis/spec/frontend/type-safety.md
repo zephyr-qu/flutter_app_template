@@ -40,7 +40,7 @@ sealed class SampleItem with _$SampleItem {
 **Rules**:
 
 - `fromJson` / `toJson` 由 freezed 生成（内部走 `json_serializable`），**不要手写**
-- 后端字段名与 Dart 命名不一致时用 `@JsonKey(name: ...)`（需要时把 `json_annotation` 加回 `pubspec.yaml`，它已随认证功能移除）
+- 后端字段名与 Dart 命名不一致时用 `@JsonKey(name: ...)`（`json_annotation` 已声明在 `dependencies`，是 `json_serializable` 的构建期契约，别删——见 `cross-cutting.md` 的「依赖检查」）
 - **不要为了简单 DTO 换一套注解** —— 哪怕只有两个字段（`SampleItem` 就是三个），也仍然用 `@freezed`。混进 `@JsonSerializable` 等于多出第二套生成流程和第二种 `fromJson` 写法，`build_runner` 与 review 都要记两份，而省下的只是一个 `const factory`
 - All fields are `final` and non-nullable (unless explicitly nullable)
 - Constructors use `required` named parameters
