@@ -19,7 +19,7 @@
 
 ## 跨层与门禁
 
-不属于单一层的约定在 [Cross-Cutting Concerns](../cross-cutting.md)：架构边界检查、覆盖率门禁、依赖声明检查、`leak_tracker`、集成测试、环境配置与 release 构建。
+不属于单一层的约定在 [Cross-Cutting Concerns](../cross-cutting.md)：架构边界检查、依赖声明检查、`leak_tracker`、集成测试、环境配置与 release 构建。
 
 ---
 

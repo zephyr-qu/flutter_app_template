@@ -113,7 +113,7 @@ flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS schem
 - [ ] 重新生成产物（模型、provider、路由、Drift schema）：
 
 ```bash
-dart run build_runner build
+just codegen
 ```
 
 - [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart`）——CI 的
@@ -123,20 +123,21 @@ dart run build_runner build
 - [ ] 门禁全绿：
 
 ```bash
-dart run tool/verify.dart               # 全套 8 项，首个失败即停
-flutter test integration_test/          # 端到端冒烟（真机 / 模拟器，不进 verify）
+just verify                               # 全套 5 项，首个失败即停
+just test integration_test/               # 端到端冒烟（真机 / 模拟器，不进 just verify）
 ```
 
-  `verify.dart` 覆盖：格式、架构边界、形态约定、目录树一致性、`flutter analyze lib/ test/`
-  （含依赖声明 lint `depend_on_referenced_packages`）、`dart analyze --fatal-infos tool/`、
-  `flutter test --coverage`、覆盖率阈值（手写代码 ≥ 80%）。语义与阈值见 `.trellis/spec/cross-cutting.md`。
+  `just verify` 覆盖：格式、`dart analyze --fatal-infos`（lib + test 与 tool 的手写文件，显式传参才
+  会加载 riverpod_lint 与 `packages/app_lints` 插件；依赖声明 lint `depend_on_referenced_packages`
+  在 `analysis_options.yaml` 里提升为 error，不依赖命令的默认值）、插件规则测试（`packages/app_lints`）、
+  `flutter test`。语义见 `.trellis/spec/cross-cutting.md`。
 
 - [ ] 新增 `FailureCode` 已在 `core/ui/failure_message.dart` 的 `localizedMessage` 里补上文案
       （不补会编译失败——`switch` 不再穷尽；`test/core/ui/failure_message_test.dart` 会遍历枚举逐个断言）
 
 - [ ] 依赖过一遍：`dart pub outdated` 看 `Current / Upgradable / Resolvable / Latest` 四列，
       能升的走 `dart pub upgrade`（改动 `pubspec.lock` 后记得重跑测试与 codegen）；
-      有**已知漏洞**的必须在发版前处理——CI 的 `osv-scan` job 会拿 `pubspec.lock` 查 OSV，
+      有**已知漏洞**的必须在发版前处理——CI 的 `osv-scan` job 会扫描根工程与插件包两份 `pubspec.lock`，
       口径见 `.trellis/spec/cross-cutting.md` 的「供应链门禁」
 - [ ] 应用图标已更新：`dart run flutter_launcher_icons`
 

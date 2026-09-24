@@ -46,7 +46,7 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 | --- | --- |
 | API ↔ Service | 字段漏映射、可空性假设不一致 |
 | Service ↔ DAO | 模型 ↔ drift 行类转换、`null` 处理 |
-| core ↔ feature | 依赖方向搞反（`core` 不能 import feature，`tool/check_boundaries.dart` 会拦） |
+| core ↔ feature | 依赖方向搞反（`core` 不能 import feature，`packages/app_lints` 插件会拦） |
 | Notifier ↔ Page | 状态类型（`AsyncValue`）与渲染分支不匹配（一律走 `AsyncView`） |
 
 ### Step 3: Define Contracts

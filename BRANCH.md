@@ -34,19 +34,22 @@ git rev-list --count master..HEAD           # 提交数
 
 围绕这三件事的连带改动：
 
-- 没装 `riverpod_lint`：它自 3.1.0 起用 `analysis_server_plugin`，与项目的 `analyzer` 13.3.0
-  不冲突、装得上——但门禁跑的是 `flutter analyze lib/ test/`，而 `flutter analyze` 不加载
-  analyzer 插件（`dart analyze` 只在传单个文件时加载；实测表见
-  [`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)）。要接它就得把门禁改成
-  逐个文件 `dart analyze`。本仓库的立场是**门禁逻辑一律是脚本**，为几条 lint 换掉整条门禁
-  不划算。代价是 provider 命名一类的事没有 lint 兜（`riverpod_generator` 把 `XxxNotifier`
-  命名成 `xxxProvider`，写页面时容易踩）。
+- 已接入 `riverpod_lint` 3.1.9：它自 3.1.0 起用 `analysis_server_plugin`，与项目的 `analyzer`
+  13.3.0 兼容（实测 `dart pub get` 解析通过）。但 `flutter analyze` **不**加载它——
+  `dart analyze` 只在**显式传文件名**时加载（单文件 / 多文件都行；**传目录会丢插件诊断**，
+  2026-09-24 用探针复测，见 `.trellis/spec/cross-cutting.md`）。因此根 `justfile` 的两步
+  analyze 从 `flutter analyze` 换成 `dart analyze --fatal-infos` 并显式传 lib/test/tool/packages 的
+  手写文件列表 —— `--fatal-infos` 对齐原 `flutter analyze` 的严格度（插件诊断默认 info 级、
+  退出码 0 拦不住提交）。它的 15 条里没有本仓库要的那条（`build` 里禁 `ref.read` 取值），
+  那条仍由 `packages/app_lints/` 插件兜（`avoid_ref_read_in_build`）；`unsupported_provider_value` 一条因 `AppRouter` 经
+  `RouterBase` 继承 `ChangeNotifier` 被误伤，已在 analysis_options.yaml 的
+  `plugins.diagnostics` 里单独关闭。门禁规则已无自定义检查脚本：根 `justfile` 只编排现成命令，边界与形态约定全在插件，覆盖率门禁已移除。
 - `features/article/` 与 `features/demo/` 的业务内容删掉，收敛成一个 **`features/sample/`**
   金标准：它同时覆盖三种 data 形态（Retrofit API / Drift DAO / `Result` 包装的 Service）
   与三种 provider 形态，是 AI 唯一需要照抄的对象。
-- `.trellis/spec/` 与 `docs/` 的 Riverpod 口径重写；`docs/adr/ADR-0001.md`、`ADR-0002.md`、
-  `docs/architecture-review.md` **正文一字未动**，只在顶部加了「仅对 master 成立」的适用范围框。
-- 门禁脚本按 Riverpod 调口径（见下）。
+- `.trellis/spec/` 与 `docs/` 的 Riverpod 口径重写；换栈当时未改
+  `docs/adr/ADR-0001.md`、`ADR-0002.md` 与 `docs/architecture-review.md` 的正文，后续只补了「仅对 master 成立」的适用范围说明。
+- 门禁按 Riverpod 调口径（见下）。
 - `.agents/skills/` 的技能目录：删掉 signals 系与栈冲突的 `flutter-*`，
   换成 `riverpod-*` 系列（来源 `serverpod/skills-registry`，记录在 `skills-lock.json`）。
 - `.cursor/rules/` 只留 `project-conventions.mdc`（总纲 + 指路），
@@ -111,12 +114,11 @@ git rev-list --count master..HEAD           # 提交数
   不是「可以不跑」。门禁块现在是一条命令：
 
   ```bash
-  dart run tool/verify.dart
+  just verify
   ```
 
-  （它按顺序跑 8 项、首个失败即停。4 道脚本门禁在同一个进程里，省掉 3 次 `dart run`
-  的 VM 启动与 sqlite3 build hook —— 只快几秒，收益主要是「只记一条命令」+「早停」。
-  完整清单见 `AGENTS.md` 的 `## 改完必跑`。）
+  （它按顺序跑 5 项、首个失败即停。收益主要是「只记一条命令」+「早停」。
+  完整清单见 `README.md` 的「门禁」。）
 - 生效一次本地钩子：
 
   ```bash
@@ -128,24 +130,20 @@ git rev-list --count master..HEAD           # 提交数
 
 ---
 
-## 门禁（脚本，不是 IDE 插件）
+## 门禁
 
 ```bash
-dart run tool/verify.dart                 # 全套，首个失败即停
+just verify                 # 全套 5 项，首个失败即停
 ```
 
-单项重跑用下面的原始命令（`verify.dart` 转发给的就是它们）：
+单项重跑用对应 recipe：
 
 ```bash
-dart format --output=none --set-exit-if-changed lib test tool
-dart run tool/check_boundaries.dart        # 架构边界（lib）
-dart run tool/check_conventions.dart       # build 里禁 ref.read 取值 / 注释块上限
-dart run tool/check_readme_tree.dart       # README + spec 的目录树
-flutter analyze lib/ test/
-dart analyze --fatal-infos tool/
-flutter test --coverage
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib   # 阈值 80%
+just fmt-check
+just analyze
+just test-app-lints
+just test
 ```
 
-规则语义、阈值与「为什么这么做」都在
+规则语义与「为什么这么做」都在
 [`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)。

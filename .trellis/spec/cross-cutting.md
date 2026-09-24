@@ -5,81 +5,65 @@
 
 ---
 
-## 架构边界检查（`tool/check_boundaries.dart`）
+## 架构边界与形态约定（`packages/app_lints/` 插件）
 
-边界规则**不是** analyzer 插件，而是一个脚本：
-
-```bash
-dart run tool/check_boundaries.dart     # 退出码 0 = 通过，1 = 有违规
-                                        # 默认扫 lib
-```
-
-它跑在 pre-commit 与 CI（`analyze` job）里，`test/tool/check_boundaries_test.dart` 也会在 `flutter test` 时跑一遍真实仓库。
-
-**扫描根是 `lib`。**（`master` 是双包结构，那里还要扫 `packages/app_core/lib`——不扫它新包就成了**边界真空**。本分支已单包化。）
-
-**为什么不用 analyzer 插件**：门禁跑的是 `flutter analyze lib/ test/`，而 `flutter analyze`（无论传文件还是目录）**不加载** analyzer 插件；`dart analyze` 会加载，但只在传**单个文件**时。实测（Flutter 3.47.5 / Dart 3.13.4，`riverpod_lint` 3.1.9 + `analysis_options.yaml` 顶层 `plugins:`，同一个探针文件）：
-
-| 命令 | 插件生效 |
-|------|---------|
-| `dart analyze lib/x.dart` | ✅ 报诊断，退出码 2 |
-| `dart analyze lib` | ❌ |
-| `flutter analyze lib/x.dart` | ❌ |
-| `flutter analyze lib/ test/` | ❌ |
-
-历史教训——`features/profile/page` 引用过 `features/auth/logic`，而 `flutter analyze` 一直报告「No issues found」：原因就在这里，不是规则写错了，是跑它的那条命令不加载插件。声明成 `error` 却没有任何东西验证它会触发，比没有规则更糟（给人有门禁的错觉）。要用插件就得把门禁改成对每个文件逐个 `dart analyze`——为几条 lint 换掉整条门禁不划算，而边界规则用脚本反而更直白。
+四条规则由**分析插件**实现（`analysis_server_plugin`），不是脚本：
 
 | 规则 | 效果 |
 |------|------|
-| `core/` 不得 import 上层 | `core/**` 不能 import `features/**` 或 `app/**` |
-| 跨 feature 只共享 `data/` | 不能引用其他 feature 的 `page/` / `logic/` |
-| `features/*/logic/` 不得手动建容器 | logic 层里不得出现 `ProviderContainer(...)` / `ProviderContainer.test(...)`——依赖从 `ref` 或构造器取 |
-| `features/*/logic/` 不得依赖 Flutter UI | logic 层不得 `import 'package:flutter/material.dart'` |
+| `no_upper_import_in_core` | `core/**` 不能 import/export `features/**` 或 `app/**` —— 依赖方向只能是 features → core |
+| `cross_feature_only_data` | 不能 import/export 其他 feature 的 `page/` / `logic/` —— 跨 feature 只共享 `data/` |
+| `no_material_import_in_logic` | `features/*/logic/` 不得 import/export `package:flutter/material.dart` |
+| `avoid_ref_read_in_build` | `build` 里不得用 `ref.read` 取 provider 值；`ref.read(xxx.notifier)` 不在管辖内 |
 
-前两条是依赖方向；后两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`），
-而不是自己建容器、或伸手进 widget 层去拿 `BuildContext`。
+前两条是依赖方向；后两条是同一件事的两面：状态层与 UI 之间必须有明确的接线口（provider + `ref`），而不是自己建容器、或伸手进 widget 层去拿 `BuildContext`。
 
-```dart
-// ✅ 依赖从 provider / 构造器进来：logic 层既不认识容器，也不认识 widget
-final repo = ref.watch(sampleRepositoryProvider);            // 订阅：provider 变了跟着变
-await ref.read(userPreferencesProvider).setThemeMode(mode);  // 一次性取值：方法 / 回调里
+| 想看什么 | 文件 |
+|---|---|
+| 规则实现（AST 适配 + 判据） | `packages/app_lints/lib/src/rules.dart` |
+| 路径 / URI 解析（纯函数） | `packages/app_lints/lib/src/paths.dart` |
+| 规则测试（`analyzer_testing`） | `packages/app_lints/test/rules_test.dart` |
+| 插件入口（`final plugin = ...`） | `packages/app_lints/lib/main.dart` |
+
+**启用点**（根 `analysis_options.yaml`）：
+
+```yaml
+plugins:
+  app_lints:
+    path: packages/app_lints
 ```
 
-放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart`）。
+四条都用 `registerWarningRule` 注册 → **默认开**，不需要在 `diagnostics:` 里逐条打开（只有 `registerLintRule` 注册的才默认关）。
 
-新加的两条判据都是**形态**级、不看语义：规则 3 认的是 `ProviderContainer` 后面紧跟 `(` 或 `.`（构造或静态访问），注释里提到这个词不会误报；规则 4 只认 `package:flutter/material.dart` 这一个 URI —— `foundation` / `widgets` 不管，页面层的 material 也不管（`lib/core/config/app_settings.dart` 为了 `ThemeMode` import material 是正当的）。
+插件包是**独立 package**（自带 `pubspec.yaml` / `pubspec.lock` / `.dart_tool`），**不并进 workspace**：它要跟 SDK 自带的 `analysis_server_plugin`（0.3.23 → 连带 analyzer 14.4.0），而本工程钉 `analyzer ^13.3.0`（`drift_dev` / `retrofit_generator` 要），两者放不进同一次解析。所以 `just deps` 会分别解析根工程与 `packages/app_lints`——门禁的 analyze 与插件测试两步都依赖这两个 package config。换来的是插件能**跟着 SDK 单独升级**，不被本工程的 analyzer 上限拖住。
 
-> **本分支已退役「页面必须给出可选注入点」**（master 的 [ADR-0001](../../docs/adr/ADR-0001.md) 缓解措施）。
-> 那条规则的前提是「页面从 service locator 取 ViewModel，测试替身只能靠可选构造参数塞进去」；
-> Riverpod 栈的注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段 ——
-> 规则与它的 ADR 一并只对 master（signals 栈）成立。
+> `packages/` 只放**真正独立的工具包**（当前只有它）。app 代码不抽包——`lib/core/` 保持拍平（它曾经是 `packages/app_core`，2026-09-23 拍平回来）。门禁的 analyze 因此分两步：`lib + test`，与 `tool + packages`。
 
-### 解析能力与 warning
+> 试过 workspace 方案（`workspace:` + `resolution: workspace`，插件钉 0.3.18 的 analyzer 13.3.0），**放弃了**：一次 pub get、插件源码天然进门禁，听着很好，但 (1) 成员包源码会进根工程的 **build_runner asset 图**——retrofit / json_serializable / drift_dev 遍历插件源码，在 `@reflectiveTest` 上解析失败、`drift_dev` 抛 `BuildStepCompletedException`，得靠 `build.yaml` 排除才不复现；(2) 插件与 app 的 analyzer 从此**绑定升降**，未来 SDK 要求插件升版时会**卡死整个仓库的 pub get**。这两条代价不值。
 
-脚本是**正则级**的，不是语义级：它只认「单行、单个 URI」的 `import` / `export`。两类写法它读不懂，会往 stderr 打 `⚠️ 疑似漏检`：
+### 为什么必须是插件 + `dart analyze`
 
-| 写法 | warning 文案 |
-|------|-------------|
-| `import` 与 URI 分行 | 以 import/export 开头但没解析出 URI |
-| 条件导入 `import 'a.dart' if (dart.library.io) 'b.dart';`，或 format 把 `as x` / `if (...)` 折到下一行 | 边界规则只检查了第一个 URI |
+诊断只在 `dart analyze` 下输出，`flutter analyze` 看不见它：
 
-**warning 不影响退出码**：它说的是「工具看不懂这一行」，不是「这行违规」，硬拦等于把工具的局限变成提交阻塞。拦提交的只有规则本身。
+- **`dart analyze` 加载插件并输出诊断 —— 但只在显式传文件名时**：单文件、多文件都行，**传目录不行**。2026-09-24 复测：把违反 `no_material_import_in_logic` 的文件放进 `lib/features/*/logic/` 后，`dart analyze --fatal-infos lib` 只报普通 lint（`unused_import` 等），不报插件那条；同一次会话里 `dart analyze --fatal-infos <该文件>` 报了。机制未查（是 CLI 在目录模式下没给插件 package 上下文，还是插件某一步拿到 null，未定），但结论可用：**门禁与 CI 都必须显式传文件名**。这条比看上去重要——改成目录模式不报错、只是少跑规则，正是本文件下面警告的「有门禁的错觉」。（`flutter analyze` 传目录同样只报「No issues found」，见下一条。）
+- **`flutter analyze` 不加载插件**：同样的 `plugins:` 配置下它只报「No issues found」；放一个不存在的插件名也不报错（对照 `dart analyze` 会报 `PluginManager` 错误）——它根本不进插件系统。这是上位 bug：[flutter#187999](https://github.com/flutter/flutter/issues/187999)（open，修复 [dart-lang/sdk#63805](https://github.com/dart-lang/sdk/pull/63805) 在途、未进 stable），不是设计取舍。
+- 所以根 `justfile` 的两步 analyze 是 `dart analyze --fatal-infos <显式文件列表>`：`--fatal-infos` 对齐原 `flutter analyze`（默认 fatal-infos）的严格度；显式传文件是**必须的调用形式**，Justfile 通过 `git ls-files` 列出未提交但未忽略的 Dart 文件，并顺带把生成物排除在外。**CI 与 pre-commit 不再自己拼这两步，统一跑 `just verify`** —— 调用形式有讲究，抄错不报错只少跑，所以不留第二份。`flutter analyze` 只在改名脚本的端到端回归里出现（那里只关心 `error`）。
+- 插件规则的 diagnostic **默认是 info 级**，`dart analyze` 会打印它但退出码 0；`--fatal-infos` 把它变致命（实测：info → 0、warning → 2、error → 3、info + `--fatal-infos` → 1）。规则本身也显式指定了 `DiagnosticSeverity.WARNING`。
 
-两条现实约束：
+`riverpod_lint` 走的是同一套机制（`plugins:` + warning 层默认开），见 `pubspec.yaml` 与 `analysis_options.yaml`。至此门禁规则**不再由自定义检查脚本实现**——根 `justfile` 只编排现成命令；原先剩下的覆盖率脚本也已移除（见下文「覆盖率门禁（已移除）」）。
 
-- 生成文件必须继续豁免——生成器的产物只保证「能编译」，不保证遵守本仓库的层次约定（路由要汇总所有 feature 的 `page/`），而且里面的违规没法手工修（要改的是注解 / 源文件）。
-- `test/tool/check_boundaries_test.dart` 的「真实仓库」用例**把 warning 也判失败**：`lib/` 一旦出现 warning，就说明该按 [architecture-review.md](../../docs/architecture-review.md) P4 的触发条件把脚本迁到 `package:analyzer` 的 AST（用 `parseString` 写脚本，执行模型仍是 CI 里的 `dart run`，不是退回 IDE-only 的插件）。
+历史教训——`features/profile/page` 引用过 `features/auth/logic`，而当时的门禁一直报告「No issues found」：问题不是规则写错了，而是**没有任何一道会被执行的门禁真的在跑它**。声明成规则却没人跑，比没有规则更糟（给人有门禁的错觉）。这条也是「规则必须挂在会被执行的命令上」的直接原因。
+
+### 判据细节
+
+- 全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。
+- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器的产物只保证「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。插件里那份与根 `justfile` 的排除列表**无法共享代码**（独立 package），改动时要一起改。
+- 放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。`core/` 引用 `lib/core/` 内部也放行。
+- `no_material_import_in_logic` 只认 `package:flutter/material.dart` 这一个 URI —— `foundation` / `widgets` 不管，页面层的 material 也不管（`lib/core/config/app_settings.dart` 为了 `ThemeMode` import material 是正当的）。
+- `avoid_ref_read_in_build` 的判据是两个 AST 事实：「最近的 `MethodDeclaration` 祖先叫 `build`」（方法体里的闭包也算）与「实参不是 `.notifier`」。正则做不到——dart format 会把 `ref` 与 `.read` 折到两行，而「在不在 build 里」根本不是行内信息。豁免 `.notifier` 是因为 `ref.read(loginProvider.notifier)` 取的是 notifier 实例本身（身份稳定、不参与订阅），页面拿它当方法接收者用（`onChanged: notifier.updateEmail`）是正当写法，换成 `ref.watch(...notifier)` 只会白添一次重建。
+- 包名 `package:my_app/` 在 `packages/app_lints/lib/src/paths.dart` 里硬编码（`selfPackagePrefix`），`tool/init_project.dart` 会全仓库替换它。
 
 ### 禁止模式
-
-```dart
-// ❌ logic 层自己建容器：依赖变成「自己搭的一整套环境」，注入口随之消失
-final container = ProviderContainer();
-final repo = container.read(sampleRepositoryProvider);
-
-// ✅ 正确：依赖从 ref 取 —— 订阅用 watch，一次性取值用 read
-final repo = ref.watch(sampleRepositoryProvider);
-```
 
 ```dart
 // ❌ 跨 feature 引用 page/logic
@@ -91,119 +75,55 @@ import 'package:my_app/features/sample/data/sample_repository.dart';  // data �
 import 'package:my_app/app/routing/router.dart';
 ```
 
+```dart
+// ❌ build 里用 ref.read 取值：不建立订阅，provider 变了界面停在旧值
+final value = ref.read(sampleListProvider);
+
+// ✅ 读值用 watch；一次性取值（方法 / 回调里）才用 read
+final value = ref.watch(sampleListProvider);
+await ref.read(userPreferencesProvider).setThemeMode(mode);
+```
+
+```dart
+// ❌ core/ 反向依赖业务：底座一旦认识 features，抽象就报废了
+import 'package:my_app/features/sample/data/sample_repository.dart';
+
+// ✅ core 只依赖 core 与第三方包
+import 'package:my_app/core/base/result.dart';
+```
+
 实际例子：feature 需要另一个 feature 的数据能力时，引它的 `data/` 层（如 `sample` 的 `sample_repository.dart`），而不是它的 `logic/` / `page/`。
 
----
+> **退役记录（2026-09-24，随脚本迁插件一并去掉两条）**：
+> - `features/*/logic/` 不得手动建 `ProviderContainer` —— 触发频率低（防的是「手滑绕过注入」），判据还是脆的标识符匹配，用户决定不要了。
+> - `comment_block_too_long`（连续注释块 ≤10 行）—— 同样是用户决定不要：长解释该进 spec 这条约定保留（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)），但不再用门禁拦。
+> 另退役：`avoid_async_state_map` 随 signals 栈退役（`AsyncValue.when` 的回调具名且具类型，配错在编译期就是 error；三态渲染仍统一走 `AsyncView`，但那是约定不是门禁）。
 
-## 代码形态约定（`tool/check_conventions.dart`）
-
-边界脚本管「谁能依赖谁」，这个管「代码写成什么样」。同样不是 analyzer 插件，同样跑在 pre-commit 与 CI 的 `analyze` job 里：
-
-```bash
-dart run tool/check_conventions.dart     # 默认扫 lib/，退出码 0 = 通过，1 = 有违规
-```
-
-| 规则 | 效果 |
-|------|------|
-| `avoid_ref_read_in_build` | `build` 里不得用 `ref.read` 取 provider 值（不建立订阅）；`ref.read(xxx.notifier)` 取 notifier 实例不在管辖内 |
-| `comment_block_too_long` | 连续注释块最多 10 行，超限就把解释搬进 spec |
-
-**为什么这条用 `package:analyzer` 而不是正则**：判据落在 AST 的两件事上——「调用点在不在名为 `build` 的方法体内」（方法体里的闭包也算）与「实参是不是 `.notifier`」。正则做不到：dart format 会把 `ref` 与 `.read` 折到两行，而「在不在 build 里」根本不是行内信息。执行模型仍是 CI 里的 `dart run`，与 [architecture-review.md](../../docs/architecture-review.md) P4 说的「迁到 AST」是同一件事。
-
-**为什么豁免 `.notifier`**：`ref.read(loginProvider.notifier)` 取的是 notifier 实例本身，身份稳定、不参与订阅，页面拿它当方法接收者用（`onChanged: notifier.updateEmail`）是正当写法 —— 换成 `ref.watch(...notifier)` 只会白添一次重建。
-
-> 退役记录：`avoid_async_state_map` 随 signals 栈一起退役。它的前提是 `AsyncState.map` 的回调签名（`error` 收到一个还是两个参数）运行期才校验；`AsyncValue.when` 的回调具名且具类型，配错在编译期就是 error。三态渲染仍然统一走 `AsyncView`，但那已是约定而不是门禁。
-
-**为什么注释也进门禁**：长解释留在代码里会和实现抢注意力，且改了一处、另一处就成了假信息（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)）。扫描根与边界脚本一致（`lib`）；`tool/` 脚本的头注释本身就是门禁的设计说明，`test/` 的说明性注释同理，都不扫。
+> **本分支已退役「页面必须给出可选注入点」**（master 的 [ADR-0001](../../docs/adr/ADR-0001.md) 缓解措施）。
+> 那条规则的前提是「页面从 service locator 取 ViewModel，测试替身只能靠可选构造参数塞进去」；
+> Riverpod 栈的注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段 ——
+> 规则与它的 ADR 一并只对 master（signals 栈）成立。
 
 ---
 
-## 目录树一致性（`tool/check_readme_tree.dart`）
+## 目录树一致性（已移除）
 
-文档里的 `lib/` 目录树是**结构性快照**：加删文件时它不会自己更新，而 markdown 链接检查也管不到它 —— 树里的路径是纯文本，不是链接，编辑器和 Git 都不会报错。真实发生过：README 写着早已搬走的 `lib/core/routing/`，同时又漏着 `run_catching.dart`、`async_view.dart`、`features/demo/`。
-
-```bash
-dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出入
-```
-
-两条规则：
-
-1. 树里列出的每个路径都必须真实存在
-2. 树里**已展开**的目录，其实际内容（生成物除外）必须全部列出
-
-「已展开」= 该目录下面还有缩进更深的条目。只写到目录名、不展开子项的（如 `features/sample/`）视为刻意省略，不检查其内容；用模板占位符展开的（如 `features/{feature}/`）同样跳过。
-
-`targets` 是「文档 → 目录树根」**对**的列表（不是 doc → root 的映射），因为一个文档里可以有多棵树：
-
-| 文档 | 根 |
-|------|----|
-| `README.md` | `lib` |
-| [frontend/directory-structure.md](frontend/directory-structure.md) | `lib` |
+> 2026-09-24 起 `check_readme_tree` 门禁已删除：README 与
+> [frontend/directory-structure.md](frontend/directory-structure.md) 里的 `lib/` 目录树
+> 不再有门禁核对，纯靠人工维护。树里的路径是纯文本，编辑器与 Git 都不会报错——
+> 增删 `lib/` 文件后记得顺手同步这两处。
 
 ---
 
-## 覆盖率门禁（`tool/check_coverage.dart`）
+## 覆盖率门禁（已移除）
 
-架构边界管「谁能依赖谁」，覆盖率管「有没有测过」，两者互补。
-
-```bash
-flutter test --coverage                         # → coverage/lcov.info
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib
-dart run tool/check_coverage.dart --min=85      # 不传路径则只查 coverage/lcov.info
-```
-
-- 跑在 pre-commit 与 CI 的 `unit-test` job 里
-- **只统计手写代码**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` / `*.gen.dart` / `app_localizations*` 不计入。生成代码的行数不是人能守的，算进去只会稀释阈值
-- 判定复用 `tool/check_boundaries.dart` 的 `isGeneratedPath`，两处口径不会漂移
-- 按**行数加权**，不是按文件平均——500 行的文件与 5 行的文件不该等权
-- 阈值默认 80%（`test/tool/check_coverage_test.dart` 覆盖脚本自身的解析与差集逻辑）
-
-**本分支是单包结构**，一份 `coverage/lcov.info` 覆盖全部 `lib/`。
-（`master` 是双包：`app_core` 是独立 package，根工程跑 `flutter test --coverage` 时包内文件的
-命中不会被归集，只能在包目录里单独采集，两份 lcov 逐份独立校验、不合并。）
-
-### 差集检查（`--src`）
-
-`--src` 指定扫描根（多份时与位置参数的 lcov **按序配对**），开启差集检查：拿扫描根下（`dartFiles()`，与
-`handwrittenOnly()` 同一口径）的手写文件清单，减去该 lcov 的 `SF:` 集合。
-
-```bash
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib
-```
-
-- 多个 `--src` 与多份 lcov 按序配对；个数不匹配直接以非零退出码结束——错位**不会报错、只会静默算错分母**，这是这里最坏的失败形态
-- 差集里的文件按 `0 命中 / 非空行数` **计入分母**（不是只报告）：没有豁免时门禁自动变严，
-  新增一个没测的大文件不必等谁记得加规则。行数是代理值——精确的可执行行数拿不到，
-  用非空行数刻意从严
-- 路径匹配是**边界感知的后缀**匹配：lcov 的 `SF:` 与扫描根路径的基准可能不同，用
-  `repoPath == sfPath || repoPath.endsWith('/$sfPath')` 对上，不需要额外传前缀
-
-**豁免清单**（`tool/check_coverage.dart` 的 `loadingExemptions`）是唯一的逃生口，只放
-**结构上不可能被加载**的文件，每条必须写理由。注意「不在 lcov 里」有两种成因：没被加载，
-以及没有可执行行（只有 `const` 与声明）——**差集检查只能看见第一种**，第二种必须显式写进
-豁免（理由即证据）。过期豁免（已进分母）只打 warning，不拦提交。
-
-| 类别 | 例子 | 处理 |
-|---|---|---|
-| 抽象声明 / redirecting factory | `sample_api.dart` | 豁免（无可执行行） |
-| 只有 `const` / 纯接口 | `sample_repository.dart` | 豁免（无可执行行） |
-| 只被 `integration_test` 执行的入口 | `main.dart`、`bootstrap.dart` | 豁免（`flutter test --coverage` 不含 `integration_test/`） |
-| **本该被测但没测** | —— | **补测试，不许豁免** |
-
-快照（2026-09-23，删除认证功能后实测）：
-
-| | 手写文件 | 进分母 | 豁免 | 覆盖率 |
-|---|---|---|---|---|
-| `lib/`（含已拍平的基础设施） | 40 | 36 | 4 | 89.7% |
-
-（删认证前是 57 / 49 / 8 / 90.0% —— 分子分母同时缩水，比例基本不动。
-`master` 是双包：根 `lib/` 37 文件 + `packages/app_core` 20 文件，两份 lcov 各算各的。）
-
-同一个快照里 `lib/app/app.dart` 从「差集里的一个文件」变成了
-`test/app/app_test.dart`：它是组合根，装配错了集成测试才会红，而集成测试不进覆盖率统计。
-
-> 加豁免时先问一句：这是「结构上不可能被加载」，还是「暂时来不及测」？
-> 后者要补测试。条目变多本身就是信号。
+> 2026-09-24 起 `tool/check_coverage.dart` 与 `test/tool/check_coverage_test.dart` 一并删除：
+> pre-commit 与 CI 都不再查覆盖率，**门禁里因此没有脚本了**（只剩 `dart format`、
+> `dart analyze`、`dart test`、`flutter test` 这几条现成命令）。
+> 随之消失的是 80% 阈值、`--src` 差集检查与 `loadingExemptions` 豁免清单；
+> 门禁跑测试也从 `flutter test --coverage` 退回 `flutter test`，不再生成 lcov。
+> 想临时看数字就自己跑 `flutter test --coverage`，那是人工参考，不拦提交。
+> 历史实现在 `5508e2e` 的 `tool/check_coverage.dart`。
 
 ---
 
@@ -218,7 +138,7 @@ dart run tool/init_project.dart --yes --name=my_next_app \
 覆盖范围（每一项都是「必改点」）：`pubspec.yaml` 的 `name` / `description`、全仓库
 `package:<旧名>/`、根组件类名、Android `namespace` + `applicationId` + `android:label` +
 `MainActivity.kt`（连目录一起搬）、iOS `PRODUCT_BUNDLE_IDENTIFIER`（含 `.RunnerTests`）
-与 `CFBundleDisplayName` / `CFBundleName`。**`tool/check_boundaries.dart` 里硬编码的
+与 `CFBundleDisplayName` / `CFBundleName`。**`packages/app_lints/lib/src/paths.dart` 里硬编码的
 `package:<包名>/` 前缀也在替换范围内**——漏了它，边界门禁会把所有 import 当成外部包
 静默放行。
 
@@ -242,20 +162,20 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 > 2026-09-24 改写：这里原来是一道独立门禁 `dependency_validator`，已移除 —— 理由与代价见本节末。
 
-「声明与使用是否一致」现在只剩 analyzer 自带的一条 lint `depend_on_referenced_packages`。它**没有被提升级别**（`analysis_options.yaml` 里保持默认的 info），但**在 `lib/` `test/` 上照样拦得住**——`flutter analyze` 默认带 `--fatal-infos`。豁免就是就地一条 `// ignore: depend_on_referenced_packages -- 理由`。
+「声明与使用是否一致」现在只剩 analyzer 自带的一条 lint `depend_on_referenced_packages`。它在 `analysis_options.yaml` 的 `analyzer.errors` 里被显式提升为 **error**，**不依赖跑它的那条命令**。豁免就是就地一条 `// ignore: depend_on_referenced_packages -- 理由`。
 
 | 检查 | 谁管 |
 |------|------|
-| 在 `lib/` 里 import 了只声明在 `dev_dependencies` 的包（under-promoted） | `depend_on_referenced_packages`；`flutter analyze lib/ test/` 拦（info 也是 fatal） |
+| 在 `lib/` 里 import 了只声明在 `dev_dependencies` 的包（under-promoted） | `depend_on_referenced_packages`（配置里是 error）；`dart analyze --fatal-infos` 拦 |
 | import 了压根没声明的包（missing） | 同上 |
-| **`tool/` 里的同类问题** | 同上 —— 门禁第 6 项带 `--fatal-infos`，两边口径已拉平（见下方注） |
+| **`tool/` 与 `packages/` 里的同类问题** | 同上 —— 门禁用显式文件列表执行 `dart analyze --fatal-infos`，口径没有分叉 |
 | 声明成 `dependency` 却只在 `test/` `tool/` 里用（over-promoted） | **无人管**（有意） |
 | 声明了但没人用（unused） | **无人管**（有意） |
 | pubspec 里写了精确版本（pinned） | **无人管**（有意） |
 
 后三类**从原理上**就看不见：「声明在 `dependencies`」永远能满足 import，所以「放上去了、但该放在下面」这种错它无从报起。
 
-> **两条 `analyze` 命令的默认值不一样**，这是不显然的一条。实测（2026-09-24）同一个 info 级的依赖漏声明：`flutter analyze lib/ test/` → **exit 1**，`dart analyze lib` → **exit 0**。这个不对称是默认值造成的、不是规则本身，所以门禁第 6 项显式写成 `dart analyze --fatal-infos tool/`，把两边拉平。端到端验证过：往 `tool/` 放一个未声明的 import，门禁停在第 6 项、退出码 1（不加 flag 时同一个 issue 的退出码是 0）。
+> **为什么级别写在配置里，而不是靠命令行 flag**：两条 `analyze` 命令的默认值不一样——实测（2026-09-24）同一个 info 级的依赖漏声明，`flutter analyze lib/ test/` → **exit 1**，`dart analyze lib` → **exit 0**。以前的做法是给 `tool/` 那一项补 `--fatal-infos` 把两边拉平，代价是「得记住这条命令要加 flag」成了必须维护的不显然知识，而且换个命令（裸跑 `dart analyze`）就静默放过。现在两端都消掉了对默认值的依赖：规则级别写进 `analysis_options.yaml`（`error`），门禁的两步 analyze 都使用 `dart analyze --fatal-infos` 并显式传文件列表 —— `tool/` 与 `packages/` 里的 info 也按 `lib/` `test/` 的严格度拦。
 
 ### 为什么移除 `dependency_validator`
 
@@ -271,7 +191,7 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 它是 `json_serializable` 的**构建期契约**，不是冗余声明：生成 `lib/` 下的代码时，该包要求 `json_annotation` 出现在 pubspec 的 `dependencies` 且下界 ≥ `4.12.0`（判据是 `json_serializable/lib/src/check_dependencies.dart` 的 `requiredJsonAnnotationMinVersion`）。源码里不会出现它的 import —— `@JsonKey` 只出现在生成的 `sample_item.freezed.dart` 里，符号经 `freezed_annotation` 的 re-export 提供。
 
-> 违反这条契约的后果很隐蔽：codegen 照常能跑（`json_annotation` 由 10 个包传递带入），只是 `build_runner` 打一条警告——而**这条警告不在门禁里**（`verify.dart` 的 8 项没有 build_runner 那一步；跑 codegen 的是 CI 的 `analyze` job，本分支又不触发 CI）。本分支就是把它连同认证功能一起误删的，靠手动跑 `build_runner` 才发现。
+> 违反这条契约的后果很隐蔽：codegen 照常能跑（`json_annotation` 由 10 个包传递带入），只是 `build_runner` 打一条警告——而**这条警告不在门禁里**（`just verify` 的 5 项没有 build_runner 那一步；跑 codegen 的是 CI 的 `analyze` job，本分支又不触发 CI）。本分支就是把它连同认证功能一起误删的，靠手动跑 `just codegen` 才发现。
 
 ---
 
@@ -297,9 +217,9 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 - 用官方的 reusable workflow（`google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0`）
   而不是自己拼 `run: osv-scanner …`：CLI 在 v1 → v2 之间子命令化过，手写的调用会在某次
   升级后静默失效或直接报错。版本号是**固定 tag**，升级时同时改这一处即可。
-- `scan-args` 只给 `--lockfile=./pubspec.lock`（默认是 `-r ./`，会连 `build/`、`.dart_tool/`
-  一起扫）；`upload-sarif: false` 让结果只落在 job 日志里，私有仓库 / 未开 Code Scanning
-  的仓库不会因为这一步变红。
+- `scan-args` 显式给根工程与独立插件包两份 lockfile（默认的 `-r ./` 会连 `build/`、
+  `.dart_tool/` 一起扫）；`upload-sarif: false` 让结果只落在 job 日志里，私有仓库 /
+  未开 Code Scanning 的仓库不会因为这一步变红。
 
 > 与 [release-checklist.md](../../docs/release-checklist.md) 的分工：清单管「发版前必须
 > 人工确认的事」，这里管「每次 push / PR 自动挡住的事」。
@@ -310,7 +230,7 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 ### 策略：生成物提交入库
 
-`.gitignore` **不排除**生成物，它们全部提交进 git。判定「哪些是生成物」只有一个口径——`tool/check_boundaries.dart` 的 `isGeneratedPath()`（`tool/check_coverage.dart` 与 `tool/check_readme_tree.dart` 都复用它）：
+`.gitignore` **不排除**生成物，它们全部提交进 git。判定「哪些是生成物」有两个执行口径，但必须同步维护：根 `justfile` 的 analyze 排除列表，以及插件 `packages/app_lints/lib/src/paths.dart` 的 `isGeneratedPath()`（插件是独立 package，无法共享 Justfile 表达式）：
 
 | 形态 | 例子 |
 |------|------|
@@ -323,7 +243,7 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 理由：
 
-- clone 下来 `flutter pub get` 之后**不跑 codegen** 就能 `flutter analyze` / `flutter test`；CI 里只有「生成物是否与源一致」那一步会执行 `build_runner`
+- clone 下来执行 `just deps` 之后**不跑 codegen** 就能 `flutter analyze` / `flutter test`；CI 里只有「生成物是否与源一致」那一步会执行 `build_runner`
 - 生成物与源在同一个 commit 里，review 时能看见真实影响（多了哪些 API、Drift schema 改了什么）；不提交的话，换生成器版本会静默改变运行行为
 - 快照不依赖「codegen 工具链在当前机器上装得成功」
 
@@ -336,10 +256,10 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 | 时机 | 命令 |
 |------|------|
-| 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@riverpod` | `dart run build_runner build` |
+| 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@riverpod` | `just codegen` |
 | 增删代码文件（含删掉整个 feature） | 同上。删文件后**必须**重跑，否则 provider 注册与路由仍指向已删的类 |
 | 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（本分支已无 l10n，见 [frontend/localization.md](frontend/localization.md)） |
-| 升级 / 降级任一 codegen 包（`freezed`、`json_serializable`、`drift_dev`、`retrofit_generator`、`auto_route_generator`、`riverpod_generator`、`build_runner`） | `dart run build_runner clean` 后全量重建 |
+| 升级 / 降级任一 codegen 包（`freezed`、`json_serializable`、`drift_dev`、`retrofit_generator`、`auto_route_generator`、`riverpod_generator`、`build_runner`） | `just codegen-reset` |
 | 升级 Flutter / Dart SDK | 同上 |
 | 切分支、rebase / merge 后生成物冲突 | 解决源文件冲突后全量重建，生成物不手工编辑 |
 | CI 的 `Check generated code is up to date` 失败 | 按上表重跑，把生成物一起提交 |
@@ -355,7 +275,7 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 CI 的 `analyze` job 有一步（见 `.github/workflows/ci.yml`）：
 
 ```bash
-dart run build_runner build
+just codegen
 git add -N -- lib   # 让「新增」的生成物也进入 diff
 git diff --exit-code -- lib
 ```
@@ -364,9 +284,9 @@ git diff --exit-code -- lib
 
 - **为什么要 `git add -N`**：`git diff --exit-code` 看不见未跟踪文件，而最常见的漂移形态恰恰是「新增一个 `@freezed` 模型 → 多出一个 `.freezed.dart`」——只用 `git diff` 会放过它
 - 比的是 `build_runner build` 写盘后的结果，而不是 `--only-check`：两者等价，但后者要求 `build_runner` ≥ 2.16.0。当前 lock 是 2.16.1（可用），保留 `build` 是为了不把门禁绑死在小版本上
-- **pre-commit 有意不做这一步**：它要跑完整 codegen（本项目量级是几十秒），而 pre-commit 已经跑了 `flutter test --coverage`。漏提交由 CI 兜
+- **pre-commit 有意不做这一步**：它要跑完整 codegen（本项目量级是几十秒），而 pre-commit 已经跑了 `flutter test`。漏提交由 CI 兜
 - 这一步排在 `flutter analyze` 之前：生成物缺失时 analyze 会报一堆「找不到 `part` / provider」的噪声，先跑它能让报错指向真正的原因
-- `drift_dev` 生成 schema 需要 `sqlite3` 的动态库（本项目由 `sqlite3` 3.x 的 build hook 提供，`flutter pub get` 会准备）。这一步若在 CI runner 上失败，报错会指向 `sqlite3` / `hooks_runner`，而不是 build_runner 本身
+- `drift_dev` 生成 schema 需要 `sqlite3` 的动态库（本项目由 `sqlite3` 3.x 的 build hook 提供，`just deps` 会准备）。这一步若在 CI runner 上失败，报错会指向 `sqlite3` / `hooks_runner`，而不是 build_runner 本身
 - **本分支没有 l10n**，所以这一步里**没有** `flutter gen-l10n`：那个命令在缺 `l10n.yaml` 时会直接失败（见 [frontend/localization.md](frontend/localization.md)）
 
 ### 禁止模式
@@ -374,7 +294,7 @@ git diff --exit-code -- lib
 ```bash
 # ❌ 手改生成物 —— 2.16.0 起 build_runner 默认会修正被改过的输出（旧行为要显式开 --keep-modified-outputs）
 # ❌ 把 *.g.dart / app_localizations* 加进 .gitignore
-#    漂移检查、覆盖率口径、目录树检查三处都建立在「生成物提交」之上
+#    漂移检查建立在「生成物提交」之上
 # ❌ 用 --keep-modified-outputs 留住手改 —— 那是调试旧行为的开关，不是工作流
 ```
 
@@ -398,12 +318,12 @@ git diff --exit-code -- lib
 2.14.0 起除 `run` 外的命令**默认走 AOT 编译**，2.13.0 起增量构建有 1.4×~4× 的提升——这些收益**已经拿到**，因为实际版本由 lock 决定（2.16.1），不由 pubspec 里的 `^2.4.14` 决定。
 
 - **不要**为了「看起来新」把约束收紧成 `^2.16.1`：那只会让以后重新解析依赖时被无谓卡住
-- **重估的信号**：某个生成器抬高了对 `build_runner` 的下限（`flutter pub get` 会直接报冲突），或撞上 2.x 修不掉的构建 bug
-- 真做升级时的顺序：改约束 → `flutter pub upgrade <pkg>` → **`dart run build_runner clean` 后全量重建** → 生成物的 diff 单独成一个 commit 并完整过一遍（换版本常改变生成代码的形状）→ 跑 `flutter analyze` 与 `flutter test --coverage`
+- **重估的信号**：某个生成器抬高了对 `build_runner` 的下限（`just deps` 会直接报冲突），或撞上 2.x 修不掉的构建 bug
+- 真做升级时的顺序：改约束 → `flutter pub upgrade <pkg>` → **`dart run build_runner clean` 后全量重建** → 生成物的 diff 单独成一个 commit 并完整过一遍（换版本常改变生成代码的形状）→ 跑 `flutter analyze` 与 `flutter test`
 
 ### 「目录级 cache」（结论：不引入）
 
-先厘清一件事：build_runner **本来就有缓存**，粒度是 **asset（文件）级**，落在 `.dart_tool/build/`（已在 `.gitignore` 里）。第二次 `dart run build_runner build` 只重建受影响的子图——这就是它的增量模型，不需要额外引入什么。
+先厘清一件事：build_runner **本来就有缓存**，粒度是 **asset（文件）级**，落在 `.dart_tool/build/`（已在 `.gitignore` 里）。第二次 `just codegen` 只重建受影响的子图——这就是它的增量模型，不需要额外引入什么。
 
 「按目录切分 / 目录级 cache」的两条常见做法都不划算：
 
@@ -414,7 +334,7 @@ git diff --exit-code -- lib
 
 **CI 上不要 cache `.dart_tool/build/`**：该目录与 Dart SDK 版本、依赖解析结果强绑定。缓存命中不当时最坏的结果是「检查通过，但仓库里的生成物其实是旧的」——这道门禁的价值全在结论可信，快几秒不值这个风险。
 
-> 真到 codegen 成为瓶颈那天（builder 数量或 `lib/` 文件数明显翻倍），正确顺序是：先用 `dart run build_runner build --verbose-durations`（2.13.0 起）量出时间花在哪个 builder，再决定砍 builder 还是改构建结构，**最后**才考虑缓存。不要从「加个 cache」起步。
+> 真到 codegen 成为瓶颈那天（builder 数量或 `lib/` 文件数明显翻倍），正确顺序是：先用 `just codegen --verbose-durations`（2.13.0 起）量出时间花在哪个 builder，再决定砍 builder 还是改构建结构，**最后**才考虑缓存。不要从「加个 cache」起步。
 
 ---
 

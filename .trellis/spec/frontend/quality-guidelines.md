@@ -14,17 +14,17 @@
 
 3. **Business logic in widgets** — All async operations belong in Notifier / Service.
 
-4. **页面自己建 `ProviderContainer`** — 依赖从 `ref` 取。`features/*/logic/` 里出现 `ProviderContainer(...)` / `ProviderContainer.test(...)` 会被 `tool/check_boundaries.dart` 拦下（容器是测试与 `bootstrap()` 的东西，不是业务代码的）。
+4. **页面自己建 `ProviderContainer`** — 依赖从 `ref` 取（容器是测试与 `bootstrap()` 的东西，不是业务代码的）。这条**已无门禁**（2026-09-24 起不再拦），靠约定与 review。
 
-5. **在 `build` 里用 `ref.read` 取 provider 的值** — `ref.read` 不建立订阅，provider 变了界面不重建。`ref.read(xxxProvider.notifier)` 取实例是允许的（身份稳定、不参与订阅）。门禁：`tool/check_conventions.dart` 的 `avoid_ref_read_in_build`。
+5. **在 `build` 里用 `ref.read` 取 provider 的值** — `ref.read` 不建立订阅，provider 变了界面不重建。`ref.read(xxxProvider.notifier)` 取实例是允许的（身份稳定、不参与订阅）。门禁：`packages/app_lints` 插件的 `avoid_ref_read_in_build`（`dart analyze` 下生效）。
 
 6. **`setState()` for async/API data** — 数据加载用 `@riverpod` 的 `AsyncNotifier`（`Future<T> build()`），渲染用 `AsyncView`；`setState` 只留给动画 / 滚动这类纯 UI 状态。
 
 7. **`withOpacity()`** — Use `Color.withValues(alpha: X)` (Dart 3+).
 
-8. **`ref.read` / `ref.watch` 在 `logic/` 里绕过 provider 拿依赖** — logic 层的依赖要么走 `ref`（`ref.watch` / `ref.read` provider），要么走构造器；不得手动 new 服务、也不得 import widget 层（`features/*/logic/` 禁 `package:flutter/material.dart`，同样由 `check_boundaries` 拦）。
+8. **`ref.read` / `ref.watch` 在 `logic/` 里绕过 provider 拿依赖** — logic 层的依赖要么走 `ref`（`ref.watch` / `ref.read` provider），要么走构造器；不得手动 new 服务、也不得 import/export widget 层（`features/*/logic/` 禁 `package:flutter/material.dart`，由 `packages/app_lints` 插件的 `no_material_import_in_logic` 拦）。
 
-9. **Feature imports another feature's page/ or logic/** — Only core/ and another feature's data/ are allowed. Also enforced by `tool/check_boundaries.dart`; it additionally forbids `core/` importing `features/` or `app/`.
+9. **Feature imports or exports another feature's page/ or logic/** — Only core/ and another feature's data/ are allowed. Also enforced by the `packages/app_lints` plugin (`cross_feature_only_data`); it additionally forbids `core/` importing or exporting `features/` or `app/` (`no_upper_import_in_core`).
 
 10. **凭据放进 URL query** — 密码、令牌这类敏感值只能走**请求体**：query 会进入服务端访问日志、代理日志、浏览器或崩溃上报，等同于明文泄露。本分支不含认证，这条是给将来加回凭证时立的规矩（见 [optional-additions.md](../../../docs/optional-additions.md)）。
 
@@ -124,9 +124,7 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 
 | 内容 | 见 |
 | --- | --- |
-| 架构边界检查（`tool/check_boundaries.dart`）与禁止模式 | [../cross-cutting.md](../cross-cutting.md)「架构边界检查」 |
-| 代码形态约定（`tool/check_conventions.dart`：build 里禁 `ref.read` 取值、注释块上限） | [../cross-cutting.md](../cross-cutting.md)「代码形态约定」 |
-| 覆盖率门禁（`tool/check_coverage.dart`） | [../cross-cutting.md](../cross-cutting.md)「覆盖率门禁」 |
+| 架构边界与形态约定（`packages/app_lints/` 插件：依赖方向、logic 层纯度、build 里禁 `ref.read`）与禁止模式 | [../cross-cutting.md](../cross-cutting.md)「架构边界与形态约定」 |
 | 依赖声明（`depend_on_referenced_packages`，以及有意不设门禁的几类） | [../cross-cutting.md](../cross-cutting.md)「依赖声明」 |
 | 内存泄漏检测（`leak_tracker`） | [../cross-cutting.md](../cross-cutting.md)「Memory Leak Detection」 |
 | 集成测试（`integration_test/`，含「widget 测试里不要用真实 I/O」） | [../cross-cutting.md](../cross-cutting.md)「Integration Testing」 |

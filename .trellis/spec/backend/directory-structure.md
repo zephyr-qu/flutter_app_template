@@ -17,7 +17,7 @@ Page → Notifier → Repository (接口) → Service (实现) → Api (Retrofit
                                      Dao (Drift)  ← 缓存旁路
 ```
 
-- 依赖方向是 `page/ → logic/ → data/ → core/`，由 `tool/check_boundaries.dart` 强制（`core/` 不得 import 上层，跨 feature 只共享 `data/`）
+- 依赖方向是 `page/ → logic/ → data/ → core/`，由 `packages/app_lints/` 插件强制（`core/` 不得 import/export 上层，跨 feature 只共享 `data/`）
 - Notifier 拿到的是**装配好的 provider**（`ref.watch(sampleRepositoryProvider)`），装配本身在 `{feature}_providers.dart`
 - `Dto / Model` 只在 `data/` 层转换：Retrofit 拿到 JSON → 模型（`@freezed`），Service 返回 `Result<T, Failure>`
 - **缓存旁路**：Service 同时消费网络与 DAO —— 网络成功就刷新缓存，网络失败就回退到缓存。见 [database-guidelines.md](./database-guidelines.md) 的「Drift」一节
@@ -44,5 +44,5 @@ Repository 接口与 Service 实现并存时，用例见 `lib/features/sample/`�
 ## Generated Code
 
 - `.g.dart` / `.freezed.dart` / `.gr.dart` 与源文件同目录，**never edited manually**
-- `@riverpod` 也生成 `.g.dart`（provider 声明本身）—— 改过注解或增删 provider 后跑 `dart run build_runner build`
+- `@riverpod` 也生成 `.g.dart`（provider 声明本身）—— 改过注解或增删 provider 后跑 `just codegen`
 - 本分支**没有** `*.config.dart`：`injectable` 的 service locator 生成物随 master 的 DI 方案一起消失了

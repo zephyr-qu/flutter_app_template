@@ -10,7 +10,7 @@
 > |---|---|
 > | P1（VM 生命周期 / dispose） | 前提整节作废：`ref.watch` 的依赖由 provider 生命周期管理，不再有「谁把谁钉住」。见 `.trellis/spec/frontend/state-management.md`「生命周期」 |
 > | P3（页面层 `getIt` 的可测性代价） | **已消解**：注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段；规则 4 与 ADR-0001 的缓解措施一并退役 |
-> | P4（边界检查是正则级） | 仍成立，且 `check_conventions.dart` 已按本文的触发条件迁到 `package:analyzer` 的 AST；`check_boundaries.dart` 仍留在正则级 |
+> | P4（边界检查是正则级） | **已消解**（2026-09-24）：两个脚本整体删除，4 条规则改由 `analysis_server_plugin` 插件 `packages/app_lints/` 承担，判据落在 AST 上——正则级那批漏检/误报随之消失。下面 P4 正文保留原文，作脚本时代的记录 |
 > | P5（`runAsync` 的并发 / 刷新保护） | 由 `AsyncValue.copyWithPrevious` 与本项目的 `AsyncView` 承接（`data(null)` 那条定制语义保留），见 `state-management.md`「刷新与重试」 |
 > | P6（缓存回退无新鲜度标记） | 仍成立（`SampleService` 同样直接返回缓存） |
 > | P2 / P7 | 与状态管理无关，结论不变 |
@@ -125,7 +125,7 @@ if (disposed) {
 **最新状态**：**仍成立**（属有意权衡），但代价已被「可选注入点」削掉一部分，而且这条约定现在有门禁。
 
 - 取 ViewModel 的 4 个页面（`login_page`、`article_list_page`、`article_detail_page`、`storage_demo_page`）都留了可选注入点，对应测试直接 `Page(viewModel: fake)`，不碰 GetIt。
-- `tool/check_boundaries.dart` 规则 4 强制这三行（字段 / 构造参数 / `??` 兜底），新页面漏给会拦提交——**不加门禁的话，正是这部分会随时间失效**。
+- `tool/check_boundaries.dart` 规则 4 强制这三行（字段 / 构造参数 / `??` 兜底），新页面漏给会拦提交——**不加门禁的话，正是这部分会随时间失效**。（2026-09-24：规则 4 与脚本均已退役，本行只对 master 成立。）
 - 仍必须 `setUpTestApp()` 的：`test/routing/*`、`test/l10n/language_switch_test.dart`（挂的是真实 `MyApp`，绕不开容器）、`home_page_test`、`profile_page_test`（页面直接取 `AuthStorage` / `UserPreferences`，不是 ViewModel）。
 
 脚本管不到的是「测试是否真的走注入路径」（那要扫 `test/`）：注入点在、测试仍用 `setUpTestApp()` 是允许的，只是没拿到 ADR 承诺的收益。
@@ -133,6 +133,8 @@ if (disposed) {
 ---
 
 ### P4 — 边界检查是正则级，不是语义级
+
+> **2026-09-24 追加**：本节讨论的 `tool/check_boundaries.dart` 已**删除**，规则迁到插件 `packages/app_lints/`（AST 级）。下面「正则级」「warning 漏检提示」等描述保留原文，作脚本时代的记录；当前判据见 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)「架构边界与形态约定」。
 
 **原始判断**：多行 `import`、`part` / `part of`、条件导入都会漏；`.config.dart` 整文件豁免也是缺口。
 
@@ -159,7 +161,9 @@ if (disposed) {
 
 **澄清**：迁移到 `package:analyzer` 的 `parseString` 是**用 analyzer 的解析能力写脚本**，执行模型仍是 CI 里的 `dart run`——与「装一个 analyzer 插件」是两回事，不是退回插件。
 
-> 原文此处写的是「analyzer 插件只在 IDE 生效」。2026-09-24 实测为误：`dart analyze <单个文件>` 会加载插件并产出诊断（退出码 2），不会加载的是 `flutter analyze`（任何形式）与 `dart analyze <目录>`。详见 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)。
+> 原文此处写的是「analyzer 插件只在 IDE 生效」。2026-09-24 实测为误；本行原先的「更正」也只对了一半——`dart analyze` 加载插件与**传什么参数无关**：单文件、目录、多文件一次传入都会加载并产出诊断（用一个自写的最小插件验证；`plugins:` 支持 `path:` 绝对路径，本地开发不必先发布）。真正要留意的是**退出码**：插件规则的 diagnostic 默认 info 级，`dart analyze` 会打印它但退出 0，提级为 warning/error 或加 `--fatal-infos` 才拦得住。详见 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)。
+>
+> **2026-09-24 追加更正**：上面「与传什么参数无关」这句对 `packages/app_lints/` 不成立。用违反 `no_material_import_in_logic` 的探针复测：**显式传文件**（单文件 / 多文件）报，**传目录**（`lib` 或它的子目录）不报（只出普通 lint）。门禁因此必须显式传文件名；口径以 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md) 为准，本行只作记录。
 
 **2026-09 追加**：这条路**已经走了一段**。新增的 `tool/check_conventions.dart` 用 `parseString` 直接建 AST——`AsyncState.map` 的判据是「同时带 `data` 与 `error` 两个具名实参」，正则分不清它和 `list.map(...)`，而误报会挡住提交；`package:analyzer` 也因此成为显式 dev_dependency。`check_boundaries.dart` **仍留在正则级**：本节的三条触发信号一条都没亮，它的规则也不需要 AST（口径见 `.trellis/spec/cross-cutting.md`「代码形态约定」）。
 

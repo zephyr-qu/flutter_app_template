@@ -63,7 +63,7 @@ sealed class Failure { ... }        // Error hierarchy
 - `*.freezed.dart` — `copyWith` / `==` / `hashCode`
 - `*.gr.dart` — auto_route
 - `*.config.dart` — 本分支**不存在**（那是 master 的 `injectable` service locator 生成物）
-- 改完注解跑 `dart run build_runner build`；**never edit generated files manually**
+- 改完注解跑 `just codegen`；**never edit generated files manually**
 
 ---
 

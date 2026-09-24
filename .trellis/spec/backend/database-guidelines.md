@@ -66,7 +66,7 @@ Always use `static const String _keyX = '...'` constants, never inline strings.
 
 | 内容 | 位置 | 为什么 |
 | --- | --- | --- |
-| 表结构、`schemaVersion`、迁移 | `lib/core/data/database/` | schema 是全局的，`@DriftDatabase` 必须看得见所有表；而 `core/` 不能 import feature（`check_boundaries` 强制） |
+| 表结构、`schemaVersion`、迁移 | `lib/core/data/database/` | schema 是全局的，`@DriftDatabase` 必须看得见所有表；而 `core/` 不能 import feature（`packages/app_lints` 的 `no_upper_import_in_core` 强制） |
 | 针对某张表的查询（DAO） | `features/{feature}/data/{feature}_dao.dart` | 查询按 feature 划分。写进 `AppDatabase` 就再也搬不出去（`core/` 不能反向依赖），只会随 feature 数无限膨胀 |
 
 这样加一个 feature 时 `core/` 只多一张表，查询代码不堆在 `core/` 里。
@@ -132,9 +132,9 @@ SampleDao sampleDao(Ref ref) => SampleDao(ref.watch(databaseProvider));
 
 - **加表**：新建 `tables/db_{name}.dart`，类名加 `Db` 前缀（见下节）→ 在
   `app_database.dart` 补一行 `part` → 加进 `@DriftDatabase(tables: [...])` →
-  升 `schemaVersion` 并补 `MigrationStrategy` → `dart run build_runner build`
+  升 `schemaVersion` 并补 `MigrationStrategy` → `just codegen`
 - **改表**：改 `tables/` 下的文件 → 升 `schemaVersion` 并补 `MigrationStrategy` →
-  `dart run build_runner build`
+  `just codegen`
 - 测试用内存数据库（`NativeDatabase.memory()`）：DAO 见
   `test/features/sample/data/sample_dao_test.dart`，缓存旁路见
   `test/features/sample/data/sample_service_test.dart`
@@ -274,6 +274,6 @@ await for (final entry in dir.list(recursive: true, followLinks: false)) {
 - ❌ **把 `prefs` 做成 `FutureProvider`** — `AsyncValue` 会一路传染到所有消费者（见 `lib/core/providers.dart`）
 - ❌ **给 `UserPreferences` 加状态管理依赖** — 它要能脱开容器单测；状态在 `AppSettingsNotifier` 里
 - ❌ **把 DAO 的查询逻辑塞进 `AppDatabase`** — 加 feature 会让 `core/` 无限膨胀，且查询再也搬不出去；查询放 feature 的 DAO 里（`@DriftAccessor`）
-- ❌ **Editing `*.g.dart` by hand** — regenerate with `dart run build_runner build`
+- ❌ **Editing `*.g.dart` by hand** — regenerate with `just codegen`
 - ❌ **Changing a Drift schema without bumping `schemaVersion`** — existing installs will not migrate
 - ❌ **Storing secrets in `SharedPreferences`** — 明文 XML/plist；凭证要走平台安全存储（见上文与 [optional-additions.md](../../../docs/optional-additions.md)）

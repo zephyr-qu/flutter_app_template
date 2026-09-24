@@ -38,18 +38,18 @@ dart run tool/init_project.dart --yes --name=your_app \
   id 前缀就能全带上。
 - **`CFBundleDisplayName` 与 `CFBundleName` 是两个 key**，值也不同（`Flutter App`
   vs `flutter_app`）。按 key 定位，别按值匹配。
-- **`tool/check_boundaries.dart` 里硬编码了 `package:<包名>/` 前缀**（正则级检查靠它
-  把 import 解析成仓库内路径）。忘了它，边界门禁会静默失效——所有 import 都被当成
-  外部包放行。脚本会一起改掉。
-- **`.dart_tool/package_config.json` 不用管**：它由 `flutter pub get` 重新生成，
-  改完名跑一次 `flutter pub get` 即可。
+- **`packages/app_lints/lib/src/paths.dart` 里硬编码了 `package:<包名>/` 前缀**（`selfPackagePrefix`，
+  边界规则靠它把 import 解析成仓库内路径）。忘了它，边界门禁会静默失效——所有 import 都被当成
+  外部包放行。`tool/init_project.dart` 会一起改掉。
+- **`.dart_tool/package_config.json` 不用管**：它由依赖解析重新生成，
+  改完名跑一次 `just deps` 即可。
 
 ## 之后
 
-1. `dart run build_runner build` —— 改了注解 / 增删文件后
+1. `just codegen` —— 改了注解 / 增删文件后
    必须重跑（生成物提交入库，CI 会比对漂移）；纯改名其实已经由脚本覆盖了生成物
-2. `flutter clean && flutter pub get`
-3. `flutter analyze` + 门禁脚本（清单以 `.githooks/pre-commit` 为准）
+2. `flutter clean && just deps`
+3. `flutter analyze` + `just verify`
 4. 需要图标就 `dart run flutter_launcher_icons`（`assets/icon/icon.png` 得先存在）
 
 ## 回归测试
@@ -63,9 +63,9 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 ### CI Pipeline / 门禁
 
-清单以 `.github/workflows/ci.yml` 与 `.githooks/pre-commit` 为准（codegen 漂移检查、
-`tool/check_boundaries.dart`、`tool/check_conventions.dart`、目录树一致性、依赖检查、
-覆盖率门禁）。改名不影响这些步骤，但**边界脚本里的包名前缀**是例外，见上面的坑。
+门禁清单以根 `justfile` 为准，`.github/workflows/ci.yml` 与 `.githooks/pre-commit`
+都通过它执行（codegen 漂移检查、`packages/app_lints/` 分析插件）。改名不影响这些步骤，
+但**插件里硬编码的包名前缀**是例外，见上面的坑。
 
 ### Environment Validation
 

@@ -24,18 +24,15 @@ Drift / SharedPreferences + **单语言中文**（没有 l10n）。
 
 ## 硬约束清单
 
-1. **架构边界**：改完 `lib/` 必须 `dart run tool/check_boundaries.dart`（退出码 0）。
-2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze --fatal-infos tool/`
-   必须干净（含 `depend_on_referenced_packages`：import 的包必须在 pubspec 里声明到正确的段）。
-3. **覆盖率门禁**：阈值 80%，`flutter test --coverage` 后
-   `dart run tool/check_coverage.dart coverage/lcov.info --src=lib`。
-4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**
+1. **架构边界与形态约定**：改完 `lib/` 必须通过 `packages/app_lints` 分析插件；门禁统一执行 `just verify`。
+2. **静态检查零容忍**：`dart analyze --fatal-infos`（`lib + test` 与 `tool + packages` 显式文件列表）必须干净（含 `depend_on_referenced_packages`）。
+3. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**
    （单语言脚手架，不走 ARB、不引入 `intl`）。
-5. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart`。
-   改注解或模型后 `dart run build_runner build`，并把生成物一起提交 —— CI 会比对这个 diff。
-6. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
-   设计取舍、踩坑、对照表格写 `.trellis/spec/`；连续注释块上限 10 行（门禁强制）。
-7. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、崩溃上报）
+4. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart`。
+   改注解或模型后 `just codegen`，并把生成物一起提交 —— CI 会比对这个 diff。
+5. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
+   设计取舍、踩坑、对照表格写 `.trellis/spec/`；连续注释块上限 10 行（约定）。
+6. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、崩溃上报）
    不是待办，除非用户明确要求。
 
 ## 目录地图（唯一合法布局）
@@ -57,7 +54,7 @@ lib/
     └── page/                # ConsumerWidget / ConsumerStatefulWidget
 ```
 
-依赖方向：`app → features → core`，由 `tool/check_boundaries.dart` 强制。
+依赖方向：`app → features → core`，由 `packages/app_lints` 插件强制。
 现有 feature：`home`（首页 + 主框架）、`profile`（个人中心）、
 **`sample`（示例，唯一照抄对象：data 三形态 + logic + page + 对应测试）**。
 

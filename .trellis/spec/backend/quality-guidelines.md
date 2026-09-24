@@ -12,8 +12,8 @@ These guidelines apply to:
 - `lib/features/*/data/` — API, service, repository, models
 - `lib/features/*/logic/` — Notifier（状态 + 业务编排）
 
-**架构边界**（`core/` 不得 import 上层、跨 feature 只共享 `data/`、`logic/` 不得手动建容器 /
-不得 import `package:flutter/material.dart`）以及所有门禁、测试基建与发布的约定，见
+**架构边界**（`core/` 不得 import/export 上层、跨 feature 只共享 `data/`、`logic/` 不得
+import/export `package:flutter/material.dart`）以及所有门禁、测试基建与发布的约定，见
 [../cross-cutting.md](../cross-cutting.md) —— 本文件不重复。
 
 ---
@@ -54,8 +54,6 @@ These guidelines apply to:
 5. **Business logic in the data layer** — 业务规则的**判断**（分支、阈值、策略）放 `logic/`；Service 只做转换与 I/O：调 API、读写缓存、把 `DioException` 映射成 `Failure`
 
 6. **`getOrThrow` in production code** — only in tests; use `when()` for exhaustive matching
-
-7. **`logic/` 里手动建容器** — 依赖从 `ref` 取（`ref.watch` / `ref.read` provider）或从构造器传入，**不要** `ProviderContainer(...)`，也不要自己 new 服务（`tool/check_boundaries.dart` 会拦）
 
 ---
 
