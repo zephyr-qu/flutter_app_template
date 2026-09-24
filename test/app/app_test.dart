@@ -12,8 +12,8 @@ import '../support/app_test_harness.dart';
 /// 全在这几十行里。断言本身不多，价值在「装配错了就红」——少接一个 provider、
 /// 路由指向已删的页面、主题模式没被 watch，都会在这里暴露。
 ///
-/// 集成测试也跑这条链路，但 `flutter test --coverage` 不含 `integration_test/`，
-/// 所以这里必须也有一条，否则 `lib/app/app.dart` 会一直是覆盖率盲区。
+/// 集成测试也跑这条链路，但 `integration_test/` 不在 `flutter test` 的范围内，
+/// 所以这里必须也有一条，否则组合根要等模拟器上的冒烟测试才会被验证。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 

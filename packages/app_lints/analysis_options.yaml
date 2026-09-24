@@ -1,0 +1,9 @@
+# 插件包自己的分析配置。
+#
+# 这是**独立 package**，故意不 `include` 根工程的规则集（`very_good_analysis`
+# 需要额外的 dev_dependency）；根工程门禁会显式分析这里的源码文件。
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true

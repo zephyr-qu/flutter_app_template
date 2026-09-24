@@ -137,9 +137,8 @@ void main(List<String> args) {
 
   stdout
     ..writeln('\n✅ 裁剪完成（--l10n=single）。接下来请手动确认：')
-    ..writeln('   1. flutter analyze lib/ test/')
-    ..writeln('   2. flutter test')
-    ..writeln('   3. .trellis/spec/frontend/localization.md 描述的是多语言形态，')
+    ..writeln('   1. just verify')
+    ..writeln('   2. .trellis/spec/frontend/localization.md 描述的是多语言形态，')
     ..writeln('      单语言分支上它已过期 —— 删掉或改写，并同步 frontend/index.md 的链接');
 }
 
@@ -565,7 +564,7 @@ Iterable<String> _localizationAwareFiles() sync* {
       final path = entity.path.replaceAll(r'\', '/');
       // 生成物直接随目录一起删，不参与改写
       if (path.contains('/l10n/')) continue;
-      // 门禁脚本的测试（test/tool/**）刻意用 `l10n.` / `package:.../l10n/...` 当
+      // 工具脚本的测试（test/tool/**）刻意用 `l10n.` / `package:.../l10n/...` 当
       // fixture 喂给本脚本，属于测试数据，不是真实调用点，别把它们一起改了。
       if (path.startsWith('test/tool/')) continue;
 

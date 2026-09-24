@@ -15,7 +15,8 @@ part 'providers.g.dart';
 /// frontend/directory-structure.md「应用层」。
 @Riverpod(keepAlive: true)
 AppRouter router(Ref ref) {
-  return AppRouter()..routeInfoProvider(
+  final appRouter = AppRouter();
+  return appRouter..routeInfoProvider(
     initialRouteInformation: RouteInformation(uri: Uri.parse(splashRoutePath)),
   );
 }

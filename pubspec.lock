@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "103.0.0"
+  analysis_server_plugin:
+    dependency: transitive
+    description:
+      name: analysis_server_plugin
+      sha256: c58b2a05b260a023eefd0848496ff6b113a318c6c95dad4215165a4bd54ae600
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.18"
   analyzer:
     dependency: "direct dev"
     description:
@@ -25,6 +33,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.4"
+  analyzer_plugin:
+    dependency: transitive
+    description:
+      name: analyzer_plugin
+      sha256: c2a75baf1657171cc7872db96a12b07e385873cf7a73f2b4f7638e9d0701ee53
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.14.12"
   ansicolor:
     dependency: transitive
     description:
@@ -844,6 +860,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.9"
+  riverpod_lint:
+    dependency: "direct dev"
+    description:
+      name: riverpod_lint
+      sha256: "215cb3cd54a97e09bc3512535fa4e8bedd3bf2a06dc2ae015ac8e0050fc71bd1"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.9"
   shared_preferences:
     dependency: "direct main"
     description:

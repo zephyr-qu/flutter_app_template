@@ -2,12 +2,10 @@
 #
 # Pre-commit hook for my_app scaffold.
 #
-# 一条命令跑完整个门禁块：`tool/verify.dart`。
-# 它把 4 道脚本门禁放进同一个进程（省掉 4 次 `dart run` 的 VM 启动 + sqlite3 build
-# hook），并按 AGENTS.md「改完必跑」的顺序执行、**首个失败即停**。
+# 一条命令跑完整个门禁块：`just verify`（5 项，首个失败即停）。
 #
-# 清单、阈值与「为什么这么做」见 .trellis/spec/cross-cutting.md。
-# 只跑其中某一项时直接手跑对应命令，见 AGENTS.md 的「改完必跑」。
+# 清单与「为什么这么做」见 README.md 的「门禁」与 .trellis/spec/cross-cutting.md；
+# 只跑其中某一项时直接手跑对应命令。
 #
 # Install with: git config core.hooksPath .githooks
 # To skip checks (emergency only):
@@ -19,7 +17,7 @@ echo "🔍 Running pre-commit checks..."
 STASH_NAME="pre-commit-$(date +%s)"
 git stash push -q --keep-index --include-untracked --message "$STASH_NAME" 2>/dev/null || true
 
-dart run tool/verify.dart
+just verify
 VERIFY_EXIT=$?
 
 # Restore stashed changes

@@ -1,0 +1,18 @@
+name: app_lints
+description: 本仓库的架构边界规则（analysis_server_plugin 插件）。
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # 独立解析：跟 SDK 自带的 analysis_server_plugin 对齐（Dart 3.13.4 下是 0.3.23）。
+  # 它连带 analyzer 14.4.0，与本工程的 analyzer ^13.3.0 是**两个不同版本**，
+  # 各自在自己的 package 里解析，互不干扰。
+  analysis_server_plugin: ^0.3.23
+  analyzer: ^14.4.0
+
+dev_dependencies:
+  analyzer_testing: ^0.4.2
+  test_reflective_loader: ^0.4.0

@@ -150,8 +150,8 @@ int runCli(
   say('');
   say('Next steps:');
   say('  1. Review changes with: git diff');
-  say('  2. Regenerate code: dart run build_runner build');
-  say('  3. Verify with: flutter analyze');
+  say('  2. Regenerate code: just codegen');
+  say('  3. Verify with: just verify');
   say('  4. Set environment: edit .env.development');
   say('  5. Commit: git add -A && git commit -m "chore: init as $newName"');
   return 0;

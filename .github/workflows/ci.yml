@@ -17,25 +17,26 @@ jobs:
           flutter-version: "3.47.5"
           channel: "stable"
 
+      - uses: extractions/setup-just@v3
+        with:
+          just-version: 1.58.0
+
       - name: Install dependencies
-        run: flutter pub get
+        run: just deps
 
       # 生成物（*.g.dart / *.freezed.dart / *.gr.dart）是提交进仓库的，因此必须与源
       # 保持一致。改了注解或增删文件却忘了重新生成时，这一步会拦下来。
       # 策略与重新生成时机见 .trellis/spec/cross-cutting.md「代码生成与生成物」。
       - name: Check generated code is up to date
         run: |
-          dart run build_runner build
+          just codegen
           # -N（intent to add）让「新增」的生成物也进入 diff —— 只用 git diff 会漏掉
           # 「新增一个 @freezed 模型 → 多出一个 .freezed.dart」这种最常见的漂移。
           git add -N -- lib
           git diff --exit-code -- lib || {
-            echo "::error::生成物与源不一致（见上方 diff）。本地执行 dart run build_runner build 并把生成物一起提交。";
+            echo "::error::生成物与源不一致（见上方 diff）。本地执行 just codegen 并把生成物一起提交。";
             exit 1;
           }
-
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test tool
 
       # 「过期」不等于「有漏洞」，也不等于必须马上升 —— 所以这一步**只报告**：
       # 实测 dart pub outdated 有可升级项时仍返回 0，判定口径不在它的退出码上；
@@ -45,56 +46,25 @@ jobs:
         run: dart pub outdated
         continue-on-error: true
 
-      - name: Check architecture boundaries (FSD)
-        run: dart run tool/check_boundaries.dart
-
-      # build 里禁 ref.read 取值 / 注释块上限（扫 lib/，见 tool/check_conventions.dart）
-      - name: Check code conventions
-        run: dart run tool/check_conventions.dart
-
-      - name: Check documented directory trees (README / spec)
-        run: dart run tool/check_readme_tree.dart
-
-      - name: Analyze app source (lib/)
-        run: flutter analyze lib/
-
-      - name: Analyze app tests (test/)
-        run: flutter analyze test/
-
-      - name: Analyze tool scripts (tool/)
-        run: dart analyze --fatal-infos tool/
+      # 格式、两步 analyze（架构边界/形态约定插件 + riverpod_lint）、插件规则测试、
+      # 单元与 widget 测试 —— **本地那一条命令，原样跑一遍**。
+      #
+      # 为什么不在这里手写各步：analyze 的调用形式是有讲究的，抄错不会报错、
+      # 只会静默少跑规则（2026-09-24 实测：`dart analyze <目录>` 不产出 app_lints
+      # 的诊断，显式传文件名才会 —— 详见根 justfile 与 cross-cutting.md）。
+      # 也只有这样 CI 与本地不存在第二份口径。
+      - name: Run gates (just verify)
+        run: just verify
 
       # 改名脚本的回归：`tool/init_project.dart` 会把仓库复制到临时目录、真的改一次名，
       # 再用 flutter analyze 验证改完的仓库自洽（import 没断、包名一致）。
       # SCAFFOLD_E2E=1 才跑那条端到端用例 —— 它要 pub get + analyze，慢。
       - name: Regression test (rename scaffold in temp dir)
-        run: flutter test test/tool/init_project_test.dart
+        run: just test test/tool/init_project_test.dart
         env:
           SCAFFOLD_E2E: "1"
 
-  unit-test:
-    needs: analyze
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.47.5"
-          channel: "stable"
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run unit & widget tests
-        run: flutter test --coverage
-
-      # 生成文件不计入阈值（口径与理由见 .trellis/spec/cross-cutting.md）。
-      # --src 开启差集检查：扫描根下没被 lcov 覆盖的手写文件按 0 计入分母 ——
-      # 少了它，一个从没被加载过的新文件不会让阈值下降。
-      - name: Check coverage threshold
-        run: dart run tool/check_coverage.dart coverage/lcov.info --src=lib --min=80
-
+  # 单元与 widget 测试没有单独 job：`just verify` 已经运行了 `flutter test`。
   integration-test:
     needs: analyze
     runs-on: ubuntu-latest
@@ -120,8 +90,12 @@ jobs:
           flutter-version: "3.47.5"
           channel: "stable"
 
+      - uses: extractions/setup-just@v3
+        with:
+          just-version: 1.58.0
+
       - name: Install dependencies
-        run: flutter pub get
+        run: just deps
 
       # 目标平台是 Android / iOS，集成测试就跑在 Android 模拟器上。
       # 不要用 xvfb：那是给 Linux 桌面目标用的，本项目没有 linux/ 平台目录。
@@ -134,7 +108,7 @@ jobs:
           profile: pixel_5
           # 不要传 emulator-options —— 一旦指定会覆盖 action 的全部默认值
           # （默认已含 -no-window / -gpu swiftshader_indirect，headless 需要它们）
-          script: flutter test integration_test/
+          script: just test integration_test/
 
   # ── 供应链门禁：拿 pubspec.lock 去 OSV 数据库查**已知漏洞**，命中即失败 ──
   # 它和 `dart pub outdated` 是两件事：后者管「有没有新版本」（只报告不拦），这里管
@@ -145,10 +119,11 @@ jobs:
   osv-scan:
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0
     with:
-      # 只扫 lockfile。默认的 `-r ./` 会把 build/、.dart_tool/ 这些产物
-      # 一并扫进去，又慢又吵，而依赖清单在仓库里只有 pubspec.lock 一份。
+      # 只扫根工程与独立插件包的 lockfile。默认的 `-r ./` 会把 build/、
+      # .dart_tool/ 这些产物一并扫进去，又慢又吵。
       scan-args: |-
         --lockfile=./pubspec.lock
+        --lockfile=./packages/app_lints/pubspec.lock
       # 结果只落在 job 日志里，不上传 Code Scanning —— 私有仓库或没开
       # Code Scanning 的仓库不会因为这一步变红；要那份展示就改成 true。
       upload-sarif: false

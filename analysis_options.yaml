@@ -15,6 +15,7 @@ analyzer:
     strict-inference: true
   errors:
     invalid_annotation_target: ignore
+    depend_on_referenced_packages: error
   exclude:
     - build/**
     - android/**
@@ -36,18 +37,43 @@ linter:
     avoid_slow_async_io: false
 
 # ──────────────────────────────────────────────
-# 架构边界与约定（非 analyzer 规则）
+# 架构边界与形态约定（app_lints 插件）
 # ──────────────────────────────────────────────
-# 这两类检查**不是** analyzer 插件，而是脚本——门禁跑的是 `flutter analyze lib/ test/`，
-# 而 `flutter analyze`（无论传文件还是目录）不加载 analyzer 插件；`dart analyze` 会加载，
-# 但只在传**单个文件**时（实测表见 .trellis/spec/cross-cutting.md）。历史上
-# `features/profile/page` 引用过 `features/auth/logic` 而 analyze 报「No issues found」，
-# 就是这个原因。所以它们在 CI 与 pre-commit 里以脚本方式跑：
+# 依赖方向、跨 feature 只共享 data、logic 层纯度、build 里禁 ref.read 取值 ——
+# 由 packages/app_lints/ 的分析插件承担，声明见本文件末尾的 `plugins:` 段。
 #
-#   dart run tool/check_boundaries.dart    # 依赖方向 + logic 层不得手动建容器 / 不得依赖 Flutter UI
-#   dart run tool/check_conventions.dart   # build 里禁用 ref.read 取值、注释块上限
+# 2026-09-24 前它们是三只脚本（check_boundaries / check_conventions /
+# check_readme_tree），现已删除。当时不得不另起一脚的原因：`flutter analyze`
+# 不加载 analyzer 插件，规则只能以脚本方式跑 —— `features/profile/page` 引用过
+# `features/auth/logic` 而 analyze 报「No issues found」，踩的就是这一点。
+# 搬进插件后门禁改用 `dart analyze --fatal-infos` + **显式传文件名**（传目录会丢
+# 插件诊断，2026-09-24 实测；详见 .trellis/spec/cross-cutting.md）。CI 不再自己
+# 拼这条命令，直接跑 `just verify`，两边不存在第二份口径。
 #
-# 细节见 tool/ 下的脚本与 .trellis/spec/cross-cutting.md。
+# 判据与豁免细节见 .trellis/spec/cross-cutting.md「架构边界与形态约定」。
+
+# ──────────────────────────────────────────────
+# Riverpod lints（analysis_server_plugin）
+# ──────────────────────────────────────────────
+# riverpod_lint 3.1.0+ 走 analysis_server_plugin，因此必须在**顶层** `plugins:` 下声明
+# （旧版 custom_lint 是写在 `analyzer: plugins:` 下，二者不一样）。版本与 pubspec.yaml
+# 的 dev_dependencies 对齐。要让它在 CI 真跑起来，analyze 不能用 `flutter analyze`
+# （它不加载插件，上游 flutter#187999）；根 justfile 的两步 analyze 用
+# `dart analyze --fatal-infos` 并**显式传文件名**（传目录会丢插件诊断，2026-09-24 复测；
+# 顺带排除生成物）。详见 .trellis/spec/cross-cutting.md。
+plugins:
+  riverpod_lint:
+    version: ^3.1.9
+    # supported_provider_value 这条是启发式的：它把「provider 返回值是 Notifier /
+    # StateNotifier / ChangeNotifier 子类」判为不支持。但本项目 app 层的 `routerProvider`
+    # 返回 auto_route 的 `AppRouter`，而后者经 `RouterBase` 间接继承了 `ChangeNotifier`
+    # （auto_route 的固有设计，不是 Riverpod 误用）。这里关掉这一条，其余规则保持开启。
+    diagnostics:
+      unsupported_provider_value: false
+  # 本仓库自己的架构边界规则（core 禁上层 / 跨 feature 只共享 data / logic 禁 material /
+  # build 禁 ref.read 取值）。实现见 packages/app_lints/，全部注册为 warning 层（默认开）。
+  app_lints:
+    path: packages/app_lints
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
