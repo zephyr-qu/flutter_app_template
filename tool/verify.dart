@@ -1,12 +1,12 @@
 // 一次跑完「改完必跑」的整套门禁。
 //
 // ```bash
-// dart run tool/verify.dart          # 全套 9 项，首个失败即停
+// dart run tool/verify.dart          # 全套 8 项，首个失败即停
 // ```
 //
 // 三条约定：
 //
-// 1. **一条命令**。原先要记 9 条，漏一条就是漏一道门禁；要单跑某一项时，
+// 1. **一条命令**。原先要记 8 条，漏一条就是漏一道门禁；要单跑某一项时，
 //    下面 `steps` 里就是对应的原始命令。
 // 2. **首个失败即停**。修好再往下跑，不必等整块跑完才发现第一条就红了。
 // 3. **口径与阈值不在这里定义**：每条都原样转发给对应的脚本 / CLI，本文件只管
@@ -16,9 +16,9 @@
 // 4 道脚本门禁是**在同一个进程里**调的（它们本来就是「纯函数 + 薄 main」，见各自的
 // `run()`），因此省掉 3 次 `dart run` 的 VM 启动与 sqlite3 build hook。
 //
-// **别指望它快多少**：2026-09-24 本机（Windows，缓存已热）实测，9 条独立命令 44.3s
-// → verify 39.1s；而那 4 道脚本门禁单跑合计才 11.8s，整块的大头是 `flutter test`
-// 与两次 analyze。它省的是「记住 9 条命令」与「等整块跑完」，不是时间。
+// **别指望它快多少**：2026-09-24 本机（Windows，缓存已热）实测，8 条独立命令 44.7s
+// → verify 41.0s；而那 4 道脚本门禁单跑合计才 12.5s，整块的大头是 `flutter test`
+// （24.1s）与两次 analyze。它省的是「记住 8 条命令」与「等整块跑完」，不是时间。
 //
 // 各道门禁的语义、阈值与理由见 `.trellis/spec/cross-cutting.md`。
 
@@ -53,14 +53,16 @@ Future<int> run() async {
     ('形态约定（check_conventions）', () async => conventions.run(const [])),
     ('目录树一致性（check_readme_tree）', () async => readme_tree.run(const [])),
     (
-      '依赖声明（dependency_validator）',
-      () => _exec('dart', ['run', 'dependency_validator']),
-    ),
-    (
       'flutter analyze lib/ test/',
       () => _exec('flutter', ['analyze', 'lib/', 'test/']),
     ),
-    ('dart analyze tool/', () => _exec('dart', ['analyze', 'tool/'])),
+    (
+      // `--fatal-infos`：`dart analyze` 默认 `--no-fatal-infos`，依赖漏声明一类的
+      // info 只会打印、不拦。`flutter analyze`（上一项）默认相反，所以不加这个
+      // flag 就会出现「lib/test 有护栏、tool 没有」的不对称。
+      'dart analyze --fatal-infos tool/',
+      () => _exec('dart', ['analyze', '--fatal-infos', 'tool/']),
+    ),
     ('flutter test --coverage', () => _exec('flutter', ['test', '--coverage'])),
     (
       '覆盖率门禁（check_coverage --src=lib）',

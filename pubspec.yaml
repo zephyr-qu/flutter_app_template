@@ -93,13 +93,13 @@ dev_dependencies:
   leak_tracker_flutter_testing: ^3.0.10 # 测试内存泄漏检测
 
   # ── Lint 规则集 ──
-  # 由 analysis_options.yaml 的 `include:` 引用。换规则集时必须同步删掉旧的那个：
-  # dependency_validator 只认被 include 的包，留着会被判成「声明了没用」。
+  # 由 analysis_options.yaml 的 `include:` 引用。换规则集时必须同步删掉旧的那个包，
+  # 否则 pubspec 里会留一个没人用的声明 —— 现在没有门禁会抓这个（见
+  # .trellis/spec/cross-cutting.md 的「依赖声明」）。
   very_good_analysis: ^11.0.0
 
   # ── 构建工具 ──
   flutter_launcher_icons: ^0.14.4
-  dependency_validator: ^5.1.0
   analyzer: ^13.3.0
 
 # ──────────────────────────────────────────────

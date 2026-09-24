@@ -25,8 +25,8 @@ Drift / SharedPreferences + **单语言中文**（没有 l10n）。
 ## 硬约束清单
 
 1. **架构边界**：改完 `lib/` 必须 `dart run tool/check_boundaries.dart`（退出码 0）。
-2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze tool/` 必须干净；
-   依赖的「声明与使用」必须一致（`dart run dependency_validator`）。
+2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze --fatal-infos tool/`
+   必须干净（含 `depend_on_referenced_packages`：import 的包必须在 pubspec 里声明到正确的段）。
 3. **覆盖率门禁**：阈值 80%，`flutter test --coverage` 后
    `dart run tool/check_coverage.dart coverage/lcov.info --src=lib`。
 4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**

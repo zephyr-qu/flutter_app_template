@@ -37,9 +37,6 @@ jobs:
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test tool
 
-      - name: Check dependencies (unused / undeclared)
-        run: dart run dependency_validator
-
       # 「过期」不等于「有漏洞」，也不等于必须马上升 —— 所以这一步**只报告**：
       # 实测 dart pub outdated 有可升级项时仍返回 0，判定口径不在它的退出码上；
       # continue-on-error 把这层意思写死，免得哪天 SDK 改了退出码就变成硬门禁。
@@ -65,7 +62,7 @@ jobs:
         run: flutter analyze test/
 
       - name: Analyze tool scripts (tool/)
-        run: dart analyze tool/
+        run: dart analyze --fatal-infos tool/
 
       # 改名脚本的回归：`tool/init_project.dart` 会把仓库复制到临时目录、真的改一次名，
       # 再用 flutter analyze 验证改完的仓库自洽（import 没断、包名一致）。
@@ -140,8 +137,8 @@ jobs:
           script: flutter test integration_test/
 
   # ── 供应链门禁：拿 pubspec.lock 去 OSV 数据库查**已知漏洞**，命中即失败 ──
-  # 它和 dependency_validator 是两件事：后者管「声明与使用是否一致」，这里管
-  # 「锁定住的版本有没有被披露过漏洞」。口径与理由见 .trellis/spec/cross-cutting.md。
+  # 它和 `dart pub outdated` 是两件事：后者管「有没有新版本」（只报告不拦），这里管
+  # 「锁定住的版本有没有被披露过漏洞」（硬拦）。口径与理由见 .trellis/spec/cross-cutting.md。
   #
   # 用官方 reusable workflow 而不是自己拼 `run: osv-scanner …`：CLI 参数在
   # v1 → v2 变过（子命令化），手写的调用会在某次升级后静默失效或直接报错。

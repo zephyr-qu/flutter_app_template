@@ -127,7 +127,7 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 | 架构边界检查（`tool/check_boundaries.dart`）与禁止模式 | [../cross-cutting.md](../cross-cutting.md)「架构边界检查」 |
 | 代码形态约定（`tool/check_conventions.dart`：build 里禁 `ref.read` 取值、注释块上限） | [../cross-cutting.md](../cross-cutting.md)「代码形态约定」 |
 | 覆盖率门禁（`tool/check_coverage.dart`） | [../cross-cutting.md](../cross-cutting.md)「覆盖率门禁」 |
-| 依赖声明检查（`dependency_validator`） | [../cross-cutting.md](../cross-cutting.md)「依赖检查」 |
+| 依赖声明（`depend_on_referenced_packages`，以及有意不设门禁的几类） | [../cross-cutting.md](../cross-cutting.md)「依赖声明」 |
 | 内存泄漏检测（`leak_tracker`） | [../cross-cutting.md](../cross-cutting.md)「Memory Leak Detection」 |
 | 集成测试（`integration_test/`，含「widget 测试里不要用真实 I/O」） | [../cross-cutting.md](../cross-cutting.md)「Integration Testing」 |
 | 环境配置与 release 构建（含「有意留白」） | [../cross-cutting.md](../cross-cutting.md)「环境配置与 release 构建」 |

@@ -158,9 +158,9 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 dart run tool/verify.dart
 ```
 
-一条命令跑完下面 9 项，**首个失败即停**。4 道脚本门禁在**同一个进程**里依次调用
+一条命令跑完下面 8 项，**首个失败即停**。4 道脚本门禁在**同一个进程**里依次调用
 （它们都是「纯函数 + 薄 main」），省掉 3 次 `dart run` 的 VM 启动与 sqlite3 build hook
-—— 整块只快几秒（实测 44.3s → 39.1s），大头在 `flutter test` 与两次 analyze；
+—— 整块只快几秒（实测 44.7s → 41.0s），大头在 `flutter test` 与两次 analyze；
 真正的收益是「只记一条命令」与「早停」：
 
 ```bash
@@ -168,11 +168,10 @@ dart format --output=none --set-exit-if-changed lib test tool   # 1 格式
 dart run tool/check_boundaries.dart                            # 2 架构边界（lib）
 dart run tool/check_conventions.dart                           # 3 build 里禁 ref.read 取值 / 注释块上限
 dart run tool/check_readme_tree.dart                           # 4 README + spec 的目录树
-dart run dependency_validator                                  # 5 声明与使用一致
-flutter analyze lib/ test/                                     # 6
-dart analyze tool/                                             # 7
-flutter test --coverage                                        # 8
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib  # 9 阈值 80%
+flutter analyze lib/ test/                                     # 5
+dart analyze --fatal-infos tool/                               # 6
+flutter test --coverage                                        # 7
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib  # 8 阈值 80%
 ```
 
 想只跑其中一项就直接跑上面那条命令。语义、阈值与理由见

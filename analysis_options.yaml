@@ -1,8 +1,8 @@
 # 分析器配置。
 #
 # 规则集由 very_good_analysis 提供（`include:`）。换规则集时必须同步改
-# `pubspec.yaml` 的 dev_dependencies —— dependency_validator 只认被 include 的那个包，
-# 留着旧的会被判成「声明了没用」。
+# `pubspec.yaml` 的 dev_dependencies、删掉旧的那个包 —— 留着没人用的声明，
+# 现在没有任何门禁会抓（详见 .trellis/spec/cross-cutting.md 的「依赖声明」）。
 #
 # 本文件只放两类内容：规则集之外的 analyzer 设置，以及**对本项目不成立**的规则。
 # 单条豁免写进对应代码（`// ignore: rule -- 理由`），不要往这里堆。

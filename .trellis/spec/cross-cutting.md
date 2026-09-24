@@ -238,26 +238,46 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 ---
 
-## 依赖检查（`dependency_validator`）
+## 依赖声明（`depend_on_referenced_packages`）
 
-```bash
-dart run dependency_validator     # 退出码 1 = 有问题，0 = 干净
-```
+> 2026-09-24 改写：这里原来是一道独立门禁 `dependency_validator`，已移除 —— 理由与代价见本节末。
 
-它报四类：**用了没声明** / **该在 dev 却在 dependencies** / **声明了却没用** / 版本被 pin。因为发现问题时**退出码为 1**，所以它同时是 CI 闸门（`analyze` job 里的一步）。
+「声明与使用是否一致」现在只剩 analyzer 自带的一条 lint `depend_on_referenced_packages`。它**没有被提升级别**（`analysis_options.yaml` 里保持默认的 info），但**在 `lib/` `test/` 上照样拦得住**——`flutter analyze` 默认带 `--fatal-infos`。豁免就是就地一条 `// ignore: depend_on_referenced_packages -- 理由`。
 
-配置在仓库根目录的 `dart_dependency_validator.yaml`，**不要**写进 `pubspec.yaml` —— 那个位置已废弃，`pub publish` 会对未识别的键报警告。
+| 检查 | 谁管 |
+|------|------|
+| 在 `lib/` 里 import 了只声明在 `dev_dependencies` 的包（under-promoted） | `depend_on_referenced_packages`；`flutter analyze lib/ test/` 拦（info 也是 fatal） |
+| import 了压根没声明的包（missing） | 同上 |
+| **`tool/` 里的同类问题** | 同上 —— 门禁第 6 项带 `--fatal-infos`，两边口径已拉平（见下方注） |
+| 声明成 `dependency` 却只在 `test/` `tool/` 里用（over-promoted） | **无人管**（有意） |
+| 声明了但没人用（unused） | **无人管**（有意） |
+| pubspec 里写了精确版本（pinned） | **无人管**（有意） |
 
-当前忽略一项：`json_annotation`（快照 2026-09，配置在仓库根的 `dart_dependency_validator.yaml`）。`@JsonKey` 只在 `login_request.dart` 用到，符号经 `freezed_annotation` 的 re-export 提供，源码里不会出现它的 import —— 是**误报**，依赖本身要保留。
+后三类**从原理上**就看不见：「声明在 `dependencies`」永远能满足 import，所以「放上去了、但该放在下面」这种错它无从报起。
 
-> 这类工具的产出是「声明与使用一致」；`tool/check_boundaries.dart` 管的是「谁能依赖谁」。
-> 两者互补，都不能替代对方。
+> **两条 `analyze` 命令的默认值不一样**，这是不显然的一条。实测（2026-09-24）同一个 info 级的依赖漏声明：`flutter analyze lib/ test/` → **exit 1**，`dart analyze lib` → **exit 0**。这个不对称是默认值造成的、不是规则本身，所以门禁第 6 项显式写成 `dart analyze --fatal-infos tool/`，把两边拉平。端到端验证过：往 `tool/` 放一个未声明的 import，门禁停在第 6 项、退出码 1（不加 flag 时同一个 issue 的退出码是 0）。
+
+### 为什么移除 `dependency_validator`
+
+它确实能拦后三类，但在这个仓库里代价压过了收益：
+
+- **它的豁免机制造成过一次真实损害。** 它要求「声明了就得被 import」，而 `json_annotation` 恰好是「必须声明、却不会被 import」的包，于是仓库根多了一个需要长期维护的 `dart_dependency_validator.yaml`。删认证功能时，那条 `ignore` 的理由（`login_request.dart`）失真后被当成垃圾清掉，**连带把 `json_annotation` 依赖一起删了**。
+- **而它对那次事件全程沉默**：它一直报 `No dependency issues found!`，真正暴露问题的是 `build_runner` 的一条警告。
+- 换来的三类（over-promoted / unused / pinned）在本仓库的**真实历史里一次都没触发过**。
+
+**认下的代价**：over-promoted 会静默通过。后果不是编译错，而是「派生工程把 dev 依赖打进 release 包」——只是体积变大，不报错。
+
+### `json_annotation`：必须声明，别删
+
+它是 `json_serializable` 的**构建期契约**，不是冗余声明：生成 `lib/` 下的代码时，该包要求 `json_annotation` 出现在 pubspec 的 `dependencies` 且下界 ≥ `4.12.0`（判据是 `json_serializable/lib/src/check_dependencies.dart` 的 `requiredJsonAnnotationMinVersion`）。源码里不会出现它的 import —— `@JsonKey` 只出现在生成的 `sample_item.freezed.dart` 里，符号经 `freezed_annotation` 的 re-export 提供。
+
+> 违反这条契约的后果很隐蔽：codegen 照常能跑（`json_annotation` 由 10 个包传递带入），只是 `build_runner` 打一条警告——而**这条警告不在门禁里**（`verify.dart` 的 8 项没有 build_runner 那一步；跑 codegen 的是 CI 的 `analyze` job，本分支又不触发 CI）。本分支就是把它连同认证功能一起误删的，靠手动跑 `build_runner` 才发现。
 
 ---
 
 ## 供应链门禁（`dart pub outdated` / OSV）
 
-`dependency_validator` 管的是「声明与使用一致」，与「锁定的版本有没有已知漏洞」无关。
+依赖声明（上一节）与「锁定的版本有没有已知漏洞」是两回事。
 后者由 CI 的两个新环节负责，两者的**阻断语义刻意不同**：
 
 | 环节 | 位置 | 语义 |

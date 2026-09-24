@@ -114,7 +114,7 @@ git rev-list --count master..HEAD           # 提交数
   dart run tool/verify.dart
   ```
 
-  （它按顺序跑 9 项、首个失败即停。4 道脚本门禁在同一个进程里，省掉 3 次 `dart run`
+  （它按顺序跑 8 项、首个失败即停。4 道脚本门禁在同一个进程里，省掉 3 次 `dart run`
   的 VM 启动与 sqlite3 build hook —— 只快几秒，收益主要是「只记一条命令」+「早停」。
   完整清单见 `AGENTS.md` 的 `## 改完必跑`。）
 - 生效一次本地钩子：
@@ -141,9 +141,8 @@ dart format --output=none --set-exit-if-changed lib test tool
 dart run tool/check_boundaries.dart        # 架构边界（lib）
 dart run tool/check_conventions.dart       # build 里禁 ref.read 取值 / 注释块上限
 dart run tool/check_readme_tree.dart       # README + spec 的目录树
-dart run dependency_validator              # 声明与使用一致
 flutter analyze lib/ test/
-dart analyze tool/
+dart analyze --fatal-infos tool/
 flutter test --coverage
 dart run tool/check_coverage.dart coverage/lcov.info --src=lib   # 阈值 80%
 ```

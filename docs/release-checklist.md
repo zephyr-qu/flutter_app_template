@@ -123,13 +123,13 @@ dart run build_runner build
 - [ ] 门禁全绿：
 
 ```bash
-dart run tool/verify.dart               # 全套 9 项，首个失败即停
+dart run tool/verify.dart               # 全套 8 项，首个失败即停
 flutter test integration_test/          # 端到端冒烟（真机 / 模拟器，不进 verify）
 ```
 
-  `verify.dart` 覆盖：格式、架构边界、形态约定、目录树一致性、依赖声明、
-  `flutter analyze lib/ test/`、`dart analyze tool/`、`flutter test --coverage`、
-  覆盖率阈值（手写代码 ≥ 80%）。语义与阈值见 `.trellis/spec/cross-cutting.md`。
+  `verify.dart` 覆盖：格式、架构边界、形态约定、目录树一致性、`flutter analyze lib/ test/`
+  （含依赖声明 lint `depend_on_referenced_packages`）、`dart analyze --fatal-infos tool/`、
+  `flutter test --coverage`、覆盖率阈值（手写代码 ≥ 80%）。语义与阈值见 `.trellis/spec/cross-cutting.md`。
 
 - [ ] 新增 `FailureCode` 已在 `core/ui/failure_message.dart` 的 `localizedMessage` 里补上文案
       （不补会编译失败——`switch` 不再穷尽；`test/core/ui/failure_message_test.dart` 会遍历枚举逐个断言）
