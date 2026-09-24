@@ -33,11 +33,11 @@ Page → Notifier → Repository (接口) → Service (实现) → Api (Retrofit
 | `{feature}_api.dart` | Retrofit 接口定义，只描述 HTTP 形状 | 不做错误映射，不碰缓存 |
 | `{feature}_service.dart` | 业务实现：调用 API、映射错误、读写缓存 | 返回 `Result<T, Failure>` |
 | `{feature}_repository.dart` | 抽象接口 | **按需**：有真实多实现需求（mock / 线上切换）才写 |
-| `{feature}_dao.dart` | Drift 查询 | 只碰行类 `DbArticle`，行↔模型转换留在 Service；**不要用 `@DriftAccessor`**（跨 package 解析不到表，见 [database-guidelines.md](./database-guidelines.md)） |
+| `{feature}_dao.dart` | Drift 查询 | 只碰行类 `DbArticle`，行↔模型转换留在 Service；**用 `@DriftAccessor`** 声明要访问的表（表与数据库同包，见 [database-guidelines.md](./database-guidelines.md)） |
 | `{feature}_providers.dart` | provider 装配 | 只提供依赖，不含业务逻辑 |
 | `models/` | `@freezed` 数据模型 | 见 [../frontend/type-safety.md](../frontend/type-safety.md) |
 
-Repository 接口与 Service 实现并存时，用例见 `lib/features/sample/`（完整范例：API + DAO + Service + Repository + Notifier + 页面）与 `lib/features/auth/`。
+Repository 接口与 Service 实现并存时，用例见 `lib/features/sample/`（完整范例：API + DAO + Service + Repository + Notifier + 页面）。
 
 ---
 

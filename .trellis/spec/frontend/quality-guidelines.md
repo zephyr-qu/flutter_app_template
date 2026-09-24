@@ -26,7 +26,7 @@
 
 9. **Feature imports another feature's page/ or logic/** — Only core/ and another feature's data/ are allowed. Also enforced by `tool/check_boundaries.dart`; it additionally forbids `core/` importing `features/` or `app/`.
 
-10. **凭据放进 URL query** — 密码、访问令牌、刷新令牌等只能走**请求体**。query 会进入服务端访问日志、代理日志、浏览器或崩溃上报，等同于明文泄露。同理不要把令牌拼进 query 参数——`Authorization` 头统一由 `AuthInterceptor` 附加（见 `features/auth/data/models/login_request.dart`）。
+10. **凭据放进 URL query** — 密码、令牌这类敏感值只能走**请求体**：query 会进入服务端访问日志、代理日志、浏览器或崩溃上报，等同于明文泄露。本分支不含认证，这条是给将来加回凭证时立的规矩（见 [optional-additions.md](../../../docs/optional-additions.md)）。
 
 11. **页面自己维护 loading / request token** — 首屏加载就是 provider 的 `build()`，刷新与重试退回 `ref.refresh` / `ref.invalidate`。手写序号、`Completer`、竞态判断等于把框架已经保证的事重做一遍，且容易做错。
 
@@ -93,14 +93,13 @@
 ```
 FlutterError.onError        → Flutter 框架错误（保持默认 presentError：红屏 + 完整堆栈）
 PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）→ 记一条 error 日志
-  └─ AuthInterceptor.onError    → 401 先刷新令牌并重放，失败才登出
   └─ Result<_, Failure>         → 业务层错误（类型安全）
   └─ AsyncNotifier + AsyncView  → 状态层错误统一落到 AsyncValue.error
 ```
 
 - 所有 API 调用返回 `Result<T, Failure>`（业务层不抛异常）
 - 三态由 `AsyncNotifier` + `AsyncView` 承载；**不要在页面里 try/catch 后自己翻译错误**
-- 401 由 `AuthInterceptor` 自动处理：刷新令牌 → 重放原请求 → 仍失败则清除 auth 并由守卫跳登录页
+- 本分支**没有**认证拦截器：401 / 403 会原样走到 Service 层，按 `failure.dart` 的映射变成 `AuthFailure`（`unauthorized` / `forbidden`），文案见 `core/ui/failure_message.dart`
 - 以上都漏掉的由 `PlatformDispatcher.instance.onError` 兜底并记日志
 
 两条容易被「顺手加回来」的：

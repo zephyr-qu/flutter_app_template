@@ -40,7 +40,7 @@
 | **Sync Data** (form inputs) | `logic/` | `@riverpod class XxxNotifier` 且同步 `build()` 返回**不可变快照** |
 | **Derived State** | 快照的 `bool get canSubmit => ...`，或 provider 里 `ref.watch` 组合 | 不另存一份状态 |
 | **无状态服务 / 依赖装配** | `data/*_providers.dart`、`core/providers.dart` | `@Riverpod(keepAlive: true)` 顶层函数 |
-| **Global Config** (theme, auth) | `core/config/`、`core/auth/`、`core/data/storage/` | `keepAlive` Notifier / 顶层 provider |
+| **Global Config** (theme) | `core/config/` | `keepAlive` Notifier / 顶层 provider |
 | **UI-Only State** (animation, scroll) | 页面局部 | `setState()`（`ConsumerStatefulWidget`） |
 
 ---
@@ -64,23 +64,26 @@ SampleRepository sampleRepository(Ref ref) =>
 无状态服务**都带 `keepAlive`**：让它们随页面生灭只会把实例化成本挪到每次 `ref.read`，
 换不来任何隔离收益。需要换实现（真实后端 / 测试假件）一律走 `ProviderScope(overrides:)`。
 
-### 2. 同步 Notifier —— 表单这类内存状态
+### 2. 同步 Notifier —— 内存快照 + 落盘
 
 ```dart
-// lib/features/auth/logic/login_notifier.dart
-@riverpod
-class LoginNotifier extends _$LoginNotifier {
+// lib/core/config/app_settings.dart
+@Riverpod(keepAlive: true)
+class AppSettingsNotifier extends _$AppSettingsNotifier {
   @override
-  LoginState build() => const LoginState();
+  AppSettings build() {
+    final prefs = ref.watch(userPreferencesProvider);
+    return AppSettings(
+      themeMode: prefs.themeMode,
+      enableDebugLogging: prefs.enableDebugLogging,
+      defaultPageSize: prefs.defaultPageSize,
+    );
+  }
 
-  void updateEmail(String value) => state = state.copyWith(email: value);
-
-  Future<Result<void, Failure>> login() async {
-    state = state.copyWith(isSubmitting: true);
-    final result = await ref.read(authRepositoryProvider)
-        .login(state.email, state.password);
-    if (ref.mounted) state = state.copyWith(isSubmitting: false);
-    return result;
+  Future<void> setThemeMode(ThemeMode mode) async {
+    if (state.themeMode == mode) return;
+    state = state.copyWith(themeMode: mode); // 先改内存：UI 立刻响应
+    await ref.read(userPreferencesProvider).setThemeMode(mode); // 再落盘
   }
 }
 ```
@@ -89,7 +92,10 @@ class LoginNotifier extends _$LoginNotifier {
   「一次改多个信号要用 `batch()`」那条约束在这里**不存在**：一次 `state = ...` 就是一次
   通知，页面只重建一趟。
 - 写入走方法、不开 setter —— 这是「状态私有」的落地方式。
-- `autoDispose`（默认）意味着**页面离开即释放**，表单内容不跨页面残留。
+- 写入顺序统一是**先改内存、再落盘**：UI 立刻响应，落盘失败只记日志
+  （见 [backend/database-guidelines.md](../backend/database-guidelines.md)）。
+- 生命周期看需求：设置这类要活到 App 结束的带 `keepAlive`；表单这类**页面级**状态用默认的
+  `autoDispose`，页面离开即释放，内容不跨页面残留。
 
 ### 3. 异步 Notifier —— API 数据
 
@@ -123,11 +129,11 @@ class SampleListNotifier extends _$SampleListNotifier {
 
 | 声明 | 生成的 provider |
 |---|---|
-| `class LoginNotifier extends _$LoginNotifier` | `loginProvider`（**不是** `loginNotifierProvider`） |
+| `class AppSettingsNotifier extends _$AppSettingsNotifier` | `appSettingsProvider`（**不是** `appSettingsNotifierProvider`） |
 | `class SampleListNotifier extends _$SampleListNotifier` | `sampleListProvider` |
 | `SampleApi sampleApi(Ref ref)` | `sampleApiProvider` |
 
-容易写成 `loginNotifierProvider`，编译器会直接报「未定义」，没有 lint 兜——但也不会静默错。
+容易写成 `appSettingsNotifierProvider`，编译器会直接报「未定义」，没有 lint 兜——但也不会静默错。
 
 ---
 
@@ -140,7 +146,7 @@ class SampleListNotifier extends _$SampleListNotifier {
 | 页面要调 Notifier 的方法 | `ref.read(xxxProvider.notifier)` —— 取的是实例本身 |
 
 `ref.read(xxxProvider.notifier)` 在 `build` 里是**正当写法**：notifier 实例身份稳定、
-不参与订阅，页面拿它当方法接收者（`onChanged: notifier.updateEmail`）。门禁
+不参与订阅，页面拿它当方法接收者（`onPressed: () => notifier.setThemeMode(mode)`）。门禁
 `avoid_ref_read_in_build` 只管「取**值**的 read」，实参是 `.notifier` 时放行
 （口径见 [cross-cutting.md](../cross-cutting.md)「代码形态约定」）。
 
@@ -223,7 +229,7 @@ master 的 `runAsync` 提供了三件事，这里全部由框架提供，**页�
 - `ref.refresh(p)`（不带 `.future`）**同步返回刷新后的 `AsyncValue`**（`isRefreshing == true`），
   逻辑测试用它断言中间态；页面里给 `RefreshIndicator` 用带 `.future` 的那个。
 - 被取代的那次调用仍然会正常完成——它只是不再改写状态。需要按结果分支的方法
-  （如登录成功后跳转）要自己看返回值，不能假设「state 是新的 = 这次成功了」。
+  （如提交成功后跳转）要自己看返回值，不能假设「state 是新的 = 这次成功了」。
 
 ---
 
@@ -236,11 +242,10 @@ master 的 `runAsync` 提供了三件事，这里全部由框架提供，**页�
 
 | provider | 为什么 keepAlive |
 |---|---|
-| `core/providers.dart` 的 `prefs` / `secureStorage` / `database` / `fileStorage` / `userPreferences` / `authStorage` | 基础设施单例；`authStorage` 还持有跨页面存活的令牌缓存 |
-| `core/auth/session.dart` 的 `Session` | 登录态镜像，页面与守卫都要读 |
+| `core/providers.dart` 的 `prefs` / `database` / `fileStorage` / `userPreferences` | 基础设施单例 |
 | `core/config/app_settings.dart` 的 `AppSettingsNotifier` | 主题等偏好，改一次全 App 受影响 |
-| `core/data/network/dio_client.dart` 的 `networkConfig` / `dio` | **Dio 必须单例**（重建会丢在飞请求、重放状态与 mock 注册） |
-| `app/providers.dart` 的 `router` / `authReevaluate` | 重建路由器会丢掉整个导航栈 |
+| `core/data/network/dio_client.dart` 的 `networkConfig` / `dio` | **Dio 必须单例**（重建会丢在飞请求、重试状态与 mock 注册） |
+| `app/providers.dart` 的 `router` | 重建路由器会丢掉整个导航栈 |
 | 各 feature 的 `*_providers.dart` | 无状态服务，见上文 |
 
 两条写法：
@@ -250,13 +255,12 @@ master 的 `runAsync` 提供了三件事，这里全部由框架提供，**页�
 if (ref.mounted) state = state.copyWith(isSubmitting: false);
 
 // 2. 主动订阅就要主动退订：登记清理，别指望 GC
-final subscription = storage.userChanges.listen((user) { ... });
+final subscription = someStream.listen((value) { ... });
 ref.onDispose(subscription.cancel);
 ```
 
-`Session`（`core/auth/session.dart`）是第 2 条的范例：它订阅 `AuthStorage.userChanges`，
-在 `ref.onDispose` 里 `cancel`；`routerProvider` 的 `AuthReevaluateListenable`、
-`authStorageProvider` 的 `storage.dispose` 同理。
+当前仓库里没有正在用第 2 条的 provider（认证那套订阅随登录功能一起删掉了）——
+新增流订阅、`Listenable`、控制器时按第 2 条登记即可。
 
 ### master 的 dispose 边界为什么整节作废
 
@@ -357,7 +361,7 @@ addTearDown(container.dispose);
 expect(await container.read(sampleListProvider.future), [item]);
 ```
 
-用真实的 `AuthStorage` / `UserPreferences`，只替换网络与仓库 —— 它们各自有单元测试，
+用真实的 `UserPreferences`，只替换网络与仓库 —— 它有单元测试，
 页面测试再 mock 一遍既重复、又容易掩盖接线错误（`test/support/app_test_harness.dart`）。
 
 ### widget 测试：`wrapPage(page, container: container)`

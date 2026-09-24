@@ -61,11 +61,33 @@ git rev-list --count master..HEAD           # 提交数
 | 项 | 状态 | 理由 |
 |---|---|---|
 | 主题 `flex_color_scheme` | **保留** | 它只在 `lib/core/theme/` 用（抽包时曾随共享包走，拍平后回到 `lib/core/`）。与状态管理正交，换它是独立议题，收益为负 |
-| `auto_route` | 保留 | 本身已是主流，换 `go_router` 要重写路由 + 守卫 + 全部 `@RoutePage`，收益不足 |
+| `auto_route` | 保留 | 本身已是主流，换 `go_router` 要重写路由表 + 全部 `@RoutePage`，收益不足 |
 | `dio` + `retrofit` | 保留 | 同上 |
 | `freezed` + `json_serializable` | 保留 | 同上 |
-| `drift` / `shared_preferences` / `flutter_secure_storage` | 保留 | 同上 |
+| `drift` / `shared_preferences` | 保留 | 同上 |
 | l10n | **不涉及** | 基线（`master`）就已经没有 l10n —— 它被 `09-22-prune-l10n` 裁掉了。本分支的换栈范围里从来没有这一项，别把它当成「砍掉了」 |
+
+---
+
+## 另外删掉的：认证功能（2026-09-23）
+
+本分支把**整条认证链路**删掉了：
+
+| 删了什么 | 具体 |
+|---|---|
+| 登录流程 | `features/auth/**`（登录页 / API / Service / Repository / Notifier / 模型） |
+| 令牌 | `TokenSet`、`AuthStorage`、`flutter_secure_storage` 依赖 |
+| 401 自动刷新 | `AuthInterceptor`、`TokenRefresher`、`TokenStore`、`auth_extra_keys` |
+| 登录态与守卫 | `core/auth/session.dart`、`core/models/user.dart`、`auth_reevaluate.dart`、路由守卫 |
+
+结果：**无登录脚手架**，冷启动「启动页（2.2s）→ 主框架」，所有路由公开；首页 / 个人中心里原本显示
+用户名、头像、退出登录的位置改成静态品牌信息。
+
+理由：脚手架是**起点**而不是成品。认证是每个目标 App 都会自己重做一遍的东西（后端形状、令牌轮换
+策略、是否走 SSO 各不相同），预置一套的代价是「先读懂再删掉」。加回来的步骤见
+[docs/optional-additions.md](docs/optional-additions.md) 的「登录 / 认证」。
+
+> 与 `master` 的差异：`master`（signals 栈）仍带完整认证，这一条只对本分支成立。
 
 ---
 
@@ -81,10 +103,17 @@ git rev-list --count master..HEAD           # 提交数
 
 - **CI 的触发分支仍然是 `branches: [master]`**，有意**不**加 `preset/*`（2026-09-23 决定）。
   含义：推本分支不会跑任何 CI job。
-- 因此本分支的**六道门禁只有本地那一层**。提交约定是 `git commit --no-verify` +
-  **手工跑完整个命令块**（本地 pre-commit 在 Windows 上单次约 20 分钟，每次 `dart run`
-  都被 sqlite3 的 build hook 拖住）——关掉钩子换来的是「必须自己跑并报出结果」的义务，
-  不是「可以不跑」。完整命令块见 `AGENTS.md` 的 `## 改完必跑`。
+- 因此本分支的**门禁只有本地那一层**。提交约定是 `git commit --no-verify` +
+  **手工跑完整个门禁块** —— 关掉钩子换来的是「必须自己跑并报出结果」的义务，
+  不是「可以不跑」。门禁块现在是一条命令：
+
+  ```bash
+  dart run tool/verify.dart
+  ```
+
+  （它按顺序跑 9 项、首个失败即停。4 道脚本门禁在同一个进程里，省掉 3 次 `dart run`
+  的 VM 启动与 sqlite3 build hook —— 只快几秒，收益主要是「只记一条命令」+「早停」。
+  完整清单见 `AGENTS.md` 的 `## 改完必跑`。）
 - 生效一次本地钩子：
 
   ```bash
@@ -96,7 +125,13 @@ git rev-list --count master..HEAD           # 提交数
 
 ---
 
-## 六道门禁（脚本，不是 IDE 插件）
+## 门禁（脚本，不是 IDE 插件）
+
+```bash
+dart run tool/verify.dart                 # 全套，首个失败即停
+```
+
+单项重跑用下面的原始命令（`verify.dart` 转发给的就是它们）：
 
 ```bash
 dart format --output=none --set-exit-if-changed lib test tool

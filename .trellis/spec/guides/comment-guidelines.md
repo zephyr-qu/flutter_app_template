@@ -86,7 +86,7 @@
 属于快照的内容：
 
 - 数量断言（「import `SampleItem` 的 9 个文件」）
-- 枚举式清单（「现有 mock 规则：`GET /sample-items`、`POST /login`…」）
+- 枚举式清单（「现有 mock 规则：`GET /sample-items`、`GET /sample-items/{id}`…」）
 - 盘点式结论（「目前全项目只有两处 `computed`」）
 
 更好的写法是**教怎么查**而不是给答案 —— 例如用 `grep -rn "computed(" lib/` 代替「全项目有两处 `computed`」。确实要给答案的那部分，按上面的格式标注。

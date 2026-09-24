@@ -74,16 +74,15 @@ final repo = ref.watch(sampleRepositoryProvider);
 
 ```dart
 // ❌ 跨 feature 引用 page/logic
-import 'package:my_app/features/auth/page/login_page.dart';
-import 'package:my_app/features/auth/logic/login_notifier.dart';
+import 'package:my_app/features/sample/page/sample_list_page.dart';
+import 'package:my_app/features/sample/logic/sample_list_notifier.dart';
 
 // ✅ 允许：引用 core，或另一个 feature 的 data 层
-import 'package:my_app/core/models/user.dart';
-import 'package:my_app/features/auth/data/auth_repository.dart';  // data 层可共享
+import 'package:my_app/features/sample/data/sample_repository.dart';  // data 层可共享
 import 'package:my_app/app/routing/router.dart';
 ```
 
-实际例子：`profile` 需要「登出」这项能力时，读的是 `features/auth/data/auth_providers.dart` 暴露的 `authRepositoryProvider`（data 层），而不是 auth 的 `logic/login_notifier.dart`。
+实际例子：feature 需要另一个 feature 的数据能力时，引它的 `data/` 层（如 `sample` 的 `sample_repository.dart`），而不是它的 `logic/` / `page/`。
 
 ---
 
@@ -171,25 +170,25 @@ dart run tool/check_coverage.dart coverage/lcov.info --src=lib
   `repoPath == sfPath || repoPath.endsWith('/$sfPath')` 对上，不需要额外传前缀
 
 **豁免清单**（`tool/check_coverage.dart` 的 `loadingExemptions`）是唯一的逃生口，只放
-**结构上不可能被加载**的文件，每条必须写理由。这来自一个反例：`auth_extra_keys.dart`
-与 `token_store.dart` 被 `auth_interceptor.dart` 的 import 链加载了，却仍不出现在 lcov 里——
-它们只有 `const` 与声明，没有可执行行。所以「不在 lcov 里」有两种成因，**差集检查只能看见
-第一种**，第二种必须显式写进豁免（理由即证据）。过期豁免（已进分母）只打 warning，不拦提交。
+**结构上不可能被加载**的文件，每条必须写理由。注意「不在 lcov 里」有两种成因：没被加载，
+以及没有可执行行（只有 `const` 与声明）——**差集检查只能看见第一种**，第二种必须显式写进
+豁免（理由即证据）。过期豁免（已进分母）只打 warning，不拦提交。
 
 | 类别 | 例子 | 处理 |
 |---|---|---|
-| 抽象声明 / redirecting factory | `sample_api.dart`、`auth_api.dart` | 豁免（无可执行行） |
-| 只有 `const` / 纯接口 | `sample_repository.dart`、`auth_repository.dart`、`auth_extra_keys.dart`、`token_store.dart` | 豁免（无可执行行） |
+| 抽象声明 / redirecting factory | `sample_api.dart` | 豁免（无可执行行） |
+| 只有 `const` / 纯接口 | `sample_repository.dart` | 豁免（无可执行行） |
 | 只被 `integration_test` 执行的入口 | `main.dart`、`bootstrap.dart` | 豁免（`flutter test --coverage` 不含 `integration_test/`） |
 | **本该被测但没测** | —— | **补测试，不许豁免** |
 
-快照（2026-09-23，拍平 `app_core` 后实测）：
+快照（2026-09-23，删除认证功能后实测）：
 
 | | 手写文件 | 进分母 | 豁免 | 覆盖率 |
 |---|---|---|---|---|
-| `lib/`（含已拍平的基础设施） | 57 | 49 | 8 | 90.0% |
+| `lib/`（含已拍平的基础设施） | 40 | 36 | 4 | 89.7% |
 
-（`master` 是双包：根 `lib/` 37 文件 / 90.0% + `packages/app_core` 20 文件 / 89.8%，两份 lcov 各算各的。）
+（删认证前是 57 / 49 / 8 / 90.0% —— 分子分母同时缩水，比例基本不动。
+`master` 是双包：根 `lib/` 37 文件 + `packages/app_core` 20 文件，两份 lcov 各算各的。）
 
 同一个快照里 `lib/app/app.dart` 从「差集里的一个文件」变成了
 `test/app/app_test.dart`：它是组合根，装配错了集成测试才会红，而集成测试不进覆盖率统计。
@@ -458,15 +457,15 @@ Android / iOS，没有 `linux/` 平台目录，所以**不要**用 `xvfb-run`）
 
 当前集成测试覆盖（快照 2026-09，实际以 `integration_test/app_test.dart` 为准）：
 
-- 应用正常启动并显示登录页面
-- 输入邮箱和密码后登录按钮启用
-- 空字段时登录按钮禁用
-- 点击登录（走 `USE_MOCK` 的 mock）后进入 `MainRoute` 主框架，底部导航栏存在
+- 应用正常启动，经启动页（2.2s 品牌动画）进入 `MainRoute` 主框架
+- 底部导航栏存在、首页文案渲染出来
+- 点击「示例」标签能切换，且 `NavigationBar.selectedIndex` 跟随
 
 约束与注意事项：
 
 - **`bootstrap()` 不可重入**：`prefsProvider` 的 override 与 leak_tracker 启动都只能执行一次。因此整个冒烟流程只在**一个** `testWidgets` 中调用一次 `app.main()`；拆成多个 `testWidgets` 各自启动会在第二次抛「Bad state: Leak tracking is already enabled.」
-- **测试需清理登录态**：`SharedPreferences` 在设备上跨运行保留，测试开头要 `prefs.clear()`，否则上一次运行残留的登录态会让启动直接进主框架
+- **启动页要显式推进时钟**：`Future.delayed(2200ms)` 是计时器，`pumpAndSettle()` 之后补一次 `pump(Duration(seconds: 3))` 才稳
+- **不需要清理登录态**：本分支没有认证，`SharedPreferences` 里没有会话可残留
 - **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上都不存在"渲染时联网拉字体"的问题。如果以后引入按需下载字体的方案（如 `google_fonts`），务必在测试里关掉运行时下载（`GoogleFonts.config.allowRuntimeFetching = false`）——否则 `pumpAndSettle` 会卡数分钟且结果不稳定。生产环境更该把字体打进产物，而不是运行时下载
 - `msw_dio_interceptor` 的 mock 由 `.env` 的 `USE_MOCK` 控制（`.env.development` 默认 `true`）。写 mock 规则必踩的坑（必须 `MockRule.regex` 且锚定结尾）见 [backend/network-guidelines.md](backend/network-guidelines.md) 的 Mock 一节
 

@@ -15,7 +15,7 @@
 - [ ] `.env.production` 的 `BASE_URL` 换成真实域名（当前是 `https://api.example.com`）
 - [ ] 确认 `USE_MOCK=false`——为 `true` 时请求会被 `msw_dio_interceptor` 拦截，
       界面一切正常但数据全是假的
-- [ ] 真实地址优先用 `--dart-define` 传，而不是写进 `.env`：
+- [ ] 真实地址优先用 `--dart-define` 传，而不是写进 env 文件：
 
 ```bash
 flutter build apk --dart-define=env=production \
@@ -123,14 +123,13 @@ dart run build_runner build
 - [ ] 门禁全绿：
 
 ```bash
-dart run tool/check_boundaries.dart     # 架构边界
-dart run tool/check_conventions.dart    # 形态约定（build 里禁 ref.read / 注释块上限）
-flutter analyze lib/ test/              # 静态分析
-dart analyze tool/                      # 工具脚本
-flutter test --coverage                 # 单元 + widget 测试（顺带产出覆盖率数据）
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib  # 门禁：手写代码 ≥ 80%
-flutter test integration_test/          # 端到端冒烟
+dart run tool/verify.dart               # 全套 9 项，首个失败即停
+flutter test integration_test/          # 端到端冒烟（真机 / 模拟器，不进 verify）
 ```
+
+  `verify.dart` 覆盖：格式、架构边界、形态约定、目录树一致性、依赖声明、
+  `flutter analyze lib/ test/`、`dart analyze tool/`、`flutter test --coverage`、
+  覆盖率阈值（手写代码 ≥ 80%）。语义与阈值见 `.trellis/spec/cross-cutting.md`。
 
 - [ ] 新增 `FailureCode` 已在 `core/ui/failure_message.dart` 的 `localizedMessage` 里补上文案
       （不补会编译失败——`switch` 不再穷尽；`test/core/ui/failure_message_test.dart` 会遍历枚举逐个断言）
@@ -143,10 +142,13 @@ flutter test integration_test/          # 端到端冒烟
 
 ## 7. 发布前人工核查
 
-- [ ] 真机跑一遍：登录 → 令牌过期（可把 `expiresIn` 调小）→ 自动刷新不弹登录页
-- [ ] 断网启动：文章列表应回退到 Drift 缓存，而不是空白页
-- [ ] 首次冷启动：确认没有「首个请求少带 `Authorization`」导致的多余 401
-- [ ] 关掉 `.env` 里的 mock，确认真实接口连通
+- [ ] 真机跑一遍主流程：启动页 → 首页 → 示例列表（下拉刷新 / 断网重试）→ 个人中心改主题，
+      重进 App 后主题仍是改过的那一个
+- [ ] 断网启动：示例列表应回退到 Drift 缓存，而不是空白页（缓存旁路在
+      `features/sample/data/sample_service.dart`）
+- [ ] 关掉 mock 要改**当前环境那一份**文件：release 读 `.env.production`，
+      `--dart-define=env=xxx` 读对应的 `.env.xxx` —— 裸 `.env` 从不被加载，
+      改它没有任何效果（见 `bootstrap.dart` 的 `_envFileName`）。改完确认真实接口连通
 - [ ] 权限清单符合实际使用（AndroidManifest / Info.plist 里不要留多余权限）
 - [ ] 隐私政策与合规文案（若上架）已就位
 - [ ] 崩溃/错误上报已接入——`bootstrap.dart` 的 `PlatformDispatcher.instance.onError` 与

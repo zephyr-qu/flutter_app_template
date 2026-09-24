@@ -49,6 +49,35 @@
 
 ---
 
+## 一之补：登录 / 认证（整条链路已被移除）
+
+本分支删掉了完整认证（登录页、令牌、401 自动刷新、路由守卫）—— 为什么删见 `BRANCH.md`。
+需要时按下面的顺序加回来，**别只装包**：缺的是那一套接线。
+
+1. `flutter pub add flutter_secure_storage`（令牌走平台安全存储）。要写 `@JsonKey` 时
+   再把 `json_annotation` 加回来
+2. `lib/core/data/storage/auth_storage.dart`：令牌 + 用户的存储（同步 getter + 一条变化流），
+   并在 `lib/core/providers.dart` 注册 provider
+3. `lib/core/data/network/`：`TokenStore` 契约 + `AuthInterceptor`（附加 `Authorization`；
+   401 → 刷新 → 重放原请求）+ `TokenRefresher`（**single-flight**，并发刷新会让服务端轮换掉的
+   令牌互相作废）。拦截器顺序变成 `Auth → 解码 → Retry → Mock`，顺序语义见
+   [backend/network-guidelines.md](../.trellis/spec/backend/network-guidelines.md)
+4. `features/auth/`：登录页 + `AuthApi` / `AuthService` + `LoginNotifier`，形状照抄
+   `features/sample/`
+5. `lib/app/routing/router.dart` 给 `MainRoute` 挂 `guards: [AutoRouteGuard.simple(...)]`。
+   守卫里**同步**读登录态（读 provider 会有「状态还没 emit 就先判成未登录」的空窗）
+6. 要让导航跟随登录态（如 401 登出后回登录页），加一个 `ChangeNotifier` 桥接并通过
+   `router.config(reevaluateListenable: ...)` 接上——删除前这层是
+   `app/routing/auth_reevaluate.dart` + `app/providers.dart` 的 `authReevaluate`
+7. Mock：`dio_client.dart` 的 `_registerMockRules()` 补 `/login`、`/refresh`
+8. 测试：`test/support/app_test_harness.dart` 的 `TestAppContext` 要带回 `AuthStorage`；
+   `integration_test/app_test.dart` 的冒烟流程改成「登录 → 主框架」
+
+> 被删掉的原文都在 git 历史里：`git log --diff-filter=D -- lib/features/auth` 能找到那次提交。
+> 当时的 PRD 在 `.trellis/tasks/archive/`。
+
+---
+
 ## 二、脚手架已经给它们留好位置的（优先级最高）
 
 这几个不是"顺便提一下"——项目里已经有明确的接入点，加进来改动面很小。
@@ -114,10 +143,10 @@
 | 现在用的 | 替代 | 迁移成本 |
 |---|---|---|
 | `riverpod`（本分支就换了这一个轴，见 `BRANCH.md`） | `signals` / `bloc` / `provider` | **高**。Notifier 与页面订阅写法全变，`ref.watch` 要逐个换掉 |
-| `auto_route` | `go_router`（官方，无 codegen） | 中。`@RoutePage` 全删，守卫改写成 `redirect` 函数 |
+| `auto_route` | `go_router`（官方，无 codegen） | 中。`@RoutePage` 全删，路由表改写成 `GoRouter` 的 `routes` / `redirect` |
 | provider 装配（无 DI 容器） | `get_it` + `injectable` | 低 ~ 中。装配方式整体换掉，页面侧还要重新开注入口 |
-| `retrofit` | 手写 Dio 调用 | **低**。只有 2 个 API 文件 |
-| `freezed` | 只留 `json_serializable` + 手写 `copyWith`/`==` | 中。约 5 个模型 |
+| `retrofit` | 手写 Dio 调用 | **低**。只有 1 个 API 文件 |
+| `freezed` | 只留 `json_serializable` + 手写 `copyWith`/`==` | 中。只有 1 个模型（`SampleItem`） |
 | `Drift` | `shared_preferences`（纯 KV）、`sqflite`（手写 SQL）、`objectbox`（性能好） | **低**。只影响 `SampleService` 的缓存与 `SampleDao` |
 | `dio` | `http`（官方） | 低，但会失去整套拦截器生态 |
 

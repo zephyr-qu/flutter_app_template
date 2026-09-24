@@ -15,7 +15,7 @@
 | `l10n.yaml` | 不存在 |
 | `lib/l10n/**`（ARB + 生成物） | 不存在 |
 | `flutter_localizations` / `intl` | 不在 `pubspec.yaml` |
-| 用户可见文案 | 直接写在 widget 里的中文字面量（`const Text('登录')`） |
+| 用户可见文案 | 直接写在 widget 里的中文字面量（`const Text('设置')`） |
 | `Failure` 的文案 | `lib/core/ui/failure_message.dart` 的 `switch` 常量表 |
 
 核对：`grep -rn "AppLocalizations" lib/` 应无输出（只有 `failure_message.dart` 的注释里提到 l10n 这个词）。
@@ -24,7 +24,7 @@
 
 ## 文案写在哪
 
-- **页面**：字面量，`const Text('登录')` / `hintText: '至少 6 位'`
+- **页面**：字面量，`const Text('设置')` / `hintText: 'your@email.com'`
 - **共享组件**：文案由调用方传（`EmptyWidget(message: '暂无数据')`），组件自己不携带文案
 - **错误**：`error.localizedMessage()`（**无参数**），返回中文常量
 

@@ -47,8 +47,8 @@ These guidelines apply to:
 4. **Cyclic imports between features** — a feature never imports another feature's `page/` or `logic/`
 
    ```dart
-   // BAD — sample feature reaching into auth's UI/logic
-   import 'package:my_app/features/auth/page/login_page.dart';
+   // BAD — profile feature reaching into sample's UI/logic
+   import 'package:my_app/features/sample/page/sample_list_page.dart';
    ```
 
 5. **Business logic in the data layer** — 业务规则的**判断**（分支、阈值、策略）放 `logic/`；Service 只做转换与 I/O：调 API、读写缓存、把 `DioException` 映射成 `Failure`
@@ -92,7 +92,7 @@ These guidelines apply to:
 
 7. **Doc comments on public APIs**: `///` on repository/service methods, stating what the method does and which `Result` variants it returns
 
-8. **Models**: annotate with `@freezed` (value semantics, `copyWith`, generated `fromJson`/`toJson`). 脚手架里所有模型都是 freezed（`SampleItem` / `User` / `LoginRequest` / `LoginResponse`）。Never hand-edit the generated `*.g.dart` / `*.freezed.dart`
+8. **Models**: annotate with `@freezed` (value semantics, `copyWith`, generated `fromJson`/`toJson`). 脚手架里所有模型都是 freezed（`SampleItem` 是现存唯一一个）。Never hand-edit the generated `*.g.dart` / `*.freezed.dart`
 
 ---
 

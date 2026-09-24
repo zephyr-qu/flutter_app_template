@@ -74,8 +74,8 @@ The pretty-printer applies colours/emojis unconditionally. There is no tree-shak
 | --- | --- |
 | `bootstrap.dart` | `PlatformDispatcher.instance.onError` 记一条 error；`FlutterError.onError` 保持默认的 `presentError`（不再重复记一遍） |
 | `run_catching.dart` | 兜底 `catch` —— 原始异常只进日志，用户侧给一个可翻译的通用 code |
-| `failure.dart` / `auth_interceptor.dart` / `token_refresher.dart` | 网络与令牌刷新路径的 warning / info（刷新成功、没有可用刷新令牌、未映射的状态码等） |
-| `auth_storage.dart` / `sample_service.dart` / `file_storage.dart` / `user_preferences.dart` | 存储与缓存失败 —— 读失败降级记 warning；写失败按各自的失败策略处理（见 [database-guidelines.md](./database-guidelines.md) 的「读要软，写要硬」） |
+| `failure.dart` | 网络错误的 warning（未映射的状态码、响应缺少状态码等） |
+| `sample_service.dart` / `file_storage.dart` / `user_preferences.dart` | 存储与缓存失败 —— 读失败降级记 warning；写失败按各自的失败策略处理（见 [database-guidelines.md](./database-guidelines.md) 的「读要软，写要硬」） |
 
 `dio_client.dart` 另外会在 `text/plain` 响应体解析 JSON 失败时记一条 warning。
 

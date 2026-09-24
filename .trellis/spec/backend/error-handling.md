@@ -61,7 +61,7 @@ class UnknownFailure extends Failure { ... }
 | Failure Type | 归类口径 | 典型 code |
 | ------------- | ------------- | --------- |
 | `NetworkFailure` | 请求没能正常往返：超时、连接失败、证书校验失败 | `timeout`, `connection`, `badCertificate` |
-| `AuthFailure` | 401 / 403，需要重新登录或没有权限 | `unauthorized`, `forbidden` |
+| `AuthFailure` | 401 / 403，无凭证或没有权限 | `unauthorized`, `forbidden` |
 | `ServerFailure` | 服务端返回了失败响应（其余 4xx / 5xx） | `notFound`, `invalidRequest`, `conflict`, `serverError`, `requestFailed` |
 | `UnknownFailure` | 无法归类的兜底 | `cancelled`, `unexpected`, `unknown` |
 
@@ -130,42 +130,9 @@ SnackBar 之类的场景直接 `error.localizedMessage()`。**新代码不要**�
 - 另造一个包装异常（包一层之后 `ErrorText` 只剩「未知错误」）
 - 引入 `userErrorMessage(failure)` 那种「在数据层把文案拼好」的做法
 
----
-
-## 401 与令牌刷新
-
-401 在到达 Service 层之前就由 `AuthInterceptor` 处理掉了，绝大多数情况下调用方根本看不到 401：
-
-1. 请求带上 `Authorization: Bearer <accessToken>`
-2. 收到 401 → `TokenRefresher.refresh()` 用刷新令牌换新令牌
-3. 成功 → 用新令牌**重放原请求**，调用方拿到正常响应
-4. 失败（没有刷新令牌 / 刷新接口也 401 / 网络错误）→ `AuthStorage.clearAuth()` 清除凭证 → 由路由守卫把用户送回登录页
-
-**主动刷新**：服务端返回 `expiresIn`（秒）时，`AuthStorage` 会记下过期时刻；`onRequest` 里若判断「临近过期」（默认提前 30 秒）就先刷新再发请求，省掉一次「先 401 再刷新」的往返。服务端不给 `expiresIn` 时该判断恒为 false，退化成纯被动刷新。
-
-几条不能破坏的约束：
-
-- **`TokenRefresher` 必须是 single-flight 的**（并发调用共享同一个 Future）。服务端一旦轮换刷新令牌，并发刷新会让先到的那次把令牌换掉，后面几次拿着已失效的刷新令牌必然失败，用户被误登出。
-- **`Dio` 必须是单例**。每个客户端各建一个 Dio 就会各带一套拦截器，single-flight 随之失效，mock 规则也会被重复注册。
-- **防递归靠两个 `extra` 标记**（见 `auth_extra_keys.dart`）：刷新请求带 `kSkipAuthRefresh`，重放过的请求带 `kAuthRetried`，两者都不再触发刷新。缺少它们会导致刷新接口 401 时无限递归。
-- **重放必须走同一个 Dio**，否则 mock / 日志 / 重试拦截器会被绕过——mock 模式下重放会直接打到真实网络。
-- **刷新请求不携带访问令牌**：部分后端会因为无效的 `Authorization` 直接拒绝整个请求，连刷新都做不了。
-
-以上行为由 `test/core/data/network/token_refresh_test.dart` 覆盖（真实 `TokenRefresher` + `AuthInterceptor` 跑在真实 Dio 管道里，`TokenStore` 与网络适配器换成测试替身）。
-
-### 登出语义
-
-`AuthService.logout()` 的约定：
-
-1. 尽力通知服务端（带令牌，服务端据此吊销刷新令牌）
-2. **无论第 1 步成功与否，都清掉本地凭证**
-3. 返回 `Result.success` —— 对用户而言「登出」就是本地会话结束
-
-第 2 步不能省：本地登出依赖网络的话，离线时 token 会一直留在设备上。
-第 3 步的返回值也不该是服务端调用的结果，否则会出现「提示登出失败、实际已经登出」的矛盾。
-服务端通知失败只记一条 warning。
-
-登出成功后**调用方不需要自己导航**：`AuthStorage` 清空 → `userChanges` 广播 → `Session` provider 更新 → `AppRouter` 的 `reevaluateListenable` → 守卫把用户送回登录页。自己再跳一次会产生两个 `LoginRoute`。
+> 401 / 403 仍按上表映射成 `AuthFailure`（`unauthorized` / `forbidden`），但本分支**不含认证**：
+> 没有任何拦截器会自动重试或刷新令牌，401 会原样走到 Service 层。要加回「令牌 + 401 自动刷新」，
+> 见 [optional-additions.md](../../../docs/optional-additions.md) 的「登录 / 认证」。
 
 ---
 

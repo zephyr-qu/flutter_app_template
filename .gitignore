@@ -40,12 +40,6 @@ my_app.code-workspace
 signals.md
 /build/
 /coverage/
-# 本地包的产物：包目录下的 build/coverage 与 pubspec.lock。
-# lock 不提交 —— 路径依赖的解析由根 pubspec.lock 统一锁定，
-# 包内再存一份只会变成第二个真相来源。
-/packages/*/build/
-/packages/*/coverage/
-/packages/*/pubspec.lock
 # Platform specific
 **/ios/Pods/
 **/macos/Pods/

@@ -21,7 +21,7 @@ This project is written in **Dart 3+** with full **null safety** enabled. Type s
 
 ### Models (per feature, in `data/models/`)
 
-脚手架里的模型**全部**用 `@freezed`（`SampleItem` / `User` / `LoginRequest` / `LoginResponse`）——没有手写的，也没有直接用 `@JsonSerializable` 的：
+脚手架里的模型**全部**用 `@freezed`（现存唯一一个是 `SampleItem`）——没有手写的，也没有直接用 `@JsonSerializable` 的：
 
 ```dart
 // lib/features/sample/data/models/sample_item.dart
@@ -40,8 +40,8 @@ sealed class SampleItem with _$SampleItem {
 **Rules**:
 
 - `fromJson` / `toJson` 由 freezed 生成（内部走 `json_serializable`），**不要手写**
-- 后端字段名与 Dart 命名不一致时用 `@JsonKey(name: ...)`，例如登录请求体保持后端的 `pwd`（`features/auth/data/models/login_request.dart`）
-- **不要为了简单 DTO 换一套注解** —— 哪怕只有两个字段（`LoginRequest` 就是），也仍然用 `@freezed`。混进 `@JsonSerializable` 等于多出第二套生成流程和第二种 `fromJson` 写法，`build_runner` 与 review 都要记两份，而省下的只是一个 `const factory`
+- 后端字段名与 Dart 命名不一致时用 `@JsonKey(name: ...)`（需要时把 `json_annotation` 加回 `pubspec.yaml`，它已随认证功能移除）
+- **不要为了简单 DTO 换一套注解** —— 哪怕只有两个字段（`SampleItem` 就是三个），也仍然用 `@freezed`。混进 `@JsonSerializable` 等于多出第二套生成流程和第二种 `fromJson` 写法，`build_runner` 与 review 都要记两份，而省下的只是一个 `const factory`
 - All fields are `final` and non-nullable (unless explicitly nullable)
 - Constructors use `required` named parameters
 - 生成物 `*.g.dart` / `*.freezed.dart` 与源文件同目录，**不要手改**
@@ -72,12 +72,12 @@ sealed class Failure { ... }        // Error hierarchy
 Runtime validation follows **primitive validation at the boundary** pattern:
 
 ```dart
-// 状态快照上的 getter（lib/features/auth/logic/login_notifier.dart 的 LoginState）
-bool get canSubmit => email.isNotEmpty && password.length >= 6;
+// 状态快照上的 getter（如「提交按钮是否可用」这类判据）
+bool get canSubmit => name.isNotEmpty && note.length >= 6;
 
-// API 侧：Retrofit 定义。凭据只走请求体，不进 query（见 frontend/quality-guidelines.md）
-@POST('/login')
-Future<LoginResponse> login(@Body() LoginRequest request);
+// API 侧：Retrofit 定义（features/sample/data/sample_api.dart 的形状）
+@GET('/sample-items')
+Future<List<SampleItem>> getItems();
 ```
 
 - Client-side: 简单字段校验做成快照上的 getter（`canSubmit` 这种），不引入校验库

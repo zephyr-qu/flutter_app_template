@@ -73,7 +73,7 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 
 **Bad**：同一件事在 Notifier 和 Service 各校验一遍
 
-**Good**：入口处校验一次 —— 简单字段校验做成状态快照上的 getter（`LoginState.canSubmit`），复杂规则交给后端
+**Good**：入口处校验一次 —— 简单字段校验做成状态快照上的 getter（`canSubmit` 这种），复杂规则交给后端
 
 ### Mistake 3: Leaky Abstractions
 

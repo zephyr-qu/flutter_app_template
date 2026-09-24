@@ -15,7 +15,7 @@ alwaysApply: true
 
 FSD 简化版目录 + **Riverpod 3**（provider + `ConsumerWidget`）+ auto_route +
 **Material 3**（`flex_color_scheme`，只在 `lib/core/theme/`）+ Retrofit/Dio +
-Drift / SharedPreferences / flutter_secure_storage + **单语言中文**（没有 l10n）。
+Drift / SharedPreferences + **单语言中文**（没有 l10n）。
 
 > 本分支是 `preset/ai-starter`：从 master 的 signals + get_it + flutter_hooks 换到 Riverpod。
 > 仓库里**已经不存在** `signal*` / `get_it` / `injectable` / `flutter_hooks` / l10n。
@@ -46,10 +46,10 @@ lib/
 ├── bootstrap.dart           # 环境加载 + 异常兜底 + ProviderScope
 ├── app/                     # 组合根（可 import 任何东西）
 │   ├── app.dart  providers.dart
-│   ├── routing/             #   AppRouter + 守卫 + 登录态桥接（含生成物）
+│   ├── routing/             #   AppRouter（含生成物）
 │   └── pages/               #   全局页面：启动页、404
 ├── core/                    # 基础设施 + 状态耦合的适配层
-│   ├── auth/ base/ config/ data/{database,network,storage}/ logging/ models/ theme/ ui/
+│   ├── base/ config/ data/{database,network,storage}/ logging/ theme/ ui/
 │   └── providers.dart
 └── features/{feature}/
     ├── logic/               # @riverpod Notifier / AsyncNotifier
@@ -58,7 +58,7 @@ lib/
 ```
 
 依赖方向：`app → features → core`，由 `tool/check_boundaries.dart` 强制。
-现有 feature：`auth`（认证）、`home`（首页 + 主框架）、`profile`（个人中心）、
+现有 feature：`home`（首页 + 主框架）、`profile`（个人中心）、
 **`sample`（示例，唯一照抄对象：data 三形态 + logic + page + 对应测试）**。
 
 ## 命名（权威见 `.trellis/spec/frontend/directory-structure.md`）
@@ -76,4 +76,7 @@ lib/
 - 没有 `flutter_hooks`：`HookWidget` / `useMemoized` / `useEffect` / `useSignalValue` 都不存在
 - 没有 ViewModel 类、没有 `runAsync`、没有 `AsyncState`、没有 `runZonedGuarded`
 - 没有事件总线；feature 间通信**只能**通过 `core/` 暴露的 provider
+- 没有认证 / 登录：没有 `features/auth/`、没有令牌与安全存储、没有路由守卫、没有 `core/models/`
+  （`User` / `TokenSet` 已随它删除）。需要时按 `docs/optional-additions.md` 的「登录 / 认证」
+  一节加回来，不要凭印象补一套
 - 没有崩溃上报（Sentry / Crashlytics）

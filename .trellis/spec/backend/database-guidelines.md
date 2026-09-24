@@ -10,12 +10,11 @@
 
 | Mechanism | Package | Implementation | Use for |
 | ----------- | --------- | ---------------- | --------- |
-| Key-value | `shared_preferences` | `UserPreferences`、`AuthStorage`（仅用户信息） | Preferences, settings, non-secret data |
-| Secrets | `flutter_secure_storage` | `AuthStorage`（整条令牌 JSON） | Tokens and other credentials |
+| Key-value | `shared_preferences` | `UserPreferences` | Preferences, settings, non-secret data |
 | Relational | `drift`（原生库由 `sqlite3` 3.x 的 build hook 提供） | `AppDatabase`（`lib/core/data/database/app_database.dart`） | Structured, queryable local cache |
 | Files | `path_provider` | `FileStorage`（`lib/core/data/storage/file_storage.dart`） | Binary / large text data |
 
-**不要**把令牌之类的敏感数据放进 `SharedPreferences`——那是明文的 XML/plist。令牌一律走 `flutter_secure_storage`（Android：KeyStore 包装的 AES-GCM，API 23+；iOS/macOS：Keychain；Windows：凭据管理器）。两者的实例都由 provider 装配（`lib/core/providers.dart`），业务代码只 `ref.watch`，不自己 new。
+**不要**把令牌、密码之类的敏感数据放进 `SharedPreferences`——那是明文的 XML/plist，设备被 root / 越狱后可直接读出。本分支**不含认证**、没有凭证要存；将来要存时走平台安全存储（`flutter_secure_storage`），加回步骤见 [optional-additions.md](../../../docs/optional-additions.md) 的「登录 / 认证」。上表三者的实例都由 provider 装配（`lib/core/providers.dart`），业务代码只 `ref.watch`，不自己 new。
 
 ---
 
@@ -26,77 +25,24 @@
 
 | 存储对象（`lib/core/`） | 状态层（provider） | 分工 |
 | --- | --- | --- |
-| `AuthStorage` | `core/auth/session.dart` 的 `Session` | 存储暴露同步 getter + `userChanges` 流；`Session` 订阅它，给 UI 一份可 watch 的登录态 |
 | `UserPreferences` | `core/config/app_settings.dart` 的 `AppSettingsNotifier` | 存储只读写 prefs；Notifier 持有内存快照并在写入后落盘 |
 
-好处是存储对象能**脱开容器单测**（喂一个 mock 过的 `SharedPreferences` / 安全存储即可），
+好处是存储对象能**脱开容器单测**（喂一个 mock 过的 `SharedPreferences` 即可），
 而页面拿到的是「一份可订阅的快照」而不是「每次读盘」。写入顺序统一是**先改内存、再落盘**
 （UI 立刻响应；落盘失败只记日志）。
 
-### AuthStorage 的接口
-
-`AuthStorage` 实现 `TokenStore`（两者同在 `lib/core/data/`），对外只有同步 getter 与一条流：
-
-```dart
-class AuthStorage implements TokenStore {
-  User? get currentUser;          // 同步真源；未登录为 null
-  bool get isLoggedIn;           // 由 currentUser 推导
-  Stream<User?> get userChanges; // 广播流，订阅时立刻吐当前值
-  late final Future<void> ready; // 令牌载入内存的完成信号
-
-  Future<void> saveUser(User? user);    // prefs + 通知订阅者
-  Future<void> saveTokens(TokenSet t);  // 安全存储（单键 JSON）+ 内存缓存
-  String? getAccessToken();             // 同步读内存缓存
-  String? getRefreshToken();
-  bool isAccessTokenExpiring();         // 是否临近过期（默认提前 30s）
-  Future<void> clearAuth();             // 用户与令牌一起清
-  Future<void> dispose();               // 关闭变化流（容器销毁时由 ref.onDispose 调）
-}
-```
-
-`saveTokens` 里两条容易漏的：
-
-- **刷新令牌为空时沿用当前值** —— 服务端只在轮换时返回新的，用 null 覆盖会把可用会话丢掉
-- **`expiresIn`（秒）在构造 `TokenSet` 时就换算成绝对过期时刻**，因为落盘之后相对秒数已经没有意义
-
-登录时的**写入顺序**：`saveTokens()` 必须先于 `saveUser()`。`isLoggedIn` 由 `currentUser`
-推导，先存用户会出现「已登录但拦截器还没拿到令牌」的窗口，紧随其后的第一个请求就不带
-`Authorization`。
-
-### 登录态：provider 给订阅，getter 给判断
-
-`AuthStorage` 同时暴露两者，不要混用：
-
-- `Session` provider（`core/auth/session.dart`）—— 可订阅的镜像。`app.dart` 接的是
-  `authReevaluateProvider`，401 触发的登出才能让栈上受保护路由的守卫重新生效，
-  页面用 `ref.watch(sessionProvider)` 拿用户。
-- `isLoggedIn` / `currentUserId`（getter）—— 同步读一次，用于「这一刻」的判断
-  （路由守卫内部、拦截器、`SplashPage` 的跳转）。
-
-用 getter 驱动 UI 重建不会生效（它不可订阅）；只在需要读一次的地方订阅 provider 则是多余开销。
-**守卫不要改成读 provider**：那会引入「状态还没 emit → 先判成未登录」的空窗。
-
-### 为什么 401 之后的登出要经 `userChanges` 回流
-
-`AuthInterceptor`（`lib/core/data/network/`）只认识 `TokenStore`，不认识 Riverpod。所以「凭证被清了」
-这件事只能由存储经 `userChanges` 广播出来，`Session` 与路由守卫才有得订阅——完整链路见
-[error-handling.md](./error-handling.md)「登出语义」。
-
-`userChanges` 是**广播流**并且在订阅时立刻吐出当前值，消费者不必先读 `currentUser` 再订阅。
-
-### AuthStorage 的失败策略：读要软，写要硬
+### 存储的失败策略：读要软，写要硬
 
 | 操作 | 失败时 | 为什么 |
 | --- | --- | --- |
-| 构造时读安全存储 | 记 warning，降级为「未持有令牌」 | 安全存储不可用（如缺少平台实现）或 JSON 损坏，不该让 App 起不来；后续请求按未授权处理 |
-| 读用户信息解析失败 | 记 warning，**删掉该键** | 损坏的数据留着只会让每次启动都失败一次 |
-| 写安全存储（登录 / 刷新） | **向上抛** | 只有内存副本 = 假登录态，重启即「被登出」 |
-| 删安全存储（登出） | 记 warning，不抛 | 本地登出必须成功；此时内存与 prefs 已清空，登录态已经正确 |
+| 读（载入 / 解析） | 记 warning，降级为「没有这份数据」 | 数据损坏或平台实现缺失不该让 App 起不来 |
+| 解析出错 | 记 warning，并**删掉那份损坏的数据** | 留着只会让每次启动都失败一次 |
+| 写状态 | **向上抛**（`UserPreferences` 的 setter 即如此） | 只留下内存副本 = 假成功，重启后状态回退 |
+| 写缓存 | 记 warning，不影响本次请求结果（`SampleService` 的 `_ignoreCacheFailure`） | 缓存是旁路，失败不该让用户看不到数据 |
 
 判断口径一句话：**读失败可以降级，写失败不能假装成功。**
 
-**Key naming convention**：`SharedPreferences` 用 `app.{domain}.{key}`（如 `app.theme.mode`）；
-认证相关只有两个键：`auth.user`（prefs，用户信息）与 `auth.tokens`（安全存储，整条令牌 JSON）。
+**Key naming convention**：`SharedPreferences` 用 `app.{domain}.{key}`（如 `app.theme.mode`）。
 Always use `static const String _keyX = '...'` constants, never inline strings.
 
 `prefs` 本身由 `bootstrap()` 预载后用 `prefsProvider.overrideWithValue(prefs)` 注入
@@ -314,7 +260,7 @@ await for (final entry in dir.list(recursive: true, followLinks: false)) {
 
 | Element | Convention | Example |
 | --------- | ----------- | --------- |
-| SharedPrefs key | `app.{domain}.{key}` | `app.theme.mode`, `auth.user` |
+| SharedPrefs key | `app.{domain}.{key}` | `app.theme.mode`, `app.debug.logging` |
 | Drift table | `Db` + PascalCase plural | `DbArticles` |
 | Drift row class | drift 自动派生（表名单数） | `DbArticle` |
 | Drift generated file | `{source}.g.dart` | `app_database.g.dart` |
@@ -326,9 +272,8 @@ await for (final entry in dir.list(recursive: true, followLinks: false)) {
 
 - ❌ **Calling `SharedPreferences.getInstance()` somewhere other than `bootstrap()`** — 它只在那里 await 一次，其余地方读 `prefsProvider`
 - ❌ **把 `prefs` 做成 `FutureProvider`** — `AsyncValue` 会一路传染到所有消费者（见 `lib/core/providers.dart`）
-- ❌ **给 `AuthStorage` / `UserPreferences` 加状态管理依赖** — 它们要能脱开容器单测；状态在 `Session` / `AppSettingsNotifier` 里
-- ❌ **路由守卫改成读 provider** — 会引入「状态还没 emit → 先判成未登录」的空窗；守卫读 `AuthStorage.isLoggedIn`
+- ❌ **给 `UserPreferences` 加状态管理依赖** — 它要能脱开容器单测；状态在 `AppSettingsNotifier` 里
 - ❌ **把 DAO 的查询逻辑塞进 `AppDatabase`** — 加 feature 会让 `core/` 无限膨胀，且查询再也搬不出去；查询放 feature 的 DAO 里（`@DriftAccessor`）
 - ❌ **Editing `*.g.dart` by hand** — regenerate with `dart run build_runner build`
 - ❌ **Changing a Drift schema without bumping `schemaVersion`** — existing installs will not migrate
-- ❌ **Storing secrets in `SharedPreferences`** — 令牌走 `flutter_secure_storage`
+- ❌ **Storing secrets in `SharedPreferences`** — 明文 XML/plist；凭证要走平台安全存储（见上文与 [optional-additions.md](../../../docs/optional-additions.md)）

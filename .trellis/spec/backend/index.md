@@ -9,9 +9,9 @@
 | Guide | 内容 |
 | ------- | ------------- |
 | [Directory Structure](./directory-structure.md) | 数据层的文件与类名约定 |
-| [Database Guidelines](./database-guidelines.md) | SharedPreferences / 安全存储 / Drift / FileStorage |
+| [Database Guidelines](./database-guidelines.md) | SharedPreferences / Drift / FileStorage |
 | [Network Guidelines](./network-guidelines.md) | Dio 装配、拦截器顺序、Mock、配置 |
-| [Error Handling](./error-handling.md) | `Result` / `Failure`、401 与令牌刷新、登出语义 |
+| [Error Handling](./error-handling.md) | `Result` / `Failure`、状态码映射、`localizedMessage` |
 | [Quality Guidelines](./quality-guidelines.md) | 数据/逻辑层的禁止模式、Required Patterns、Code Review 清单 |
 | [Logging Guidelines](./logging-guidelines.md) | `Logging` 门面、日志级别、什么不该记 |
 
