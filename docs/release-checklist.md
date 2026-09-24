@@ -110,15 +110,11 @@ flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS schem
 
 ## 6. 代码生成与质量门禁
 
-- [ ] 重新生成产物（模型、provider、路由、Drift schema）：
+- [ ] 重新生成产物（模型、provider、路由、Drift schema）——生成物不入库，发版前现场生成：
 
 ```bash
 just codegen
 ```
-
-- [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart`）——CI 的
-      `analyze` job 会跑一遍 codegen 再比对 `git diff`，漏提交会被拦下
-      （策略与时机见 `.trellis/spec/cross-cutting.md`）
 
 - [ ] 门禁全绿：
 

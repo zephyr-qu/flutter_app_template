@@ -4,11 +4,9 @@ set shell := ["cmd.exe", "/d", "/s", "/c"]
 [unix]
 set shell := ["sh", "-cu"]
 
-app_file_list := if os() == 'windows' { `git ls-files --cached --others --exclude-standard -- "lib/*.dart" "lib/**/*.dart" "test/*.dart" "test/**/*.dart" ":(exclude,glob)**/*.g.dart" ":(exclude,glob)**/*.freezed.dart" ":(exclude,glob)**/*.gr.dart" ":(exclude,glob)**/*.config.dart" ":(exclude,glob)**/*.gen.dart" ":(exclude,glob)**/gen/**" ":(exclude,glob)**/*app_localizations*" | powershell.exe -NoLogo -NoProfile -Command "$input | Where-Object { Test-Path -LiteralPath $_ }"` } else { `git ls-files --cached --others --exclude-standard -- "lib/*.dart" "lib/**/*.dart" "test/*.dart" "test/**/*.dart" ":(exclude,glob)**/*.g.dart" ":(exclude,glob)**/*.freezed.dart" ":(exclude,glob)**/*.gr.dart" ":(exclude,glob)**/*.config.dart" ":(exclude,glob)**/*.gen.dart" ":(exclude,glob)**/gen/**" ":(exclude,glob)**/*app_localizations*" | while IFS= read -r file; do [ -f "$file" ] && printf '%s\n' "$file"; done` }
-app_files := replace_regex(app_file_list, '\r?\n', ' ')
-
-tool_file_list := if os() == 'windows' { `git ls-files --cached --others --exclude-standard -- "tool/*.dart" "tool/**/*.dart" "packages/*.dart" "packages/**/*.dart" ":(exclude,glob)**/*.g.dart" ":(exclude,glob)**/*.freezed.dart" ":(exclude,glob)**/*.gr.dart" ":(exclude,glob)**/*.config.dart" ":(exclude,glob)**/*.gen.dart" ":(exclude,glob)**/gen/**" ":(exclude,glob)**/*app_localizations*" | powershell.exe -NoLogo -NoProfile -Command "$input | Where-Object { Test-Path -LiteralPath $_ }"` } else { `git ls-files --cached --others --exclude-standard -- "tool/*.dart" "tool/**/*.dart" "packages/*.dart" "packages/**/*.dart" ":(exclude,glob)**/*.g.dart" ":(exclude,glob)**/*.freezed.dart" ":(exclude,glob)**/*.gr.dart" ":(exclude,glob)**/*.config.dart" ":(exclude,glob)**/*.gen.dart" ":(exclude,glob)**/gen/**" ":(exclude,glob)**/*app_localizations*" | while IFS= read -r file; do [ -f "$file" ] && printf '%s\n' "$file"; done` }
-tool_files := replace_regex(tool_file_list, '\r?\n', ' ')
+# 显式文件列表是 dart analyze 加载 app_lints / riverpod_lint 插件的前提
+app_files := `dart run tool/list_dart_files.dart lib test`
+tool_files := `dart run tool/list_dart_files.dart tool packages`
 
 default: verify
 

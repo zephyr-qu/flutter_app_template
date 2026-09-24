@@ -24,19 +24,10 @@ jobs:
       - name: Install dependencies
         run: just deps
 
-      # 生成物（*.g.dart / *.freezed.dart / *.gr.dart）是提交进仓库的，因此必须与源
-      # 保持一致。改了注解或增删文件却忘了重新生成时，这一步会拦下来。
-      # 策略与重新生成时机见 .trellis/spec/cross-cutting.md「代码生成与生成物」。
-      - name: Check generated code is up to date
-        run: |
-          just codegen
-          # -N（intent to add）让「新增」的生成物也进入 diff —— 只用 git diff 会漏掉
-          # 「新增一个 @freezed 模型 → 多出一个 .freezed.dart」这种最常见的漂移。
-          git add -N -- lib
-          git diff --exit-code -- lib || {
-            echo "::error::生成物与源不一致（见上方 diff）。本地执行 just codegen 并把生成物一起提交。";
-            exit 1;
-          }
+      # 生成物（*.g.dart / *.freezed.dart / *.gr.dart）不入库（.gitignore），
+      # analyze / test 前必须现场生成。策略见 .trellis/spec/cross-cutting.md。
+      - name: Generate code
+        run: just codegen
 
       # 「过期」不等于「有漏洞」，也不等于必须马上升 —— 所以这一步**只报告**：
       # 实测 dart pub outdated 有可升级项时仍返回 0，判定口径不在它的退出码上；

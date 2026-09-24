@@ -40,6 +40,17 @@ my_app.code-workspace
 signals.md
 /build/
 /coverage/
+
+# 代码生成物：不入库，clone 后跑 `just codegen`。
+# 口径与 packages/app_lints 的 isGeneratedPath() 对齐；
+# 策略见 .trellis/spec/cross-cutting.md「代码生成与生成物」。
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.config.dart
+*.gen.dart
+**/gen/
+*app_localizations*
 # Platform specific
 **/ios/Pods/
 **/macos/Pods/

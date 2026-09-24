@@ -47,7 +47,7 @@ plugins:
 
 - **`dart analyze` 加载插件并输出诊断 —— 但只在显式传文件名时**：单文件、多文件都行，**传目录不行**。2026-09-24 复测：把违反 `no_material_import_in_logic` 的文件放进 `lib/features/*/logic/` 后，`dart analyze --fatal-infos lib` 只报普通 lint（`unused_import` 等），不报插件那条；同一次会话里 `dart analyze --fatal-infos <该文件>` 报了。机制未查（是 CLI 在目录模式下没给插件 package 上下文，还是插件某一步拿到 null，未定），但结论可用：**门禁与 CI 都必须显式传文件名**。这条比看上去重要——改成目录模式不报错、只是少跑规则，正是本文件下面警告的「有门禁的错觉」。（`flutter analyze` 传目录同样只报「No issues found」，见下一条。）
 - **`flutter analyze` 不加载插件**：同样的 `plugins:` 配置下它只报「No issues found」；放一个不存在的插件名也不报错（对照 `dart analyze` 会报 `PluginManager` 错误）——它根本不进插件系统。这是上位 bug：[flutter#187999](https://github.com/flutter/flutter/issues/187999)（open，修复 [dart-lang/sdk#63805](https://github.com/dart-lang/sdk/pull/63805) 在途、未进 stable），不是设计取舍。
-- 所以根 `justfile` 的两步 analyze 是 `dart analyze --fatal-infos <显式文件列表>`：`--fatal-infos` 对齐原 `flutter analyze`（默认 fatal-infos）的严格度；显式传文件是**必须的调用形式**，Justfile 通过 `git ls-files` 列出未提交但未忽略的 Dart 文件，并顺带把生成物排除在外。**CI 与 pre-commit 不再自己拼这两步，统一跑 `just verify`** —— 调用形式有讲究，抄错不报错只少跑，所以不留第二份。`flutter analyze` 只在改名脚本的端到端回归里出现（那里只关心 `error`）。
+- 所以根 `justfile` 的两步 analyze 是 `dart analyze --fatal-infos <显式文件列表>`：`--fatal-infos` 对齐原 `flutter analyze`（默认 fatal-infos）的严格度；显式传文件是**必须的调用形式**，列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤，生成物已被 `.gitignore` 排除）。**CI 与 pre-commit 不再自己拼这两步，统一跑 `just verify`** —— 调用形式有讲究，抄错不报错只少跑，所以不留第二份。`flutter analyze` 只在改名脚本的端到端回归里出现（那里只关心 `error`）。
 - 插件规则的 diagnostic **默认是 info 级**，`dart analyze` 会打印它但退出码 0；`--fatal-infos` 把它变致命（实测：info → 0、warning → 2、error → 3、info + `--fatal-infos` → 1）。规则本身也显式指定了 `DiagnosticSeverity.WARNING`。
 
 `riverpod_lint` 走的是同一套机制（`plugins:` + warning 层默认开），见 `pubspec.yaml` 与 `analysis_options.yaml`。至此门禁规则**不再由自定义检查脚本实现**——根 `justfile` 只编排现成命令；原先剩下的覆盖率脚本也已移除（见下文「覆盖率门禁（已移除）」）。
@@ -57,7 +57,7 @@ plugins:
 ### 判据细节
 
 - 全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。
-- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器的产物只保证「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。插件里那份与根 `justfile` 的排除列表**无法共享代码**（独立 package），改动时要一起改。
+- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器的产物只保证「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。生成物虽已 gitignore（门禁列表天然列不到），IDE 或手工 `dart analyze` 单文件时仍可能碰到它们——豁免保留。口径与 `.gitignore` 一致，改动时要一起改。
 - 放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。`core/` 引用 `lib/core/` 内部也放行。
 - `no_material_import_in_logic` 只认 `package:flutter/material.dart` 这一个 URI —— `foundation` / `widgets` 不管，页面层的 material 也不管（`lib/core/config/app_settings.dart` 为了 `ThemeMode` import material 是正当的）。
 - `avoid_ref_read_in_build` 的判据是两个 AST 事实：「最近的 `MethodDeclaration` 祖先叫 `build`」（方法体里的闭包也算）与「实参不是 `.notifier`」。正则做不到——dart format 会把 `ref` 与 `.read` 折到两行，而「在不在 build 里」根本不是行内信息。豁免 `.notifier` 是因为 `ref.read(loginProvider.notifier)` 取的是 notifier 实例本身（身份稳定、不参与订阅），页面拿它当方法接收者用（`onChanged: notifier.updateEmail`）是正当写法，换成 `ref.watch(...notifier)` 只会白添一次重建。
@@ -99,10 +99,8 @@ import 'package:my_app/core/base/result.dart';
 > - `comment_block_too_long`（连续注释块 ≤10 行）—— 同样是用户决定不要：长解释该进 spec 这条约定保留（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)），但不再用门禁拦。
 > 另退役：`avoid_async_state_map` 随 signals 栈退役（`AsyncValue.when` 的回调具名且具类型，配错在编译期就是 error；三态渲染仍统一走 `AsyncView`，但那是约定不是门禁）。
 
-> **本分支已退役「页面必须给出可选注入点」**（master 的 [ADR-0001](../../docs/adr/ADR-0001.md) 缓解措施）。
-> 那条规则的前提是「页面从 service locator 取 ViewModel，测试替身只能靠可选构造参数塞进去」；
-> Riverpod 栈的注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段 ——
-> 规则与它的 ADR 一并只对 master（signals 栈）成立。
+> **页面不设构造注入点。** 测试替身一律走 `ProviderScope(overrides:)`，页面不持有
+> `final Xxx? viewModel;` 这类可注入字段。
 
 ---
 
@@ -191,7 +189,7 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 它是 `json_serializable` 的**构建期契约**，不是冗余声明：生成 `lib/` 下的代码时，该包要求 `json_annotation` 出现在 pubspec 的 `dependencies` 且下界 ≥ `4.12.0`（判据是 `json_serializable/lib/src/check_dependencies.dart` 的 `requiredJsonAnnotationMinVersion`）。源码里不会出现它的 import —— `@JsonKey` 只出现在生成的 `sample_item.freezed.dart` 里，符号经 `freezed_annotation` 的 re-export 提供。
 
-> 违反这条契约的后果很隐蔽：codegen 照常能跑（`json_annotation` 由 10 个包传递带入），只是 `build_runner` 打一条警告——而**这条警告不在门禁里**（`just verify` 的 5 项没有 build_runner 那一步；跑 codegen 的是 CI 的 `analyze` job，本分支又不触发 CI）。本分支就是把它连同认证功能一起误删的，靠手动跑 `just codegen` 才发现。
+> 违反这条契约的后果很隐蔽：codegen 照常能跑（`json_annotation` 由 10 个包传递带入），只是 `build_runner` 打一条警告——而**这条警告不在门禁里**（`just verify` 的 5 项没有 build_runner 那一步；跑 codegen 的是 CI 的 `analyze` job）。靠手动跑 `just codegen` 才能发现。
 
 ---
 
@@ -228,29 +226,28 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 
 ## 代码生成与生成物（codegen）
 
-### 策略：生成物提交入库
+### 策略：生成物不入库（gitignore）
 
-`.gitignore` **不排除**生成物，它们全部提交进 git。判定「哪些是生成物」有两个执行口径，但必须同步维护：根 `justfile` 的 analyze 排除列表，以及插件 `packages/app_lints/lib/src/paths.dart` 的 `isGeneratedPath()`（插件是独立 package，无法共享 Justfile 表达式）：
+`.gitignore` **排除**生成物，它们不提交进 git。判定「哪些是生成物」的口径与 `packages/app_lints/lib/src/paths.dart` 的 `isGeneratedPath()` 对齐（插件在 IDE / 手工 analyze 场景仍要豁免它们）：
 
 | 形态 | 例子 |
 |------|------|
 | `*.g.dart` | `json_serializable` / `retrofit` / `drift` 的行类 / **`@riverpod` 生成的 provider** |
 | `*.freezed.dart` | 模型 |
 | `*.gr.dart` | `auto_route` 的路由类 |
-| `*.config.dart` | `injectable` 的 DI 注册（本分支已无：那是 master 的 DI 方案，生成物随它消失） |
+| `*.config.dart` | `injectable` 的 DI 注册（本项目不使用 injectable，无此生成物） |
 | `*.gen.dart`、路径含 `/gen/` | 资源访问器（当前不存在，`flutter_gen` 已移除） |
-| 路径含 `app_localizations` | l10n 生成物（本分支已裁剪 l10n，见 [frontend/localization.md](frontend/localization.md)；口径保留给裁剪前的版本） |
+| 路径含 `app_localizations` | l10n 生成物（本项目已裁剪 l10n，见 [frontend/localization.md](frontend/localization.md)；口径保留给裁剪前的版本） |
 
 理由：
 
-- clone 下来执行 `just deps` 之后**不跑 codegen** 就能 `flutter analyze` / `flutter test`；CI 里只有「生成物是否与源一致」那一步会执行 `build_runner`
-- 生成物与源在同一个 commit 里，review 时能看见真实影响（多了哪些 API、Drift schema 改了什么）；不提交的话，换生成器版本会静默改变运行行为
-- 快照不依赖「codegen 工具链在当前机器上装得成功」
+- 生成物是机器产物，diff 噪声大；合并 / rebase 时冲突只能靠重跑 codegen 解决，入库没有 review 价值
+- clone 后跑 `just deps` + `just codegen` 即可得到与源一致的生成物；CI 在门禁前现场跑同一命令，不存在「忘了提交生成物」这类失败
 
 代价（知道就行，别当故障处理）：
 
-- diff 会变长，`.g.dart` 体积不小
-- 合并 / rebase 时生成物会冲突——解法**不是**手工 merge，而是解决源文件冲突后重跑 codegen 覆盖
+- clone 后**不跑 codegen 就 analyze / test 会失败**（缺 `part` / provider）——快速开始里 `just codegen` 是必做步骤
+- 换生成器版本会静默改变生成代码的形状，且不会在 git diff 里露出来；升级 codegen 包后本地必须 `just codegen-reset` 并跑测试兜底
 
 ### 重新生成时机
 
@@ -258,11 +255,11 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 |------|------|
 | 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@riverpod` | `just codegen` |
 | 增删代码文件（含删掉整个 feature） | 同上。删文件后**必须**重跑，否则 provider 注册与路由仍指向已删的类 |
-| 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（本分支已无 l10n，见 [frontend/localization.md](frontend/localization.md)） |
+| clone 后首次构建 / analyze / test | `just codegen` |
+| 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（本项目已无 l10n，见 [frontend/localization.md](frontend/localization.md)） |
 | 升级 / 降级任一 codegen 包（`freezed`、`json_serializable`、`drift_dev`、`retrofit_generator`、`auto_route_generator`、`riverpod_generator`、`build_runner`） | `just codegen-reset` |
 | 升级 Flutter / Dart SDK | 同上 |
-| 切分支、rebase / merge 后生成物冲突 | 解决源文件冲突后全量重建，生成物不手工编辑 |
-| CI 的 `Check generated code is up to date` 失败 | 按上表重跑，把生成物一起提交 |
+| 切分支、rebase / merge 后本地生成物与源不一致 | 重跑 `just codegen`（生成物不手工编辑） |
 
 **不要加 `--delete-conflicting-outputs`**：它在 build_runner 2.16.0 起已经是**被移除的选项**
 （源码里的注释是 `// Removed options, kept to not break old command lines.`，
@@ -270,31 +267,20 @@ import 全断」。analyze 用 `--no-fatal-infos`：既存 info 与「改名顺�
 只会在输出里多一条 warning。它当年要解决的事——覆盖冲突输出、修掉被手改过的旧产物——
 **从那版起是默认行为**；想退回旧行为要用 `--keep-modified-outputs`（见本文「禁止模式」）。
 
-### 门禁：生成物是否与源一致
+### 门禁与 CI
 
-CI 的 `analyze` job 有一步（见 `.github/workflows/ci.yml`）：
-
-```bash
-just codegen
-git add -N -- lib   # 让「新增」的生成物也进入 diff
-git diff --exit-code -- lib
-```
-
-几个不显然的点：
-
-- **为什么要 `git add -N`**：`git diff --exit-code` 看不见未跟踪文件，而最常见的漂移形态恰恰是「新增一个 `@freezed` 模型 → 多出一个 `.freezed.dart`」——只用 `git diff` 会放过它
-- 比的是 `build_runner build` 写盘后的结果，而不是 `--only-check`：两者等价，但后者要求 `build_runner` ≥ 2.16.0。当前 lock 是 2.16.1（可用），保留 `build` 是为了不把门禁绑死在小版本上
-- **pre-commit 有意不做这一步**：它要跑完整 codegen（本项目量级是几十秒），而 pre-commit 已经跑了 `flutter test`。漏提交由 CI 兜
-- 这一步排在 `flutter analyze` 之前：生成物缺失时 analyze 会报一堆「找不到 `part` / provider」的噪声，先跑它能让报错指向真正的原因
+- **本地 `just verify` 不跑 codegen**：假定生成物已在磁盘上（快速开始的 `just codegen` 已执行过）
+- **CI 的 `analyze` job 在 `just verify` 前跑 `just codegen`**：现场生成，无需比对 git diff（生成物不入库，没有可比对象）
+- **pre-commit 有意不跑 codegen**：完整 codegen 是几十秒量级，而 pre-commit 已经跑了 `flutter test`
+- codegen 排在 analyze 之前：生成物缺失时 analyze 会报一堆「找不到 `part` / provider」的噪声，先生成能让报错指向真正的原因
 - `drift_dev` 生成 schema 需要 `sqlite3` 的动态库（本项目由 `sqlite3` 3.x 的 build hook 提供，`just deps` 会准备）。这一步若在 CI runner 上失败，报错会指向 `sqlite3` / `hooks_runner`，而不是 build_runner 本身
-- **本分支没有 l10n**，所以这一步里**没有** `flutter gen-l10n`：那个命令在缺 `l10n.yaml` 时会直接失败（见 [frontend/localization.md](frontend/localization.md)）
+- **本项目没有 l10n**，所以这一步里**没有** `flutter gen-l10n`：那个命令在缺 `l10n.yaml` 时会直接失败（见 [frontend/localization.md](frontend/localization.md)）
 
 ### 禁止模式
 
 ```bash
 # ❌ 手改生成物 —— 2.16.0 起 build_runner 默认会修正被改过的输出（旧行为要显式开 --keep-modified-outputs）
-# ❌ 把 *.g.dart / app_localizations* 加进 .gitignore
-#    漂移检查建立在「生成物提交」之上
+# ❌ 把生成物 `git add -f` 加回版本库 —— 策略是不入库；.gitignore 与 isGeneratedPath 是同一口径
 # ❌ 用 --keep-modified-outputs 留住手改 —— 那是调试旧行为的开关，不是工作流
 ```
 
@@ -304,14 +290,14 @@ git diff --exit-code -- lib
 
 > 快照（2026-09）：版本与文件数会变，重估时用下面给的命令重新量。结论本身（要不要升级、要不要加缓存）在触发条件出现前不变。
 
-**结论**：升级**暂时没有可升的版本**（已在 2.x 最新）；「目录级 cache」**不引入**。CI 的漂移检查每次全量构建，也不缓存。
+**结论**：升级**暂时没有可升的版本**（已在 2.x 最新）；「目录级 cache」**不引入**。CI 的 codegen 每次全量构建，也不缓存。
 
 现状（快照 2026-09）：
 
 - `pubspec.yaml` 约束 `build_runner: ^2.4.14`，`pubspec.lock` 解析到 **2.16.1**（pub.dev 上 2.x 线最新，无 3.x）
 - 生成器六个：`freezed` / `json_serializable` / `drift_dev` / `retrofit_generator` / `auto_route_generator` / `riverpod_generator`
-  （master 的 signals 栈把最后一个换成 `injectable_generator`：那个包不在本分支的依赖里）
-- 产物现场可查：`git ls-files lib | grep -E '\.(g|freezed|config|gr)\.dart$'`
+  （生成器清单见上；本项目不使用 `injectable_generator`）
+- 产物现场可查：`ls lib/**/*.g.dart lib/**/*.freezed.dart lib/**/*.gr.dart`（生成物不入库，`git ls-files` 看不见）
 
 ### 升级（要不要升、什么时候重估）
 
@@ -319,7 +305,7 @@ git diff --exit-code -- lib
 
 - **不要**为了「看起来新」把约束收紧成 `^2.16.1`：那只会让以后重新解析依赖时被无谓卡住
 - **重估的信号**：某个生成器抬高了对 `build_runner` 的下限（`just deps` 会直接报冲突），或撞上 2.x 修不掉的构建 bug
-- 真做升级时的顺序：改约束 → `flutter pub upgrade <pkg>` → **`dart run build_runner clean` 后全量重建** → 生成物的 diff 单独成一个 commit 并完整过一遍（换版本常改变生成代码的形状）→ 跑 `flutter analyze` 与 `flutter test`
+- 真做升级时的顺序：改约束 → `flutter pub upgrade <pkg>` → **`dart run build_runner clean` 后全量重建** → 本地核对生成物形状变化（换版本常改变生成代码的形状，生成物不入库所以没有 diff 可 review，以测试为准）→ 跑 `flutter analyze` 与 `flutter test`
 
 ### 「目录级 cache」（结论：不引入）
 
@@ -406,7 +392,7 @@ Android / iOS，没有 `linux/` 平台目录，所以**不要**用 `xvfb-run`）
 
 当前集成测试覆盖（快照 2026-09，实际以 `integration_test/app_test.dart` 为准）：
 
-- 应用正常启动，经启动页（2.2s 品牌动画）进入 `MainRoute` 主框架
+- 应用正常启动，经启动页（约 1.8s 动画，2.2s 后跳转）进入 `MainRoute` 主框架
 - 底部导航栏存在、首页文案渲染出来
 - 点击「示例」标签能切换，且 `NavigationBar.selectedIndex` 跟随
 
@@ -414,7 +400,7 @@ Android / iOS，没有 `linux/` 平台目录，所以**不要**用 `xvfb-run`）
 
 - **`bootstrap()` 不可重入**：`prefsProvider` 的 override 与 leak_tracker 启动都只能执行一次。因此整个冒烟流程只在**一个** `testWidgets` 中调用一次 `app.main()`；拆成多个 `testWidgets` 各自启动会在第二次抛「Bad state: Leak tracking is already enabled.」
 - **启动页要显式推进时钟**：`Future.delayed(2200ms)` 是计时器，`pumpAndSettle()` 之后补一次 `pump(Duration(seconds: 3))` 才稳
-- **不需要清理登录态**：本分支没有认证，`SharedPreferences` 里没有会话可残留
+- **不需要清理登录态**：本项目没有认证，`SharedPreferences` 里没有会话可残留
 - **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上都不存在"渲染时联网拉字体"的问题。如果以后引入按需下载字体的方案（如 `google_fonts`），务必在测试里关掉运行时下载（`GoogleFonts.config.allowRuntimeFetching = false`）——否则 `pumpAndSettle` 会卡数分钟且结果不稳定。生产环境更该把字体打进产物，而不是运行时下载
 - `msw_dio_interceptor` 的 mock 由 `.env` 的 `USE_MOCK` 控制（`.env.development` 默认 `true`）。写 mock 规则必踩的坑（必须 `MockRule.regex` 且锚定结尾）见 [backend/network-guidelines.md](backend/network-guidelines.md) 的 Mock 一节
 

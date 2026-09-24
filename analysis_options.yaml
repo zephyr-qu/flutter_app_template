@@ -60,7 +60,8 @@ linter:
 # 的 dev_dependencies 对齐。要让它在 CI 真跑起来，analyze 不能用 `flutter analyze`
 # （它不加载插件，上游 flutter#187999）；根 justfile 的两步 analyze 用
 # `dart analyze --fatal-infos` 并**显式传文件名**（传目录会丢插件诊断，2026-09-24 复测；
-# 顺带排除生成物）。详见 .trellis/spec/cross-cutting.md。
+# 列表由 tool/list_dart_files.dart 生成，生成物已被 .gitignore 排除）。
+# 详见 .trellis/spec/cross-cutting.md。
 plugins:
   riverpod_lint:
     version: ^3.1.9

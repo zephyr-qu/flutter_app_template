@@ -7,21 +7,73 @@
 # 清单与「为什么这么做」见 README.md 的「门禁」与 .trellis/spec/cross-cutting.md；
 # 只跑其中某一项时直接手跑对应命令。
 #
-# Install with: git config core.hooksPath .githooks
-# To skip checks (emergency only):
-#   git commit --no-verify
+# 生成物（*.g.dart 等）已 gitignore、不入库，但源码 part / 注解生成引用要求
+# 它们在磁盘上。stash --keep-index 会按 index 把「已暂存删除」的生成物从磁盘
+# 清掉，导致 analyze 报 uri_has_not_been_generated——因此 stash 前后备份/恢复。
 
 echo "🔍 Running pre-commit checks..."
 
+GEN_BACKUP=".git/pre-commit-gen-backup"
+
+backup_generated() {
+    rm -rf "$GEN_BACKUP"
+    mkdir -p "$GEN_BACKUP" || return 0
+    git ls-tree -r HEAD --name-only | grep -E '\.(g|freezed|gr|config|gen)\.dart$' |
+        while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            mkdir -p "$GEN_BACKUP/$(dirname "$f")"
+            cp "$f" "$GEN_BACKUP/$f"
+        done
+}
+
+restore_generated() {
+    [ -d "$GEN_BACKUP" ] || return 0
+    find "$GEN_BACKUP" -type f 2>/dev/null |
+        while IFS= read -r src; do
+            rel="${src#"$GEN_BACKUP"/}"
+            [ -f "$rel" ] && continue
+            mkdir -p "$(dirname "$rel")"
+            cp "$src" "$rel"
+        done
+}
+
+remove_generated_not_in_index() {
+    [ -d "$GEN_BACKUP" ] || return 0
+    find "$GEN_BACKUP" -type f 2>/dev/null |
+        while IFS= read -r src; do
+            rel="${src#"$GEN_BACKUP"/}"
+            [ -f "$rel" ] || continue
+            if ! git ls-files --error-unmatch -- "$rel" >/dev/null 2>&1; then
+                rm -f "$rel"
+            fi
+        done
+}
+
+backup_generated
+
 # Stash any unstaged changes so we only check what would be committed
 STASH_NAME="pre-commit-$(date +%s)"
-git stash push -q --keep-index --include-untracked --message "$STASH_NAME" 2>/dev/null || true
+stashed=0
+if git stash push -q --keep-index --include-untracked --message "$STASH_NAME" 2>/dev/null; then
+    stashed=1
+fi
+
+restore_generated
 
 just verify
 VERIFY_EXIT=$?
 
-# Restore stashed changes
-git stash pop -q 2>/dev/null || true
+remove_generated_not_in_index
+
+if [ "$stashed" -eq 1 ]; then
+    if ! git stash pop -q 2>/dev/null; then
+        echo ""
+        echo "⚠️  git stash pop 失败——检查 git stash list 与 git status；生成物已尽量恢复。"
+    fi
+fi
+
+restore_generated
+rm -rf "$GEN_BACKUP"
 
 if [ $VERIFY_EXIT -ne 0 ]; then
     echo ""
