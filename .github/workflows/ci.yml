@@ -24,26 +24,20 @@ jobs:
       - name: Install dependencies
         run: just deps
 
-      # 生成物（*.g.dart / *.freezed.dart / *.gr.dart）不入库（.gitignore），
-      # analyze / test 前必须现场生成。策略见 .trellis/spec/cross-cutting.md。
+      # 生成物（*.g.dart 等）不入库，analyze / test 前必须现场生成。
+      # 策略见 cross-cutting.md「代码生成与生成物」。
       - name: Generate code
         run: just codegen
 
-      # 「过期」不等于「有漏洞」，也不等于必须马上升 —— 所以这一步**只报告**：
-      # 实测 dart pub outdated 有可升级项时仍返回 0，判定口径不在它的退出码上；
-      # continue-on-error 把这层意思写死，免得哪天 SDK 改了退出码就变成硬门禁。
-      # 升级时机由人按 docs/release-checklist.md 排；真正的安全门禁是 osv-scan job。
+      # 「过期」≠「有漏洞」：这一步只报告，不拦（真正的安全门禁是 osv-scan）。
+      # 升级时机见 docs/release-checklist.md。
       - name: Report outdated dependencies (informational)
         run: dart pub outdated
         continue-on-error: true
 
-      # 格式、两步 analyze（架构边界/形态约定插件 + riverpod_lint）、插件规则测试、
-      # 单元与 widget 测试 —— **本地那一条命令，原样跑一遍**。
-      #
-      # 为什么不在这里手写各步：analyze 的调用形式是有讲究的，抄错不会报错、
-      # 只会静默少跑规则（2026-09-24 实测：`dart analyze <目录>` 不产出 app_lints
-      # 的诊断，显式传文件名才会 —— 详见根 justfile 与 cross-cutting.md）。
-      # 也只有这样 CI 与本地不存在第二份口径。
+      # 格式、两步 analyze（app_lints + riverpod_lint）、插件规则测试、单元与
+      # widget 测试 —— 本地同一条命令，原样跑一遍。analyze 必须显式传文件名
+      # （传目录会丢插件诊断），细节见 cross-cutting.md；CI 不另写第二份口径。
       - name: Run gates (just verify)
         run: just verify
 
@@ -101,12 +95,9 @@ jobs:
           # （默认已含 -no-window / -gpu swiftshader_indirect，headless 需要它们）
           script: just test integration_test/
 
-  # ── 供应链门禁：拿 pubspec.lock 去 OSV 数据库查**已知漏洞**，命中即失败 ──
-  # 它和 `dart pub outdated` 是两件事：后者管「有没有新版本」（只报告不拦），这里管
-  # 「锁定住的版本有没有被披露过漏洞」（硬拦）。口径与理由见 .trellis/spec/cross-cutting.md。
-  #
-  # 用官方 reusable workflow 而不是自己拼 `run: osv-scanner …`：CLI 参数在
-  # v1 → v2 变过（子命令化），手写的调用会在某次升级后静默失效或直接报错。
+  # 供应链门禁：拿 pubspec.lock 去 OSV 查**已知漏洞**，命中即失败。
+  # 与 `dart pub outdated`（只报告）分工；口径见 cross-cutting.md「供应链门禁」。
+  # 用官方 reusable workflow：CLI 参数 v1→v2 变过，手写调用会静默失效。
   osv-scan:
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0
     with:

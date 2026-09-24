@@ -4,7 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'providers.g.dart';
 
-/// 应用组合根（FSD 的 app 层）的装配。
+// 应用组合根（FSD 的 app 层）的装配。
 
 /// 应用路由。
 ///

@@ -1,15 +1,9 @@
 #!/bin/sh
+# 门禁：一条命令 `just verify`（5 项，首个失败即停）。
+# 清单见 README「门禁」与 cross-cutting.md；单项重跑直接手跑对应命令。
 #
-# Pre-commit hook for my_app scaffold.
-#
-# 一条命令跑完整个门禁块：`just verify`（5 项，首个失败即停）。
-#
-# 清单与「为什么这么做」见 README.md 的「门禁」与 .trellis/spec/cross-cutting.md；
-# 只跑其中某一项时直接手跑对应命令。
-#
-# 生成物（*.g.dart 等）已 gitignore、不入库，但源码 part / 注解生成引用要求
-# 它们在磁盘上。stash --keep-index 会按 index 把「已暂存删除」的生成物从磁盘
-# 清掉，导致 analyze 报 uri_has_not_been_generated——因此 stash 前后备份/恢复。
+# 生成物不入库，但 analyze 需要它们在磁盘上：stash --keep-index 可能按 index
+# 清掉「已暂存删除」的生成物，故 stash 前后备份/恢复（.git/pre-commit-gen-backup）。
 
 echo "🔍 Running pre-commit checks..."
 

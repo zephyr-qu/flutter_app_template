@@ -79,7 +79,7 @@ dev_dependencies:
   leak_tracker_flutter_testing: ^3.0.10 # 测试内存泄漏检测
 
   # ── Lint 规则集 ──
-  # .trellis/spec/cross-cutting.md 的「依赖声明」。
+  # 换规则集的同步义务见 cross-cutting.md「依赖声明」。
   very_good_analysis: ^11.0.0
 
   # ── 构建工具 ──

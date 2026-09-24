@@ -2,23 +2,14 @@
 //
 // ```bash
 // dart run tool/prune.dart --l10n=single     # 裁成单语言（中文）
-// dart run tool/prune.dart --l10n=multi      # 默认值，不改任何东西
-// dart run tool/prune.dart --theme=default   # 未实现的轴 → 报错退出
 // dart run tool/prune.dart --dry-run --l10n=single   # 只报告会改什么
 // ```
 //
-// 三条约定（与 tool/init_project.dart 同源）：
-//
-// 1. **全有或全无**：先把全部改动收集成一份计划（改写 / 删除 / 配置），任一 recipe
-//    没匹配到就报出「哪一个、在哪个文件」并以非零退出码结束，**磁盘不变**。
-//    半裁的仓库连 `flutter analyze` 都跑不起来，定位成本远高于直接报位置。
-// 2. **幂等**：重复执行同一轴不产生额外差异；已经在单语言仓库上再跑 `--l10n=single`
-//    会报「没有可裁的内容」而不是报错。
-// 3. **未实现的轴不静默忽略**：传了 `--theme` 之类必须报错，否则使用者会以为裁掉了。
-//
-// 为什么 l10n 做成参数而不是分支：它横切 `core/ui/failure_message.dart` 与
-// `core/config/user_preferences.dart`，做成分支会在这些文件上与其它分支反复冲突。
-// 详见 .trellis/tasks/09-22-prune-l10n/prd.md。
+// 与 tool/init_project.dart 同源的三条：先收齐全量计划、任一 recipe 没匹配
+// 就报位置并非零退出（磁盘不变）；重复执行幂等；未实现的轴（如 `--theme`）
+// 报错，不静默忽略。
+// l10n 做成参数而不是分支：它横切多个文件，分支会在这些文件上反复冲突。
+// 裁剪步骤与反向恢复见 frontend/localization.md。
 
 import 'dart:convert';
 import 'dart:io';

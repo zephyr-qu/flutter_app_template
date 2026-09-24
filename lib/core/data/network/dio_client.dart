@@ -8,27 +8,21 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'dio_client.g.dart';
 
-/// Dio 与 NetworkConfig 的装配（provider 装配，无 DI 容器）。
-///
-/// 拦截器栈本身在 `dio_factory.dart` 的 [createDio] 里（与状态管理无关）；
-/// 本层只做三件本应用专属的事：
-/// 1. 从 `dotenv` 取配置（`bootstrap()` 已加载并校验过）
-/// 2. 读 `UserPreferences` 决定要不要挂调试日志
-/// 3. 注册本应用专属的 Mock 规则
+// Dio 与 NetworkConfig 的装配（provider 装配，无 DI 容器）。
+// 拦截器栈在 `dio_factory.dart` 的 createDio；本层只做三件应用专属的事：
+// 从 dotenv 取配置、读 UserPreferences 决定调试日志、注册 Mock 规则。
 
 /// 网络配置读 `dotenv` 的唯一入口（`bootstrap()._validateEnv` 只做存在性校验）。
 ///
-/// `keepAlive` = 只算一次：`NetworkConfig` 是「配置只有一个来源」这条约定的载体
+/// `keepAlive` = 只算一次：`NetworkConfig` 是「配置只有一个来源」的载体
 /// （见 backend/network-guidelines.md「配置：dotenv 只读一次」）。
 @Riverpod(keepAlive: true)
 NetworkConfig networkConfig(Ref ref) => NetworkConfig.fromEnv(dotenv.env);
 
 /// 整个 App 共用一个 Dio（**必须单例**，理由见 backend/network-guidelines.md）。
 ///
-/// 为什么读的是 `userPreferencesProvider` 而不是 `appSettingsProvider`：
-/// 后者一变本 provider 就会被重建，而「Dio 必须单例」优先于「开关立刻生效」——
-/// 重建会丢掉在飞请求、重放状态与 mock 注册。所以调试开关**重启后生效**：
-/// **下次创建 Dio（即重启 App）才生效**。
+/// 读 `userPreferencesProvider` 而不是 `appSettingsProvider`：后者一变本
+/// provider 就重建，会丢在飞请求；调试开关**重启后生效**。
 @Riverpod(keepAlive: true)
 Dio dio(Ref ref) => createDio(
   config: ref.watch(networkConfigProvider),

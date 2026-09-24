@@ -17,8 +17,7 @@ import 'package:my_app/features/sample/logic/sample_list_notifier.dart';
 ///    frontend/state-management.md「渲染状态」）
 /// 3. 刷新 / 重试交给 `ref.refresh` / `ref.invalidate`，页面不持有加载逻辑
 ///
-/// 测试时用 `ProviderScope(overrides:)` 换成假仓库，页面因此**不需要**任何
-/// 注入点构造参数（依赖通过 `ProviderScope(overrides:)` 换，页面无需注入字段）。
+/// 测试时用 `ProviderScope(overrides:)` 换假仓库，页面不需要注入点构造参数。
 @RoutePage()
 class SampleListPage extends ConsumerWidget {
   const new({super.key});

@@ -3,13 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 用户偏好的**持久化**（每个偏好一个键）。
 ///
-/// 本类不含任何状态管理依赖：读取是同步的（`SharedPreferences` 已由
-/// `bootstrap()` 预载），变更通知与内存快照由 `core/config/app_settings.dart`
-/// 的 `AppSettingsNotifier` 负责。分开的理由：
-///
-/// - 存储层能脱开 Riverpod 单测（喂一个 mock 过的 `SharedPreferences` 即可）
-/// - 页面需要的是「一份可订阅的快照」，而不是「每次读盘」
-///
+/// 不含状态管理依赖：同步读取（`SharedPreferences` 已由 `bootstrap()` 预载），
+/// 变更通知与内存快照由 `core/config/app_settings.dart` 的 `AppSettingsNotifier`
+/// 负责 —— 存储层可脱开 Riverpod 单测，页面要的是可订阅快照而不是每次读盘。
 /// 读取时对越界值做回落（改过默认值 / 手工改过 prefs 时不该崩）。
 class UserPreferences {
   new(this._prefs);

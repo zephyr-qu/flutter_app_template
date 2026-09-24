@@ -2,7 +2,7 @@
 #
 # 规则集由 very_good_analysis 提供（`include:`）。换规则集时必须同步改
 # `pubspec.yaml` 的 dev_dependencies、删掉旧的那个包 —— 留着没人用的声明，
-# 现在没有任何门禁会抓（详见 .trellis/spec/cross-cutting.md 的「依赖声明」）。
+# 现在没有任何门禁会抓（详见 cross-cutting.md「依赖声明」）。
 #
 # 本文件只放两类内容：规则集之外的 analyzer 设置，以及**对本项目不成立**的规则。
 # 单条豁免写进对应代码（`// ignore: rule -- 理由`），不要往这里堆。
@@ -36,32 +36,15 @@ linter:
     # 该规则偏好同步的 dart:io。Flutter 里同步 IO 会阻塞 UI 线程，异步才是对的。
     avoid_slow_async_io: false
 
-# ──────────────────────────────────────────────
-# 架构边界与形态约定（app_lints 插件）
-# ──────────────────────────────────────────────
-# 依赖方向、跨 feature 只共享 data、logic 层纯度、build 里禁 ref.read 取值 ——
-# 由 packages/app_lints/ 的分析插件承担，声明见本文件末尾的 `plugins:` 段。
-#
-# 2026-09-24 前它们是三只脚本（check_boundaries / check_conventions /
-# check_readme_tree），现已删除。当时不得不另起一脚的原因：`flutter analyze`
-# 不加载 analyzer 插件，规则只能以脚本方式跑 —— `features/profile/page` 引用过
-# `features/auth/logic` 而 analyze 报「No issues found」，踩的就是这一点。
-# 搬进插件后门禁改用 `dart analyze --fatal-infos` + **显式传文件名**（传目录会丢
-# 插件诊断，2026-09-24 实测；详见 .trellis/spec/cross-cutting.md）。CI 不再自己
-# 拼这条命令，直接跑 `just verify`，两边不存在第二份口径。
-#
-# 判据与豁免细节见 .trellis/spec/cross-cutting.md「架构边界与形态约定」。
+# ── 架构边界与形态约定（app_lints 插件）──
+# 依赖方向、跨 feature 只共享 data、logic 层纯度、build 里禁 ref.read 取值，
+# 由 packages/app_lints/ 承担，声明在本文件末尾 `plugins:`。判据与豁免细节
+# 见 cross-cutting.md「架构边界与形态约定」。
 
-# ──────────────────────────────────────────────
-# Riverpod lints（analysis_server_plugin）
-# ──────────────────────────────────────────────
-# riverpod_lint 3.1.0+ 走 analysis_server_plugin，因此必须在**顶层** `plugins:` 下声明
-# （旧版 custom_lint 是写在 `analyzer: plugins:` 下，二者不一样）。版本与 pubspec.yaml
-# 的 dev_dependencies 对齐。要让它在 CI 真跑起来，analyze 不能用 `flutter analyze`
-# （它不加载插件，上游 flutter#187999）；根 justfile 的两步 analyze 用
-# `dart analyze --fatal-infos` 并**显式传文件名**（传目录会丢插件诊断，2026-09-24 复测；
-# 列表由 tool/list_dart_files.dart 生成，生成物已被 .gitignore 排除）。
-# 详见 .trellis/spec/cross-cutting.md。
+# ── Riverpod lints（analysis_server_plugin）──
+# 必须在**顶层** `plugins:` 下声明（不是 `analyzer: plugins:`，旧版 custom_lint
+# 才是那样），版本与 pubspec.yaml 对齐。`flutter analyze` 不加载插件；门禁用
+# `dart analyze --fatal-infos` 并显式传文件名，调用形式见 cross-cutting.md。
 plugins:
   riverpod_lint:
     version: ^3.1.9
