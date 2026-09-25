@@ -23,10 +23,7 @@ sealed class Result<T, E> {
   const factory Result.success(T data) = Ok<T, E>;
   const factory Result.failure(E error) = Err<T, E>;
 
-  R when<R>({
-    required R Function(T data) success,
-    required R Function(E error) failure,
-  });
+  R when<R>({required R Function(T data) success, required R Function(E error) failure});
 
   Result<R, E> map<R>(R Function(T data) transform);
   Result<T, F> mapError<F>(F Function(E error) transform);
@@ -50,10 +47,7 @@ sealed class Failure implements Exception {
   final int? statusCode;    // 仅 serverError / requestFailed 会带上
 }
 
-class NetworkFailure extends Failure { ... }
-class AuthFailure extends Failure { ... }
-class ServerFailure extends Failure { ... }
-class UnknownFailure extends Failure { ... }
+class NetworkFailure extends Failure { ... }   // 四个子类的归类与 code 见下表
 ```
 
 直接实例化子类（`const NetworkFailure(code: FailureCode.timeout)`）；没有 `Failure.network(...)` 这类工厂构造了。
@@ -105,8 +99,7 @@ The Dio client does **not** pre-map errors — mapping happens once, in the Serv
 
 ### 错误文案怎么到界面上
 
-承载错误的是 **`Failure` 对象**，不是字符串。异步状态里，`AsyncNotifier.build()` 把
-`Result` 的失败侧**抛出去**（抛的就是 `Failure` 本身）：
+承载错误的是 **`Failure` 对象**，不是字符串。异步状态里 `AsyncNotifier.build()` 把 `Result` 的失败侧**抛出去**（抛的就是 `Failure` 本身）：
 
 ```dart
 // lib/features/sample/logic/sample_list_notifier.dart
@@ -127,12 +120,12 @@ final message = switch (error) {
 ```
 
 SnackBar 之类的场景直接 `error.localizedMessage()`。**新代码不要**：
-- 另造一个包装异常（包一层之后 `ErrorText` 只剩「未知错误」）
-- 引入 `userErrorMessage(failure)` 那种「在数据层把文案拼好」的做法
 
-> 401 / 403 仍按上表映射成 `AuthFailure`（`unauthorized` / `forbidden`），但本项目**无认证**：
-> 没有任何拦截器会自动重试或刷新令牌，401 会原样走到 Service 层。需要时自行接入「令牌 + 401 自动刷新」
-> （判断规则见 [optional-additions.md](../../../docs/optional-additions.md)）。
+- 另造一个包装异常，也不要 `throw Exception('...')`——错误码一丢，`ErrorText` 只剩「未知错误」
+- 引入 `userErrorMessage(failure)` 那种「在数据层把文案拼好」的做法
+- 在 Notifier 里留 `currentFailure` 字段——`Failure` 对象就在 `AsyncValue.error` 里
+
+> 401 / 403 仍按上表映射成 `AuthFailure`（`unauthorized` / `forbidden`），但本项目**无认证**：没有任何拦截器会自动重试或刷新令牌，401 会原样走到 Service 层。需要时自行接入「令牌 + 401 自动刷新」（判断规则见 [optional-additions.md](../../../docs/optional-additions.md)）。
 
 ---
 
@@ -153,40 +146,15 @@ class SampleService implements SampleRepository {
 }
 ```
 
-实践中直接 `runCatching(...)` 即可，它已经包含了下面这套 try/catch 顺序。
-
 **Pattern rules**:
 
 1. Catch `DioException` first (most specific) and convert via `handleDioError()`
-2. Catch generic `Exception` last as `FailureCode.unknown`（实践中直接调 `runCatching` 即可）
+2. Catch generic `Exception` last as `FailureCode.unknown`（实践中直接调 `runCatching(...)` 即可，它已包含这套 try/catch 顺序）
 3. Never re-throw; always return `Result.failure()`
 
 ### Notifier layer (logic boundary)
 
-状态层不手写三态迁移：`Result` 的失败侧**抛 `Failure` 本身**，剩下的交给
-`AsyncValue` + `AsyncView`：
-
-```dart
-@riverpod
-class SampleListNotifier extends _$SampleListNotifier {
-  @override
-  Future<List<SampleItem>> build() async {
-    final result = await ref.watch(sampleRepositoryProvider).getItems();
-
-    return switch (result) {
-      Ok<List<SampleItem>, Failure>(:final data) => data,
-      Err<List<SampleItem>, Failure>(:final error) => throw error,
-    };
-  }
-}
-```
-
-两条：
-
-- 没有单独的 `currentFailure` 字段——`Failure` **对象**就在 `AsyncValue.error` 里，`ErrorText`
-  通过 `localizedMessage()` 给出文案（见「错误文案怎么到界面上」）。
-- **不要**把 `Failure` 包成别的异常，也不要 `throw Exception('...')`：错误码一丢，
-  界面上只剩「未知错误」。
+状态层不手写三态迁移：`Result` 的失败侧**抛 `Failure` 本身**，剩下的交给 `AsyncValue` + `AsyncView`；完整示例与配套规则见「错误文案怎么到界面上」。
 
 ---
 

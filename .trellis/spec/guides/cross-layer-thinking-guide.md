@@ -6,21 +6,14 @@
 
 ## The Problem
 
-**Most bugs happen at layer boundaries**, not within layers.
-
-本项目的层（权威布局见 [../frontend/directory-structure.md](../frontend/directory-structure.md)）：
+**Most bugs happen at layer boundaries**, not within layers。本项目的层（权威布局见 [../frontend/directory-structure.md](../frontend/directory-structure.md)）：
 
 ```
 Page → Notifier → Repository (接口) → Service → Api (Retrofit) → Dio
-                                      ↓
-                                  DAO / Drift（本地缓存）
+                                      ↓ DAO / Drift（本地缓存）
 ```
 
-典型跨层 bug：
-
-- API 返回一种形状，Service 按另一种假设解析
-- 缓存与网络两条路各写一遍转换，字段加一个漏一个
-- 同一个错误在不同层被映射成不同的 `Failure`，错误码在传递中丢掉
+典型跨层 bug：API 返回一种形状、Service 按另一种假设解析；缓存与网络两条路各写一遍转换，字段加一个漏一个；同一个错误在不同层被映射成不同的 `Failure`，错误码在传递中丢掉。
 
 ---
 
@@ -34,11 +27,7 @@ Page → Notifier → Repository (接口) → Service → Api (Retrofit) → Dio
 API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → UI
 ```
 
-对每个箭头问：
-
-- 数据在这里是什么类型？（`Map<String, dynamic>` / `SampleItem` / `DbArticle`）
-- 哪里可能出错？
-- 谁负责校验与转换？
+对每个箭头问：这里的数据是什么类型（`Map<String, dynamic>` / `SampleItem` / `DbArticle`）？哪里可能出错？谁负责校验与转换？
 
 ### Step 2: Identify Boundaries
 
@@ -51,13 +40,7 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 
 ### Step 3: Define Contracts
 
-对每个边界明确：
-
-- 输入的确切类型（含可空性）
-- 输出的确切类型
-- 可能产生哪些失败
-
-本项目已有的两个契约范例：`core/base/result.dart`（所有会失败的操作都返回 `Result`）与 `core/base/failure.dart` 的 `handleDioError()`（`DioException` 只在这里映射一次）。
+对每个边界明确：输入的确切类型（含可空性）、输出的确切类型、可能产生哪些失败。本项目已有的两个契约范例：`core/base/result.dart`（所有会失败的操作都返回 `Result`）与 `core/base/failure.dart` 的 `handleDioError()`（`DioException` 只在这里映射一次）。
 
 ---
 
@@ -65,27 +48,19 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 
 ### Mistake 1: Implicit Format Assumptions
 
-**Bad**：假定后端一定返回某个字段，不做空值处理
-
-**Good**：在边界处显式转换；模型字段要么 `required`，要么显式可空
+**Bad**：假定后端一定返回某个字段，不做空值处理 → **Good**：在边界处显式转换；模型字段要么 `required`，要么显式可空
 
 ### Mistake 2: Scattered Validation
 
-**Bad**：同一件事在 Notifier 和 Service 各校验一遍
-
-**Good**：入口处校验一次 —— 简单字段校验做成状态快照上的 getter（`canSubmit` 这种），复杂规则交给后端
+**Bad**：同一件事在 Notifier 和 Service 各校验一遍 → **Good**：入口处校验一次 —— 简单字段校验做成状态快照上的 getter（`canSubmit` 这种），复杂规则交给后端
 
 ### Mistake 3: Leaky Abstractions
 
-**Bad**：让 `SampleItem` 模型知道 drift 的存在（例如给它加 `SampleItem.fromRow(DbArticle)`）
-
-**Good**：模型不碰基础设施；行↔模型互转留在消费方（`SampleService` 的私有方法）。理由见 [../backend/database-guidelines.md](../backend/database-guidelines.md)「命名规范」一节
+**Bad**：让 `SampleItem` 模型知道 drift 的存在（例如给它加 `SampleItem.fromRow(DbArticle)`） → **Good**：模型不碰基础设施；行↔模型互转留在消费方（`SampleService` 的私有方法）。理由见 [../backend/database-guidelines.md](../backend/database-guidelines.md)「命名规范」一节
 
 ### Mistake 4: 同一个错误在多层各映射一次
 
-**Bad**：每个 Service 各自把 `DioException` 转成 `Failure`，于是同一类超时在不同接口下错误码不同
-
-**Good**：`DioException → Failure` 只在 `handleDioError()` 一处发生（见 [../backend/error-handling.md](../backend/error-handling.md)）
+**Bad**：每个 Service 各自把 `DioException` 转成 `Failure`，于是同一类超时在不同接口下错误码不同 → **Good**：`DioException → Failure` 只在 `handleDioError()` 一处发生（见 [../backend/error-handling.md](../backend/error-handling.md)）
 
 ---
 
@@ -110,10 +85,4 @@ After implementation:
 
 ## When to Create Flow Documentation
 
-Create detailed flow docs when:
-
-- Feature spans 3+ layers
-- Data format is complex
-- Feature has caused bugs before
-
-跨层链路若已在 `.trellis/spec/` 里写过，**不要另开文档** —— 两处维护一定会漂。代码里用注释指向 spec 即可，写法见 [./comment-guidelines.md](./comment-guidelines.md)。
+Create detailed flow docs when：feature 跨 3+ 层、数据格式复杂、这个 feature 出过 bug。跨层链路若已在 `.trellis/spec/` 里写过，**不要另开文档** —— 两处维护一定会漂。代码里用注释指向 spec 即可，写法见 [./comment-guidelines.md](./comment-guidelines.md)。

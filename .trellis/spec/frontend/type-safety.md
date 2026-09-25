@@ -8,12 +8,7 @@
 
 ## Overview
 
-This project is written in **Dart 3+** with full **null safety** enabled. Type safety is enforced through:
-
-- **Sealed classes** (`sealed class`) for exhaustive pattern matching — `Result`, `Failure`
-- **`@freezed`** for every model: value semantics (`copyWith` / `==` / `hashCode`) + generated `fromJson` / `toJson`
-- **`strict-casts` / `strict-inference`** plus `always_declare_return_types`（见 `analysis_options.yaml`）
-- **Generic Result type** `Result<T, E>` for typed error handling
+This project is written in **Dart 3+** with full **null safety** enabled. Type safety comes from four things: `sealed` 的 `Result` / `Failure`（穷举匹配）、`@freezed` 模型（值语义 + 生成的 `fromJson` / `toJson`）、`strict-casts` / `strict-inference` 等类型 lint（全表见「Type-related lints actually enabled」）、泛型 `Result<T, E>`。
 
 ---
 
@@ -40,29 +35,20 @@ sealed class SampleItem with _$SampleItem {
 **Rules**:
 
 - `fromJson` / `toJson` 由 freezed 生成（内部走 `json_serializable`），**不要手写**
-- 后端字段名与 Dart 命名不一致时用 `@JsonKey(name: ...)`（`json_annotation` 已声明在 `dependencies`，是 `json_serializable` 的构建期契约，别删——见 `cross-cutting.md` 的「依赖检查」）
-- **不要为了简单 DTO 换一套注解** —— 哪怕只有两个字段（`SampleItem` 就是三个），也仍然用 `@freezed`。混进 `@JsonSerializable` 等于多出第二套生成流程和第二种 `fromJson` 写法，`build_runner` 与 review 都要记两份，而省下的只是一个 `const factory`
-- All fields are `final` and non-nullable (unless explicitly nullable)
-- Constructors use `required` named parameters
+- 后端字段名与 Dart 命名不一致时用 `@JsonKey(name: ...)`；`json_annotation` 必须留在 `dependencies`（它是 `json_serializable` 的构建期契约，别删，见 [cross-cutting.md](../cross-cutting.md)「依赖声明」）
+- **不要为了简单 DTO 换一套注解** —— 哪怕只有两个字段也仍然用 `@freezed`：混进 `@JsonSerializable` 就是第二套生成流程与第二种 `fromJson` 写法，`build_runner` 与 review 都要记两份
+- All fields are `final` and non-nullable (unless explicitly nullable); constructors use `required` named parameters
 - 生成物 `*.g.dart` / `*.freezed.dart` 与源文件同目录，**不要手改**
-- **构造器不重复类名**：本项目统一写成 `const new({super.key})` / `const factory({...})` /
-  `factory fromJson(...)`（Dart 3.13 允许省略类名的构造器声明），而不是 `const SampleItem({...})`。
-  照抄 `features/sample/` 的形状，不要「顺手改成老写法」。
+- **构造器不重复类名**：统一写成 `const new({super.key})` / `const factory({...})` / `factory fromJson(...)`（Dart 3.13 允许省略类名的构造器声明），而不是 `const SampleItem({...})`；照抄 `features/sample/` 的形状，不要「顺手改成老写法」
 
 ### Global types (`core/base/`)
 
-```dart
-sealed class Result<T, E> { ... }  // Generic result type
-sealed class Failure { ... }        // Error hierarchy
-```
+`sealed class Result<T, E>`（泛型结果）与 `sealed class Failure`（错误层级）都在 `lib/core/base/`。
 
 ### Generated types
 
-- `*.g.dart` — JSON serialization（`json_serializable`）、Retrofit、Drift、**Riverpod 的 provider**
-  （`@riverpod` 注解生成 `<file>.g.dart`，provider 名由生成器决定）
-- `*.freezed.dart` — `copyWith` / `==` / `hashCode`
-- `*.gr.dart` — auto_route
-- `*.config.dart` — 本项目**不存在**（不使用 injectable，没有 service locator 生成物）
+- `*.g.dart` — JSON serialization（`json_serializable`）、Retrofit、Drift、**Riverpod 的 provider**（`@riverpod` 生成 `<file>.g.dart`，provider 名由生成器决定）
+- `*.freezed.dart` — `copyWith` / `==` / `hashCode`；`*.gr.dart` — auto_route；`*.config.dart` — 本项目**不存在**（不使用 injectable，没有 service locator 生成物）
 - 改完注解跑 `just codegen`；**never edit generated files manually**
 
 ---
@@ -80,9 +66,8 @@ bool get canSubmit => name.isNotEmpty && note.length >= 6;
 Future<List<SampleItem>> getItems();
 ```
 
-- Client-side: 简单字段校验做成快照上的 getter（`canSubmit` 这种），不引入校验库
-- Server-side: All complex validation delegated to the backend
-- No schema validation library (no Zod equivalent) — use Dart type system
+- Client-side: 简单字段校验做成快照上的 getter，不引入校验库
+- Server-side: 复杂校验全部交给 backend；不引入 schema 校验库（没有 Zod 等价物），靠 Dart 类型系统
 
 ---
 
@@ -97,29 +82,11 @@ result.when(
 );
 ```
 
-`Failure` **不携带用户可见文案**（只有 `code` 与可选 `statusCode`），文案在展示层按当前语言翻译：
-
-```dart
-final message = failure.localizedMessage();
-```
+`Failure` **不携带用户可见文案**（只有 `code` 与可选 `statusCode`），展示层用 `failure.localizedMessage()`（无参数）按当前语言取中文常量；文案写在哪见 [localization.md](./localization.md)「文案写在哪」。
 
 ### Async state checking
 
-用 `AsyncView` 渲染，**不需要 `!` 强解包**——`data` 回调拿到的 `T` 非空，`error` 回调拿到的
-`Object` / `StackTrace` 也非空（`AsyncView` 内部判过 `hasValue` / `hasError`）：
-
-```dart
-final items = ref.watch(sampleListProvider);
-
-AsyncView<List<SampleItem>>(
-  state: items,
-  loading: () => const LoadingIndicator(),
-  error: (error, stackTrace) => ErrorText(error: error),
-  data: (list) => ListView.builder(...), // list: List<SampleItem>（非空）
-)
-```
-
-判定顺序与 `data(null)` 这条定制语义见 [state-management.md](./state-management.md)「渲染状态」。
+用 `AsyncView` 渲染**不需要 `!` 强解包**：`data` 回调拿到的 `T` 非空，`error` 回调拿到的 `Object` / `StackTrace` 也非空（`AsyncView` 内部判过 `hasValue` / `hasError`）。调用形状见 [quality-guidelines.md](./quality-guidelines.md)「Required Patterns」；判定顺序与 `data(null)` 这条定制语义见 [state-management.md](./state-management.md)「渲染状态」。
 
 ### Type-related lints actually enabled
 

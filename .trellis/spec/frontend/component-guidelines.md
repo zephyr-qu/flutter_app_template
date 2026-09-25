@@ -22,37 +22,9 @@ This is a **Flutter project using Material Design 3** (Material You). Widgets fo
 
 ### 标准页面（带状态）
 
-```dart
-@RoutePage()
-class SampleListPage extends ConsumerWidget {
-  const new({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(sampleListProvider);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('示例')),
-      body: AsyncView<List<SampleItem>>(
-        state: items,
-        loading: () => const LoadingIndicator(),
-        error: (error, stackTrace) => ErrorText(
-          error: error,
-          onRetry: () => ref.invalidate(sampleListProvider),
-        ),
-        data: (list) => RefreshIndicator(
-          onRefresh: () => ref.refresh(sampleListProvider.future),
-          child: /* 列表 / 空态 */,
-        ),
-      ),
-    );
-  }
-}
-```
-
 - 页面**不持有**任何可注入字段（注入口是 `ProviderScope(overrides:)`），也不注册 `getIt`
 - 状态与业务逻辑在 `logic/` 的 Notifier 里，页面只 `ref.watch` + 转事件
-- 详细的写法、生命周期与测试见 [state-management.md](./state-management.md)「Consumer 一节」
+- 完整模板、生命周期与测试见 [state-management.md](./state-management.md)「Consumer 一节」（金标准 `features/sample/page/sample_list_page.dart`）
 
 ### 无状态页面（无需状态）
 
@@ -74,17 +46,15 @@ class SampleCard extends StatelessWidget {
 
 ## Props Conventions
 
-- **Data**: Pass via `required` named parameters in constructor
-- **Callbacks**: Named params with `VoidCallback?` for optional actions
-- **Options**: Named params with sensible defaults
+- **Data**: Pass via `required` named parameters in constructor；**Callbacks**: named params with `VoidCallback?`；**Options**: named params with sensible defaults
 
 ```dart
 class ErrorText extends StatelessWidget {
   const ErrorText({
     super.key,
-    required this.error,          // Required data
-    this.onRetry,                 // Optional callback
-    this.icon,                    // Optional customization
+    required this.error,
+    this.onRetry,
+    this.icon,
   });
 
   final Object error;
@@ -101,10 +71,7 @@ class ErrorText extends StatelessWidget {
 
 ```dart
 // GOOD
-Text(
-  item.title,
-  style: theme.textTheme.titleLarge,
-),
+Text(item.title, style: theme.textTheme.titleLarge),
 Text(
   '点击阅读更多...',
   style: theme.textTheme.bodyMedium?.copyWith(
@@ -148,8 +115,7 @@ grep -n "Color" lib/core/theme/app_theme_extension.dart   # 期望：无输出
 grep -rln "flex_color_scheme" lib/   # 期望：只命中 lib/core/theme/app_color_scheme.dart
 ```
 
-第三档之后 `lib/core/theme/` 里不再有 `flex_color_scheme`，规则 2 的 `grep` 验证会变成「无输出」——
-这也是它可被验证的意义：边界会不会破，一条命令就能看出来。
+第三档之后 `lib/core/theme/` 里不再有 `flex_color_scheme`，规则 2 的 `grep` 验证会变成「无输出」——边界会不会破，一条命令就能看出来。
 
 **主题入口只有两个函数，不内联在 `lib/app/app.dart`。**
 
@@ -158,9 +124,7 @@ ThemeData buildLightTheme();   // app_theme.dart
 ThemeData buildDarkTheme();
 ```
 
-内联在组合根也能跑，但那样测试只能自己拼一套主题，于是出现「测试里一套、线上另一套」，
-主题相关的断言全部失去意义。公开成函数后，测试挂的就是同一份
-（`app.dart` 把两份 `ThemeData` 缓存在顶层 `final`，理由见该文件注释）。
+内联在组合根也能跑，但那样测试只能自己拼一套主题，出现「测试里一套、线上另一套」，主题断言全部失去意义；公开成函数后，测试挂的就是同一份（`app.dart` 把两份 `ThemeData` 缓存在顶层 `final`，理由见该文件注释）。
 
 ---
 
@@ -180,44 +144,21 @@ ThemeData buildDarkTheme();
 
 ## Three-State Rendering
 
-所有异步页面遵循统一的渲染模式——**用 `AsyncView`**：
-
-```dart
-// 推荐：状态与分支都由 AsyncView 承载
-AsyncView<List<SampleItem>>(
-  state: items,                                   // ref.watch(xxxProvider)
-  loading: () => const LoadingIndicator(),
-  error: (error, stackTrace) => ErrorText(error: error, onRetry: retry),
-  data: (list) => list.isEmpty
-      ? const EmptyWidget(message: '暂无数据')
-      : ListView.builder(...),
-)
-
-// 不推荐：AsyncValue.when —— 判定顺序与 data(null) 语义要各自重写一遍
-// 不推荐：手写 is-loading / has-error 分支，三态逻辑会被抄散到每个页面
-```
-
-`AsyncView` 覆盖稳定态（loading / data / error）；后台刷新与重载用可选的
-`refreshing` / `reloading` 回调，缺省时退回 `data`（旧数据）。判定顺序表与
-`data(null)` 这条定制语义见 [state-management.md](./state-management.md)「渲染状态」。
+所有异步页面遵循统一的渲染模式——**用 `AsyncView`**，不要用 `AsyncValue.when`、也不要手写 is-loading / has-error 分支：稳定态（loading / data / error）必填，后台刷新与重载用可选的 `refreshing` / `reloading` 回调，缺省时退回 `data`（旧值）。示例见 [quality-guidelines.md](./quality-guidelines.md)「Required Patterns」；判定顺序表与 `data(null)` 定制语义见 [state-management.md](./state-management.md)「渲染状态」。
 
 ---
 
 ## Accessibility
 
-- Use `Semantics` widget or Material's built-in semantics for custom widgets
+- Use `Semantics` widget or Material's built-in semantics for custom widgets, and prefer Material Design components for built-in accessibility
 - Ensure touch targets are at least 48x48 dp
 - Use `Theme.of(context)` colors — respects system high-contrast settings
-- Prefer Material Design components for built-in accessibility
 
 ---
 
 ## Common Mistakes
 
-- ❌ **Hardcoding colors/fonts** — Always use `Theme.of(context)` and `colorScheme`
+- ❌ **Hardcoding colors/fonts、业务逻辑写进 widget、用 `AsyncValue.when` 渲染三态、给页面加注入点** — 规则与正确做法见 [quality-guidelines.md](./quality-guidelines.md)「Forbidden Patterns」/「Required Patterns」
+- ❌ **在页面里 `ref.read(xxxProvider)` 取值** — 用 `ref.watch`（门禁 `avoid_ref_read_in_build` 会拦）
 - ❌ **Not using `const` constructors** — The linter enforces `prefer_const_constructors`
 - ❌ **Missing `super.key`** — Always include `super.key` in widget constructors
-- ❌ **Business logic in widgets** — Delegate to the Notifier for all state mutations
-- ❌ **在页面里 `ref.read(xxxProvider)` 取值** — 用 `ref.watch`（门禁 `avoid_ref_read_in_build` 会拦）
-- ❌ **用 `AsyncValue.when` 渲染三态** — 用 `AsyncView`（判定顺序与 `data(null)` 语义已封装）
-- ❌ **给页面加 `final Xxx? viewModel;` 注入点** — 注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段

@@ -6,15 +6,9 @@
 
 ## Overview
 
-These guidelines apply to:
+These guidelines apply to `lib/core/`（shared infrastructure）、`lib/features/*/data/`（API, service, repository, models）与 `lib/features/*/logic/`（Notifier：状态 + 业务编排）。
 
-- `lib/core/` — shared infrastructure
-- `lib/features/*/data/` — API, service, repository, models
-- `lib/features/*/logic/` — Notifier（状态 + 业务编排）
-
-**架构边界**（`core/` 不得 import/export 上层、跨 feature 只共享 `data/`、`logic/` 不得
-import/export `package:flutter/material.dart`）以及所有门禁、测试基建与发布的约定，见
-[../cross-cutting.md](../cross-cutting.md) —— 本文件不重复。
+**架构边界**（`core/` 不得 import/export 上层、跨 feature 只共享 `data/`、`logic/` 不得 import/export `package:flutter/material.dart`）以及所有门禁、测试基建与发布的约定，见 [../cross-cutting.md](../cross-cutting.md) —— 本文件不重复。
 
 ---
 
@@ -25,11 +19,8 @@ import/export `package:flutter/material.dart`）以及所有门禁、测试基�
 1. **Bare `try/catch` without a `Result` type on public APIs** — all fallible repository/service methods must return `Result<T, Failure>`
 
    ```dart
-   // BAD
-   Future<List<SampleItem>> getItems() async { ... }
-
-   // GOOD
-   Future<Result<List<SampleItem>, Failure>> getItems() async { ... }
+   Future<List<SampleItem>> getItems() async { ... }                            // BAD
+   Future<Result<List<SampleItem>, Failure>> getItems() async { ... }            // GOOD
    ```
 
 2. **`print()` in production code** — use the `Logging` facade (`Logging.info/debug/warning/error`). (`avoid_print` is not currently enabled in `analysis_options.yaml`; this is a review convention, not a lint error.)
@@ -37,11 +28,8 @@ import/export `package:flutter/material.dart`）以及所有门禁、测试基�
 3. **Raw `DioException` propagation to the Notifier** — convert to a typed `Failure` in the Service layer
 
    ```dart
-   // BAD
-   throw e;  // letting DioException escape
-
-   // GOOD
-   return Result.failure(handleDioError(e));
+   throw e;                                        // BAD — letting DioException escape
+   return Result.failure(handleDioError(e));        // GOOD
    ```
 
 4. **Cyclic imports between features** — a feature never imports another feature's `page/` or `logic/`
@@ -63,51 +51,41 @@ import/export `package:flutter/material.dart`）以及所有门禁、测试基�
 
 1. **`Result<T, Failure>`** for all fallible operations in repository interfaces and service implementations
 
-2. **Service 与接口的绑定在 provider 里** — `{feature}_providers.dart` 让 provider 返回抽象类型
+2. **Service 与第三方 / API 依赖的绑定都在 provider 里** —— `{feature}_providers.dart` 让 provider 返回抽象类型：
 
    ```dart
    // features/sample/data/sample_providers.dart
    @Riverpod(keepAlive: true)
    SampleRepository sampleRepository(Ref ref) =>
        SampleService(ref.watch(sampleApiProvider), ref.watch(sampleDaoProvider));
-   ```
 
-3. **第三方 / API 依赖也用 provider 装配**：
-
-   ```dart
    @Riverpod(keepAlive: true)
    SampleApi sampleApi(Ref ref) => SampleApi(ref.watch(dioProvider));
    ```
 
    （provider 本身就是注册表，见 [frontend/state-management.md](../frontend/state-management.md)「三种 Provider 形态」。）
 
-4. **Repository abstraction is optional** — write `{Feature}Repository` only when there is a genuine multi-implementation need (mock / online switching). Simple features call the Service directly. When both exist, the interface is `{feature}_repository.dart` and the implementation `{feature}_service.dart` — both live in the feature's `data/` layer (there is no `domain/` layer).
+3. **Repository abstraction is optional** — write `{Feature}Repository` only when there is a genuine multi-implementation need (mock / online switching). Simple features call the Service directly. When both exist, the interface is `{feature}_repository.dart` and the implementation `{feature}_service.dart` — both live in the feature's `data/` layer (there is no `domain/` layer).
 
-5. **Sealed Failure subtypes**: 直接实例化子类并给出 `FailureCode`（`const NetworkFailure(code: FailureCode.timeout)`）。`Failure` 不携带用户可见文案——文案由展示层翻译，见 [error-handling.md](./error-handling.md)
+4. **Sealed Failure subtypes**: 直接实例化子类并给出 `FailureCode`（`const NetworkFailure(code: FailureCode.timeout)`）。`Failure` 不携带用户可见文案——文案由展示层翻译，见 [error-handling.md](./error-handling.md)
 
-6. **Private fields prefixed with `_`**
+5. **Private fields prefixed with `_`**
 
-7. **Doc comments on public APIs**: `///` on repository/service methods, stating what the method does and which `Result` variants it returns
+6. **Doc comments on public APIs**: `///` on repository/service methods, stating what the method does and which `Result` variants it returns
 
-8. **Models**: annotate with `@freezed` (value semantics, `copyWith`, generated `fromJson`/`toJson`). 脚手架里所有模型都是 freezed（`SampleItem` 是现存唯一一个）。Never hand-edit the generated `*.g.dart` / `*.freezed.dart`
+7. **Models**: annotate with `@freezed` (value semantics, `copyWith`, generated `fromJson`/`toJson`). 脚手架里所有模型都是 freezed（`SampleItem` 是现存唯一一个）。Never hand-edit the generated `*.g.dart` / `*.freezed.dart`
 
 ---
 
 ## Testing Requirements
 
-- **Unit tests required for**:
-  - Notifier 的状态迁移（loading → data、loading → error）
-  - Failure paths, via `Result.failure()` mocks
-  - Repository/Service error mapping where non-trivial
+- **Unit tests required for**: Notifier 的状态迁移（loading → data、loading → error）、Failure paths（`Result.failure()` mocks）、非平凡的 Repository/Service 错误映射
 - **Test file location**: `test/features/{feature}/`
-- **Testing libraries**: `flutter_test`, `mocktail`；provider 测试用 `ProviderContainer` + `overrides`
-  （模板：`test/features/sample/logic/sample_list_notifier_test.dart`）
+- **Testing libraries**: `flutter_test`, `mocktail`；provider 测试用 `ProviderContainer` + `overrides`（模板：`test/features/sample/logic/sample_list_notifier_test.dart`）
 
 ---
 
 ## Code Review Checklist
-
-When reviewing data-layer code, check:
 
 - [ ] Does the method return `Result<T, Failure>` instead of throwing?
 - [ ] Are all `DioException`s caught and converted via `handleDioError()`?

@@ -25,9 +25,7 @@
 
 ## 相关目录
 
-- 页面 / 状态 / 组件 / 类型安全：[`../frontend/`](../frontend/index.md)
-- 通用思考方法：[`../guides/`](../guides/index.md)
-- 一次任务的工作流：[`../../workflow.md`](../../workflow.md)
+- 页面 / 状态 / 组件 / 类型安全：[`../frontend/`](../frontend/index.md)；通用思考方法：[`../guides/`](../guides/index.md)；一次任务的工作流：[`../../workflow.md`](../../workflow.md)
 
 ---
 

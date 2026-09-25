@@ -6,13 +6,7 @@
 
 ## The Problem
 
-**Duplicated code is the #1 source of inconsistency bugs.**
-
-When you copy-paste or rewrite existing logic:
-
-- Bug fixes don't propagate
-- Behavior diverges over time
-- Codebase becomes harder to understand
+**Duplicated code is the #1 source of inconsistency bugs.** 复制粘贴或重写已有逻辑，会让修复不传播、行为逐渐分叉、代码更难读懂。
 
 ---
 
@@ -21,11 +15,8 @@ When you copy-paste or rewrite existing logic:
 ### Step 1: Search First
 
 ```bash
-# 找同名 / 近名的定义
-grep -rn "getCachedItems" lib/
-
-# 找相似逻辑（关键词选项目里独特的那类）
-grep -rn "MockRule" lib/
+grep -rn "getCachedItems" lib/    # 找同名 / 近名的定义
+grep -rn "MockRule" lib/          # 找相似逻辑（关键词选项目里独特的那类）
 ```
 
 ### Step 2: Ask These Questions
@@ -43,26 +34,19 @@ grep -rn "MockRule" lib/
 
 ### Pattern 1: Copy-Paste Functions
 
-**Bad**: Copying a validation function to another file
-
-**Good**: Extract to shared utilities, import where needed
+**Bad**: 复制一个校验函数到别的文件 → **Good**: 抽到共享工具，按需 import。
 
 ### Pattern 2: Similar Components
 
-**Bad**: Creating a new component that's 80% similar to existing
-
-**Good**: Extend existing component with props/variants
+**Bad**: 新建一个与现有组件 80% 相似的组件 → **Good**: 用 props / variant 扩展现有组件。
 
 ### Pattern 3: Repeated Constants
 
-**Bad**: Defining the same constant in multiple files
-
-**Good**: Single source of truth, import everywhere
+**Bad**: 同一个常量定义在多个文件 → **Good**: 单一出处，各处 import。
 
 ### Pattern 4: 同一个转换散落在各个消费者里
 
 **Bad**：多个 Service 各自把 `DioException` 映射成 `Failure`，每个都维护一份「哪些状态码算超时」的判断。
-
 **Good**：转换只发生在数据拥有者旁边 —— `handleDioError()`（`core/base/failure.dart`）。
 
 **Rule**：同一个转换/判断被写到**第 2 处**时就该抽出来，不要等到第 3 处 —— 那时两份已经不一致了。
@@ -71,17 +55,8 @@ grep -rn "MockRule" lib/
 
 ## When to Abstract
 
-**Abstract when**:
-
-- Same code appears 3+ times
-- Logic is complex enough to have bugs
-- Multiple features need it（提到 `core/` 的门槛是 2+ 个 feature 用它）
-
-**Don't abstract when**:
-
-- Only used once
-- Trivial one-liner
-- Abstraction would be more complex than duplication
+**Abstract when**: 同一段代码出现 3+ 次、复杂到会出 bug、2+ 个 feature 都需要它（提到 `core/` 的门槛）。
+**Don't abstract when**: 只用一次、一行就写完、抽象比重复本身更复杂。
 
 > ⚠️ **过早抽象是个人项目的头号杀手** —— 宁可重复写两次，也不要提前抽取不稳定的基类。见 [../frontend/directory-structure.md](../frontend/directory-structure.md) 的「共享层（core/）严格克制」。
 
@@ -89,11 +64,7 @@ grep -rn "MockRule" lib/
 
 ## After Batch Modifications
 
-When you've made similar changes to multiple files:
-
-1. **Review**: Did you catch all instances?
-2. **Search**: Run grep to find any missed
-3. **Consider**: Should this be abstracted?
+批量改完多处相似代码后：**Review** 是否全改到了、**Search** 用 grep 找漏网的、**Consider** 该不该就此抽象。
 
 ### 状态分支用穷尽 `switch`，不要散落 `if/else`
 

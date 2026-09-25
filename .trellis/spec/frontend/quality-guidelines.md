@@ -9,27 +9,16 @@
 ❌ **Never use these patterns**:
 
 1. **`print()` in production code** — Use `Logging.info()` / `Logging.error()` instead.
-
 2. **Hardcoded colors/fonts/padding** — Always use `Theme.of(context)` or `colorScheme`.
-
 3. **Business logic in widgets** — All async operations belong in Notifier / Service.
-
 4. **页面自己建 `ProviderContainer`** — 依赖从 `ref` 取（容器是测试与 `bootstrap()` 的东西，不是业务代码的）。这条**已无门禁**（2026-09-24 起不再拦），靠约定与 review。
-
 5. **在 `build` 里用 `ref.read` 取 provider 的值** — `ref.read` 不建立订阅，provider 变了界面不重建。`ref.read(xxxProvider.notifier)` 取实例是允许的（身份稳定、不参与订阅）。门禁：`packages/app_lints` 插件的 `avoid_ref_read_in_build`（`dart analyze` 下生效）。
-
 6. **`setState()` for async/API data** — 数据加载用 `@riverpod` 的 `AsyncNotifier`（`Future<T> build()`），渲染用 `AsyncView`；`setState` 只留给动画 / 滚动这类纯 UI 状态。
-
 7. **`withOpacity()`** — Use `Color.withValues(alpha: X)` (Dart 3+).
-
 8. **`ref.read` / `ref.watch` 在 `logic/` 里绕过 provider 拿依赖** — logic 层的依赖要么走 `ref`（`ref.watch` / `ref.read` provider），要么走构造器；不得手动 new 服务、也不得 import/export widget 层（`features/*/logic/` 禁 `package:flutter/material.dart`，由 `packages/app_lints` 插件的 `no_material_import_in_logic` 拦）。
-
 9. **Feature imports or exports another feature's page/ or logic/** — Only core/ and another feature's data/ are allowed. Also enforced by the `packages/app_lints` plugin (`cross_feature_only_data`); it additionally forbids `core/` importing or exporting `features/` or `app/` (`no_upper_import_in_core`).
-
 10. **凭据放进 URL query** — 密码、令牌这类敏感值只能走**请求体**：query 会进入服务端访问日志、代理日志、浏览器或崩溃上报，等同于明文泄露。本项目无认证，这条是给将来接入凭证时立的规矩。
-
 11. **页面自己维护 loading / request token** — 首屏加载就是 provider 的 `build()`，刷新与重试退回 `ref.refresh` / `ref.invalidate`。手写序号、`Completer`、竞态判断等于把框架已经保证的事重做一遍，且容易做错。
-
 12. **页面加 `final Xxx? viewModel;` 构造注入点** — 注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段。
 
 ---
@@ -54,34 +43,11 @@
    )
    ```
 
-   **不要用 `AsyncValue.when`**：三态判定顺序与 `data(null)` 语义都封装在 `AsyncView` 里，
-   页面各自重写一遍就会漂移（见 [state-management.md](./state-management.md)「渲染状态」）。
-
-2. **异步数据用 `AsyncNotifier` 的 `build()`**:
-
-   ```dart
-   @riverpod
-   class SampleListNotifier extends _$SampleListNotifier {
-     @override
-     Future<List<SampleItem>> build() async { /* Result → AsyncValue */ }
-   }
-   ```
-
-   失败时**抛 `Failure` 本身**，不要另造包装异常。
-
-3. **`Theme.of(context)` at start of build**:
-
-   ```dart
-   final theme = Theme.of(context);
-   ```
-
+   **不要用 `AsyncValue.when`**：三态判定顺序与 `data(null)` 语义都封装在 `AsyncView` 里，页面各自重写一遍就会漂移（见 [state-management.md](./state-management.md)「渲染状态」）。
+2. **异步数据用 `AsyncNotifier` 的 `Future<T> build()`**（体内把 `Result` 映射成 `AsyncValue`），失败时**抛 `Failure` 本身**，不要另造包装异常（形状见 [state-management.md](./state-management.md)「三种 Provider 形态」）。
+3. **`Theme.of(context)` at start of build**：`final theme = Theme.of(context);`
 4. **`const` constructors** for all widgets.
-
-5. **`ref.watch` for state consumption**:
-
-   ```dart
-   final items = ref.watch(sampleListProvider);
-   ```
+5. **`ref.watch` for state consumption** —— `ref.read` 只在方法 / 回调里取一次性值（门禁口径见本文件「Forbidden Patterns」）。
 
 ---
 
@@ -104,14 +70,11 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 - **不要再用 `runZonedGuarded`** —— 它与 `PlatformDispatcher.instance.onError` 覆盖同一批错误，Flutter 现行推荐后者。
 - **`FlutterError.onError` 不要再包一层 `Logging.error`** —— 框架错误本来就会经过它，默认的 `presentError` 已经把红屏与完整堆栈打出来了。
 
-> ⚠️ **这些兜底的产物只到控制台。** `Logging` 用的是 `logger` 的默认输出（stdout），没有自定义 `output:` ——
-> release 版上 Android 进 logcat、iOS 基本丢弃，用户和你都拿不到。生产环境的真兜底要靠崩溃上报
-> （Sentry / Crashlytics）或写本地日志文件，**目前都没有**。
+> ⚠️ **这些兜底的产物只到控制台。** `Logging` 用的是 `logger` 的默认输出（stdout，没有自定义 `output:`），release 版上 Android 进 logcat、iOS 基本丢弃，用户和你都拿不到。生产环境的真兜底要靠崩溃上报（Sentry / Crashlytics）或写本地日志文件，**目前都没有**。
 
 ### 拦截器顺序（`dioProvider`）
 
-见 [backend/network-guidelines.md](../backend/network-guidelines.md) —— 顺序图、两条不可破的
-语义、以及相关的两个测试都记在那里，本文件不再重复。
+顺序图、两条不可破的语义与相关的两个测试见 [backend/network-guidelines.md](../backend/network-guidelines.md)「拦截器顺序」，本文件不再重复。
 
 ---
 
@@ -132,11 +95,8 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 ## Testing Requirements
 
 - 测试文件路径跟随源码结构：`test/features/{feature}/{subdir}/` 对应 `lib/features/{feature}/{subdir}/`
-- 状态/逻辑测试用 `ProviderContainer` + `overrides` 注入假仓库，不需要任何全局注册表
-  （`test/features/sample/logic/sample_list_notifier_test.dart` 是模板）
-- 页面测试用 `test/support/app_test_harness.dart` 的 `setUpTestApp()` + `wrapPage(page, container:)`，
-  依赖同样通过 `overrides` 换掉
-- widget 测试的三条硬约束（不要 `await provider.future`、容器传 `retry: noRetry`、mocktail 的
-  `verify` 会消耗命中次数）见 [state-management.md](./state-management.md)「Testing Requirements」
-- Integration tests: `integration_test/` 目录（跑法与注意事项见 [../cross-cutting.md](../cross-cutting.md)）
+- 状态/逻辑测试用 `ProviderContainer` + `overrides` 注入假仓库，不需要任何全局注册表（模板：`test/features/sample/logic/sample_list_notifier_test.dart`）
+- 页面测试用 `test/support/app_test_harness.dart` 的 `setUpTestApp()` + `wrapPage(page, container:)`，依赖同样通过 `overrides` 换掉
+- widget 测试的三条硬约束（不要 `await provider.future`、容器传 `retry: noRetry`、mocktail 的 `verify` 会消耗命中次数）见 [state-management.md](./state-management.md)「Testing Requirements」
+- Integration tests: `integration_test/` 目录（跑法与注意事项见 [../cross-cutting.md](../cross-cutting.md)「Integration Testing」）
 - 新增 widget 测试时确保 `flutter_test_config.dart` 中的 `LeakTesting` 配置合适

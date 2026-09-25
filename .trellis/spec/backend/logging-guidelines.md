@@ -16,23 +16,19 @@ The facade lives at **`lib/core/logging/logging.dart`**.
 
 ### `Logging.info(String message)`
 
-- **When to use**: normal application flow — startup, config loaded, environment selected
-- **Example**: `Logging.info('Environment: development (.env.development)')`
+- **When to use**: normal application flow — startup, config loaded, environment selected。例：`Logging.info('Environment: development (.env.development)')`
 
 ### `Logging.error(String message, {Object? exception, StackTrace? stackTrace})`
 
-- **When to use**: unexpected failures and error boundaries
-- **Example**: `Logging.error('Unhandled platform error', exception: e, stackTrace: stackTrace)`
+- **When to use**: unexpected failures and error boundaries。例：`Logging.error('Unhandled platform error', exception: e, stackTrace: stackTrace)`
 
 ### `Logging.debug(String message)`
 
-- **When to use**: development-time diagnostics — state changes, branch decisions
-- **Example**: `Logging.debug('reading cache: ${dir.path}')`
+- **When to use**: development-time diagnostics — state changes, branch decisions。例：`Logging.debug('reading cache: ${dir.path}')`
 
 ### `Logging.warning(String message)`
 
-- **When to use**: recoverable / unexpected-but-handled conditions
-- **Example**: `Logging.warning('响应体不是合法 JSON，保留原始字符串: $e')`
+- **When to use**: recoverable / unexpected-but-handled conditions。例：`Logging.warning('响应体不是合法 JSON，保留原始字符串: $e')`
 
 ---
 
@@ -48,11 +44,6 @@ class Logging {
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );
-
-  static void info(String message) => _logger.i(message);
-  static void warning(String message) => _logger.w(message);
-  static void debug(String message) => _logger.d(message);
-  static void error(String message, {Object? exception, StackTrace? stackTrace}) { ... }
 }
 ```
 
@@ -63,8 +54,6 @@ class Logging {
 ## 日志写在哪里
 
 > 快照（2026-09）：改动相关代码时请同步本节。查全量：`grep -rn "Logging\." lib/`
-
-按「谁在兜底」分四类：
 
 | 位置 | 记什么 |
 | --- | --- |
@@ -77,36 +66,19 @@ class Logging {
 
 HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMode && preferences.enableDebugLogging`。
 
-它的 `logPrint` 串了 `lib/core/logging/log_redactor.dart`：请求 / 响应体在落控制台之前逐行过
-`LogRedactor.redact()`，`authorization` / `password` / `accessToken` / `refreshToken` 等字段的值
-换成 `***` —— 上面「What NOT to Log」里的密码与令牌因此不会被调试日志带出去。
+它的 `logPrint` 串了 `lib/core/logging/log_redactor.dart`：请求 / 响应体在落控制台之前逐行过 `LogRedactor.redact()`，`authorization` / `password` / `accessToken` / `refreshToken` 等字段的值换成 `***` —— 上面「What NOT to Log」里的密码与令牌因此不会被调试日志带出去。
 
-- 脱敏在**已成型的日志行**上做，是因为 `PrettyDioLogger` 只给了 `logPrint` 一个回调，
-  拿不到可替换的 `RequestOptions` / `Response`（理由写在 `log_redactor.dart` 的文件注释里）
-- 它是**跨行带状态**的：`PrettyDioLogger` 按 `maxWidth`（默认 90）给长值折行，只屏蔽命中那一行
-  会把剩下的令牌漏出去。所以同一个 `LogRedactor` 实例要贯穿整条日志流，别在回调里现建
-- 新增敏感字段时同步 `LogRedactor.sensitiveKeys`，并在 `test/core/logging/log_redactor_test.dart`
-  里补一条 —— 漏了不会报错，只会静默漏值。
+- 脱敏在**已成型的日志行**上做，是因为 `PrettyDioLogger` 只给了 `logPrint` 一个回调，拿不到可替换的 `RequestOptions` / `Response`（理由写在 `log_redactor.dart` 的文件注释里）
+- 它是**跨行带状态**的：`PrettyDioLogger` 按 `maxWidth`（默认 90）给长值折行，只屏蔽命中那一行会把剩下的令牌漏出去。所以同一个 `LogRedactor` 实例要贯穿整条日志流，别在回调里现建
+- 新增敏感字段时同步 `LogRedactor.sensitiveKeys`，并在 `test/core/logging/log_redactor_test.dart` 里补一条 —— 漏了不会报错，只会静默漏值
 
-> **Notifier 里没有日志框架，也没有 `dispose()` 生命周期钩子。** Notifier 是 `@riverpod` 生成的
-> 普通 Dart 类，没有 `addEffect` / 日志器可挂；状态错误通过 `AsyncValue.error`（携带 `Failure`）
-> 流到界面，**不经过 logger**。需要在状态层记日志时直接用 `Logging` 门面，不要另建一套。
-> 清理动作（流订阅、`Listenable`、控制器）登记在 `ref.onDispose`，
-> 见 [frontend/state-management.md](../frontend/state-management.md)「生命周期」。
+> **Notifier 里没有日志框架，也没有 `dispose()` 生命周期钩子。** Notifier 是 `@riverpod` 生成的普通 Dart 类，没有 `addEffect` / 日志器可挂；状态错误通过 `AsyncValue.error`（携带 `Failure`）流到界面，**不经过 logger**。需要在状态层记日志时直接用 `Logging` 门面，不要另建一套。
+> 清理动作（流订阅、`Listenable`、控制器）登记在 `ref.onDispose`，见 [frontend/state-management.md](../frontend/state-management.md)「生命周期」。
 
 ---
 
 ## What NOT to Log
 
-🚫 **Never log**:
+🚫 **Never log**: passwords or authentication tokens；含 PII 的完整请求/响应体；信用卡号、身份证号等敏感个人数据；未匿名化的设备标识。
 
-- Passwords or authentication tokens
-- Full request/response bodies containing PII
-- Credit card numbers, national IDs, or other sensitive personal data
-- Device identifiers without anonymisation
-
-✅ **Do log**:
-
-- Lifecycle milestones (startup, environment, 装配完成)
-- Error messages without credentials
-- Recoverable anomalies (with `Logging.warning`)
+✅ **Do log**: 生命周期里程碑（startup、environment、装配完成）；不含凭据的错误消息；可恢复的异常（`Logging.warning`）。

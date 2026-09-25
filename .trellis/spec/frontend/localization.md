@@ -1,8 +1,6 @@
 # Localization (l10n)
 
-> 本脚手架是**单语言**的：用户可见文案直接写成中文字面量，没有 ARB，也没有
-> `AppLocalizations`。这是**有意**的裁剪结果，不是漏掉的能力——`tool/prune.dart
-> --l10n=single` 就是把多语言版本降为单语言的那条命令，它仍在仓库里（幂等，可重跑）。
+> 本脚手架是**单语言**的：用户可见文案直接写成中文字面量，没有 ARB，也没有 `AppLocalizations`。这是**有意**的裁剪结果，不是漏掉的能力——`tool/prune.dart --l10n=single` 就是把多语言版本降为单语言的那条命令，它仍在仓库里（幂等，可重跑）。
 
 ---
 
@@ -41,8 +39,7 @@ extension FailureMessage on Failure {
 }
 ```
 
-`Failure` **只携带 `code`**、不携带文案。这条结构不变：文案始终在展示层，切换语言的那天
-只需要改展示层（见 [backend/error-handling.md](../backend/error-handling.md)）。
+`Failure` **只携带 `code`**、不携带文案：文案始终在展示层，切换语言的那天只需要改展示层（见 [backend/error-handling.md](../backend/error-handling.md)）。
 
 ---
 
@@ -66,8 +63,6 @@ extension FailureMessage on Failure {
 3. 页面文案换成 `AppLocalizations.of(context).xxx`
 4. `failure_message.dart` 的 `localizedMessage` 改为接收 `AppLocalizations`
 5. 补 key 对齐测试（两个 ARB 的 key 集合相等）与语言切换测试
-6. `tool/prune.dart --l10n=single` 的**裁剪面清单**就是上面这些位置的完整列表
-   （`.trellis/tasks/archive/2026-09/09-22-prune-l10n/prd.md`），照着逐条反向做，不会漏
+6. `tool/prune.dart --l10n=single` 的**裁剪面清单**就是上面这些位置的完整列表（`.trellis/tasks/archive/2026-09/09-22-prune-l10n/prd.md`），照着逐条反向做，不会漏
 
-之所以不做成分支：l10n 横切 `core/ui/failure_message.dart` 与 `core/config/user_preferences.dart`，
-做成分支会在这些文件上与其它分支反复冲突，做成一条可重跑的命令更省事。
+不做成分支，是因为 l10n 横切 `core/ui/failure_message.dart` 与 `core/config/user_preferences.dart`，做成分支会在这些文件上与其它分支反复冲突——一条可重跑的命令更省事。
