@@ -1,28 +1,22 @@
-# Thinking Guides
+# 思考指南
 
-> **Purpose**: Expand your thinking to catch things you might not have considered.
-
----
-
-## Why Thinking Guides?
-
-**Most bugs and tech debt come from "didn't think of that"**, not from lack of skill：没想层边界 → 跨层 bug；没想重复 → 到处复制；没想边界情况 → 运行期错误；没想后续维护者 → 注释没人读。这些指南帮你 **ask the right questions before coding**。
+> **目的**：把思路铺开，接住那些你没想到的点。
 
 ---
 
-## Available Guides
+## 有哪些指南
 
-| Guide | Purpose | When to Use |
+| 指南 | 作用 | 什么时候看 |
 |-------|---------|-------------|
-| [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | 发现自己在复制粘贴时 |
-| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | 功能跨 Page / Notifier / Service / DAO 时 |
-| [Comment Guidelines](./comment-guidelines.md) | 代码注释写什么、spec 引用与语言约定、长文放哪 | 写或改任何注释 / spec 时 |
+| [复用思考指南](./code-reuse-thinking-guide.md) | 识别重复、少写重复代码 | 发现自己在复制粘贴时 |
+| [跨层思考指南](./cross-layer-thinking-guide.md) | 把跨层的数据流想清楚 | 功能跨 Page / Notifier / Service / DAO 时 |
+| [注释规范](./comment-guidelines.md) | 代码注释写什么、spec 引用与语言约定、长文放哪 | 写或改任何注释 / spec 时 |
 
 ---
 
-## Quick Reference: Thinking Triggers
+## 速查：什么时候该想这些
 
-### When to Think About Cross-Layer Issues
+### 该想跨层问题时
 
 - [ ] 功能跨 3+ 层（Page / Notifier / Service / DAO）
 - [ ] 数据在两个层之间换了类型（`DioException` → `Failure`、模型 → drift 行类）
@@ -30,50 +24,52 @@
 - [ ] 不确定某段逻辑该放哪一层
 - [ ] 要在 `core/` 和 feature 之间挪东西（先看依赖方向）
 
-→ Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)
+→ 读 [跨层思考指南](./cross-layer-thinking-guide.md)
 
-### When to Think About Code Reuse
+### 该想复用时
 
-- [ ] You're writing similar code to something that exists
-- [ ] You see the same pattern repeated 3+ times
-- [ ] You're adding a new field to multiple places
-- [ ] **You're modifying any constant or config**
-- [ ] **You're creating a new utility/helper function** ← Search first!
+- [ ] 你在写的代码和已有的很像
+- [ ] 同一个写法重复了 3 次以上
+- [ ] 在多个地方加同一个字段
+- [ ] **要改任何常量或配置**
+- [ ] **要新建工具 / 辅助函数** ← 先搜！
 - [ ] 同一个转换（如 `DioException` → `Failure`）被写到第 2 处
 
-→ Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
+→ 读 [复用思考指南](./code-reuse-thinking-guide.md)
 
-### When Verifying AI Cross-Review Results
+### 核查 AI 交叉复核结论时
 
-- [ ] Reviewer claims "user input can be malicious" / "missing validation" → 先查数据真实来源（内部 manifest？用户配置？外部 API？）是不是本来就可信
-- [ ] Reviewer says "behavior change" / flags a "bug" → 读代码注释确认是否为有意设计；把被测 feature 心理删掉，测试还过就是同义反复
+- [ ] Reviewer 说「用户输入可能是恶意的」/「缺校验」→ 先查数据真实来源（内部 manifest？用户配置？外部 API？）是不是本来就可信
+- [ ] Reviewer 说「行为变了」/ 报了个「bug」→ 读代码注释确认是否为有意设计；把被测 feature 心理删掉，测试还过就是同义反复
 
 **常见 AI 误报模式**：**信任边界混淆**（把内部数据当不可信外部输入）、**无视设计注释**（把注释里写明的有意行为报成 bug）、**变量读错**（没追到变量真正定义，如按 path 还是 name 建 key）。
 
-**Verification rule**: Every CRITICAL/WARNING finding must be verified against the actual code before prioritizing. Budget ~35% false-positive rate for AI reviews.
+**核查规则**：每条 CRITICAL / WARNING 结论在定优先级之前都要对着真实代码核一遍。AI 复核的误报率按约 35% 预估。
 
 ---
 
-## Pre-Modification Rule (CRITICAL)
+## 改任何值之前先搜（硬性）
 
-> **Before changing ANY value, ALWAYS search first!** 这一个习惯就能挡住大多数「忘了同步 X」的 bug。
+> **改任何值之前，一律先搜！**
 
 ```bash
-grep -r "value_to_change" .
+git grep -n "value_to_change"
 ```
 
----
-
-## How to Use This Directory
-
-**Before coding** 浏览相关思考指南；**During coding** 觉得重复或复杂时回来查；**After bugs** 把新教训写回对应指南。
+> **用 `git grep`，别只用 `Grep` / ripgrep**：它们默认**跳过点号目录**（`.trellis/` `.cursor/` `.github/` `.agents/`），「全仓库扫描」会漏掉 spec、规则与 CI 配置。`git grep` 按 git 索引走。
 
 ---
 
-## Contributing
+## 怎么用这个目录
 
-Found a new "didn't think of that" moment? Add it to the relevant guide. 改写时注意：guides 只放**通用的思考方法**。具体的项目规则、命令、文件清单属于 `backend/` 或 `frontend/`，不要抄到这里 —— 两个地方写同一件事必然会漂。
+**写之前**浏览相关思考指南；**写的时候**觉得重复或复杂就回来查；**出 bug 之后**把新教训写回对应指南。
 
 ---
 
-**Core Principle**: 30 minutes of thinking saves 3 hours of debugging.
+## 新增指南
+
+又遇到一个「原来没想到」？把它加进对应的指南。改写时注意：guides 只放**通用的思考方法**。具体的项目规则、命令、文件清单属于 `backend/` 或 `frontend/`，不要抄到这里。
+
+---
+
+**核心原则**：想 30 分钟，省 3 小时调试。

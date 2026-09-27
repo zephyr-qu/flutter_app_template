@@ -1,6 +1,6 @@
 #!/bin/sh
 # 门禁：一条命令 `just verify`（5 项，首个失败即停）。
-# 清单见 README「门禁」与 cross-cutting.md；单项重跑直接手跑对应命令。
+# 清单见 cross-cutting.md；单项重跑直接手跑对应命令。
 #
 # 生成物不入库，但 analyze 需要它们在磁盘上：stash --keep-index 可能按 index
 # 清掉「已暂存删除」的生成物，故 stash 前后备份/恢复（.git/pre-commit-gen-backup）。

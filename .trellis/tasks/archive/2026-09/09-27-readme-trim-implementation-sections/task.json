@@ -1,0 +1,31 @@
+{
+  "id": "readme-trim-implementation-sections",
+  "name": "readme-trim-implementation-sections",
+  "title": "README 按读者分层：移出「数据流」与「测试与门禁」两节",
+  "description": "README 只留定位/上手/目录速览；实现链路与门禁细节归 spec（cross-layer-thinking-guide.md / cross-cutting.md 已是唯一真源）。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P3",
+  "creator": "zs",
+  "assignee": "zs",
+  "createdAt": "2026-09-27",
+  "completedAt": "2026-09-27",
+  "branch": null,
+  "base_branch": "preset/ai-starter",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "README.md",
+    ".trellis/spec/guides/cross-layer-thinking-guide.md",
+    ".trellis/spec/cross-cutting.md",
+    ".trellis/spec/frontend/directory-structure.md"
+  ],
+  "notes": "已完成并直接归档：改动纯 Markdown，无代码/spec 正文变更。判定口径见 prd.md「判定标准」。",
+  "meta": {}
+}

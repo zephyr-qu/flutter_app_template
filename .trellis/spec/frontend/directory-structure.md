@@ -1,12 +1,12 @@
-# Directory Structure
+# 目录结构
 
-> How code is organized in this project.
+> 本项目的代码怎么组织。
 
 ---
 
-## Overview
+## 概览
 
-This project follows **Feature-Sliced Design (FSD) 简化版** — 按业务功能（home, profile, sample）划分目录，每个 feature 内部自包含三层：
+本项目按 **Feature-Sliced Design (FSD) 简化版** 组织 —— 按业务功能（home、profile、sample）划分目录，每个 feature 内部自包含三层：
 
 ```
 lib/
@@ -49,9 +49,9 @@ lib/
 #   sample（金标准示例 —— data 三形态 / logic / page 的照抄对象）
 ```
 
-**不存在** `domain/`、`application/`、`shared/`、`core/error/`、`core/local/` 这些目录 —— 它们属于本脚手架迁移走的旧 Clean Architecture 布局。若在别处看到对它们的引用，那处引用是过期的。
+**不存在** `domain/`、`application/`、`usecase/`、`shared/`、`core/error/`、`core/local/` 这些目录（也不设 UseCase 层）。在别处看到对它们的引用，那处引用是过期的。
 
-与状态管理无关的基础设施（Failure / Result / 日志 / 模型 / 网络 / 数据库 / 主题 / 无文案 UI 组件）在 `lib/core/` 下（`base/` `logging/` `models/` `data/` `theme/` `ui/`）。**单包结构**：app 代码不抽包，`packages/` 只放独立工具包。主题层的两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
+与状态管理无关的基础设施（Failure / Result / 日志 / 网络 / 数据库 / 主题 / 无文案 UI 组件）在 `lib/core/` 下（`base/` `logging/` `data/` `theme/` `ui/`）。**单包结构**：app 代码不抽包，`packages/` 只放独立工具包。主题层的两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
 
 ---
 
@@ -71,24 +71,24 @@ lib/
 
 ### 3. 共享层（core/）严格克制
 
-- 只放真正跨 feature 复用的基础设施（Dio 客户端、主题常量、本地存储）；**过早抽象是个人项目的头号杀手** —— 宁可重复写两次，也不要提前抽取不稳定的基类；一个文件被 2+ 个 feature 使用时才考虑提到 core/
-- **模型放哪**：默认留在该 feature 的 `data/models/`（如 `SampleItem`）。满足**任一**条件才新建 `lib/core/models/`：① 被 2+ 个 feature 共享；② core 自己的代码要用它（core 不能反向依赖 feature）。当前仓库**没有** `lib/core/models/`（认证功能删除后不再有共享模型），需要时再建
+- 只放真正跨 feature 复用的基础设施（Dio 客户端、主题常量、本地存储）；**不要提前抽取不稳定的基类** —— 宁可重复写两次；一个文件被 2+ 个 feature 使用时才考虑提到 `core/`
+- **模型放哪**：默认留在该 feature 的 `data/models/`（如 `SampleItem`）。满足**任一**条件才新建 `lib/core/models/`：① 被 2+ 个 feature 共享；② core 自己的代码要用它（core 不能反向依赖 feature）。当前仓库**没有** `lib/core/models/`，需要时再建
 - 不要把 feature 私有的模型塞进 core，也不要让 core 反向 import feature —— 依赖方向始终是 `features → core`
 - core/ 不包含业务逻辑、不包含状态管理
 
 ### 3.1 应用层（app/）是组合层
 
-`lib/app/` 是 FSD 的 app 层，负责装配：根组件（`app.dart`）、路由（`routing/`）与全局页面（`pages/`，即启动页与 404）。路由需要 import 每个 feature 的 `page/`，全局页面又被路由引用，因此它们**不能**放在 `core/`——否则会形成 `core → features` 的反向依赖。
+`lib/app/` 是 FSD 的 app 层，负责装配：根组件（`app.dart`）、路由（`routing/`）与全局页面（`pages/`，即启动页与 404）。它们**不能**放在 `core/`（会形成 `core → features` 的反向依赖）。
 
 - 依赖方向：`app → features → core`
-- **组合根只做接线**：`lib/app/app.dart`（把主题 / 路由装到一起）与 `lib/bootstrap.dart`（环境加载、异常兜底、`ProviderScope` 装配）都是入口文件，具体定义一律写在各自文件里。保持 `app.dart` 简短是刻意的 —— 它是最常被读的入口，应该让人一眼看懂 App 由什么组装而成，而不必先跳过上百行主题定义
-- 全局页面放在 `lib/app/pages/`，可以直接 import `app/routing/router.dart` 用路由类导航（如 `context.router.replaceRoute(const MainRoute())`）——放在 `core/` 就只能退回 `context.router.replacePath('/')` 这类字符串 path
+- **组合根只做接线**：`lib/app/app.dart`（把主题 / 路由装到一起）与 `lib/bootstrap.dart`（环境加载、异常兜底、`ProviderScope` 装配）都是入口文件，具体定义一律写在各自文件里；`app.dart` 保持简短
+- 全局页面放在 `lib/app/pages/`，可以直接 import `app/routing/router.dart` 用路由类导航（如 `context.router.replaceRoute(const MainRoute())`）
 - `features/` 的页面可以 import `app/routing/router.dart` 使用路由类（如 `const SampleListRoute()`）以获得参数类型安全
-- **不要**因为某个状态变化而重建路由器 —— 重建会丢掉整个导航栈（`routerProvider` 因此是 `keepAlive`）
-- **初始路由（`SplashPage`）不能有构造参数**：声明式路由无法为它提供参数，会在启动时触发 `argsAs` 抛异常。需要读什么就在页面里实时读，不要做成入参
-- **冷启动的初始 location（`/splash`，常量 `splashRoutePath`）由 `app/providers.dart` 的 `routerProvider` 设置**，不是在路由表里标 `initial: true`——`AutoRoute(initial: true)` 只对**没写 `path`** 的路由生效（auto_route 的 `RouteCollection.fromList` 仅在 `path` 为空时才用 `initial` 生成路径），所以只能从 provider 这一侧设；而且**必须在 `config()` 之前**：`routeInfoProvider` 是 memoized 的（`??=`），`app.dart` 的 build 会调 `config()`，晚一步就改不动了。代价是被深链冷启动时这一行会盖掉深链地址——要「深链优先」，就在返回前判断 `platformDispatcher.defaultRouteName` 是否等于 `/`
-- 主框架（`features/home/page/main_page.dart`）的标签用 `AutoTabsRouter` 管理，**不要**自己在 `State` 里存 `_currentIndex`：高亮索引必须由路由栈推导，否则当标签是被别处切换的（首页快捷入口、深链、返回栈）时会与实际显示的页面错位。用默认的 IndexedStack 版本，切回来时各标签的状态还在
-- **改动底部导航标签（在 `MainPage._tabs` 增删 / 调序）时，必须同步更新 `test/routing/main_shell_test.dart`**：该测试的「点击底部导航切换标签并更新高亮」用例写死了标签顺序与 `selectedTabIndex` 期望，标签位移后不更新会让测试红，宽屏 `NavigationRail` 分支同理。把 feature 接进导航时别漏掉这一步——它不在任何 lint / 门禁的拦截范围内，只能靠这条约定兜底
+- **不要**随状态变化重建路由器（`routerProvider` 是 `keepAlive`）
+- **初始路由（`SplashPage`）不能有构造参数**：需要读什么就在页面里实时读，不要做成入参
+- **冷启动的初始 location（`/splash`，常量 `splashRoutePath`）由 `app/providers.dart` 的 `routerProvider` 设置**，不是在路由表里标 `initial: true`（`AutoRoute(initial: true)` 只对**没写 `path`** 的路由生效）。设置**必须在 `config()` 之前**（`routeInfoProvider` 是 memoized 的，`app.dart` 的 build 会调 `config()`）。要「深链优先」，就在返回前判断 `platformDispatcher.defaultRouteName` 是否等于 `/`
+- 主框架（`features/home/page/main_page.dart`）的标签用 `AutoTabsRouter` 管理，**不要**自己在 `State` 里存 `_currentIndex`：高亮索引必须由路由栈推导。用默认的 IndexedStack 版本
+- **改动底部导航标签（在 `MainPage._tabs` 增删 / 调序）时，必须同步更新 `test/routing/main_shell_test.dart`**（宽屏 `NavigationRail` 分支同理）。这条不在任何 lint / 门禁的拦截范围内
 
 ### 4. Repository 接口按需使用
 
@@ -98,8 +98,8 @@ lib/
 ### 5. Feature 间通信通过 core/ 的 provider
 
 ✅ **core/ 层暴露的 provider** 是 feature 间通信的唯一方式。
-❌ 不使用事件总线（调试黑盒，找不到谁在消费）。
-❌ 不依赖路由重建（当前页面在栈中时无效）。
+❌ 不使用事件总线。
+❌ 不依赖路由重建。
 
 ```dart
 // core/config/app_settings.dart —— 主题等偏好，跨 feature 可读；真源 core/config/user_preferences.dart
@@ -109,11 +109,11 @@ final themeMode = ref.watch(appSettingsProvider).themeMode; // Feature B 响应
 `AppSettingsNotifier` 的完整写法（`keepAlive`、先改内存再落盘）见 [state-management.md](./state-management.md)「三种 Provider 形态」。关键约束：
 
 - 共享的 provider 必须是真正的跨 feature 数据。**一个状态只在一个 feature 内使用时，留在那个 feature 的 `logic/` 里。**
-- core/ 的状态与持久化存储保持**单向**：要么「状态在 notifier 里、写入时顺手落盘」（`AppSettingsNotifier`），要么「真源在存储、状态订阅存储的变化流」（当前仓库没有这种，需要时自己建）。**不要两边各写一次** —— 一处通知比两处各写一次更不容易走岔。
+- core/ 的状态与持久化存储保持**单向**：要么「状态在 notifier 里、写入时顺手落盘」（`AppSettingsNotifier`），要么「真源在存储、状态订阅存储的变化流」（当前仓库没有这种，需要时自己建）。**不要两边各写一次**。
 
 ### 6. 数据库：schema 在 core，查询在 feature
 
-Drift 的表结构与 `AppDatabase` 都在 `lib/core/data/database/`（core 不认识业务，所以脚手架只预置了 `DbArticle` 这一张通用示例表）。表类名统一加 `Db` 前缀（`db_articles` → `DbArticles`），行类 `DbArticle` 与 SQL 表名由 drift 自动派生，**不要写任何注解**。
+Drift 的表结构与 `AppDatabase` 都在 `lib/core/data/database/`（当前只有 `DbArticle` 这一张通用示例表）。表类名统一加 `Db` 前缀（`db_articles` → `DbArticles`），行类 `DbArticle` 与 SQL 表名由 drift 自动派生，**不要写任何注解**。
 
 但**查询（DAO）属于 feature**：`features/{feature}/data/{feature}_dao.dart`，用 `@DriftAccessor(tables: [...])` 声明要访问的表（表与数据库同包，范例 `SampleDao`）。接真实业务要加自己的表时，把表加进 `AppDatabase` 的 `@DriftDatabase`、DAO 用 `@DriftAccessor` 声明即可。细节与 drift 的 library 约束见 [backend/database-guidelines.md](../backend/database-guidelines.md)。
 
@@ -123,11 +123,26 @@ Drift 的表结构与 `AppDatabase` 都在 `lib/core/data/database/`（core 不�
 
 创建新 feature 时照 Overview 里 `features/{feature}/` 那棵树展开：`_api` / `_dao` / `_providers` / `_repository` 都是按需件（标注「可选」/「按需」），模型放 `data/models/{model}.dart`，页面放 `page/{feature}_page.dart`。
 
+### 数据层的文件角色
+
+层级依赖方向是 `page/ → logic/ → data/ → core/`（由 `packages/app_lints` 插件强制，见 [../cross-cutting.md](../cross-cutting.md)「架构边界与形态约定」）；数据在层间的流向见 [../guides/cross-layer-thinking-guide.md](../guides/cross-layer-thinking-guide.md)。
+
+| 文件 | 角色 | 备注 |
+| --- | --- | --- |
+| `{feature}_api.dart` | Retrofit 接口定义，只描述 HTTP 形状 | 不做错误映射，不碰缓存 |
+| `{feature}_service.dart` | 业务实现：调用 API、映射错误、读写缓存 | 返回 `Result<T, Failure>` |
+| `{feature}_repository.dart` | 抽象接口 | 按需：有真实多实现需求（mock / 线上切换）才写 |
+| `{feature}_dao.dart` | Drift 查询 | 只碰行类 `DbArticle`，行↔模型转换留在 Service；用 `@DriftAccessor` 声明要访问的表（表与数据库同包，见 [../backend/database-guidelines.md](../backend/database-guidelines.md)「分工」） |
+| `{feature}_providers.dart` | provider 装配 | 只提供依赖，不含业务逻辑 |
+| `models/` | `@freezed` 数据模型 | 见 [./type-safety.md](./type-safety.md) |
+
+完整范例见 `lib/features/sample/`（API + DAO + Service + Repository + Notifier + 页面）。
+
 ---
 
-## Naming Conventions
+## 命名约定
 
-**这张表是命名约定的唯一权威**（`backend/directory-structure.md` 不再各存一份）。
+**这张表是命名约定的唯一权威**。
 
 | 元素 | 规范 | 示例 |
 | --------- | ----------- | ------- |

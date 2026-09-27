@@ -1,6 +1,6 @@
-# Localization (l10n)
+# 本地化（l10n）
 
-> 本脚手架是**单语言**的：用户可见文案直接写成中文字面量，没有 ARB，也没有 `AppLocalizations`。这是**有意**的裁剪结果，不是漏掉的能力——`tool/prune.dart --l10n=single` 就是把多语言版本降为单语言的那条命令，它仍在仓库里（幂等，可重跑）。
+> 本脚手架是**单语言**的：用户可见文案直接写成中文字面量，没有 ARB，也没有 `AppLocalizations`。这是**有意**的裁剪。把它降为单语言的是 `tool/prune.dart --l10n=single`，命令仍在仓库里（幂等，可重跑）。
 
 ---
 
@@ -39,30 +39,28 @@ extension FailureMessage on Failure {
 }
 ```
 
-`Failure` **只携带 `code`**、不携带文案：文案始终在展示层，切换语言的那天只需要改展示层（见 [backend/error-handling.md](../backend/error-handling.md)）。
+`Failure` **只携带 `code`**、不携带文案：文案始终在展示层（见 [backend/error-handling.md](../backend/error-handling.md)）。
 
 ---
 
-## 常见错误
+## 不要做的事
 
-| 错误 | 为什么 |
-| --- | --- |
-| 在 `Failure` 上加回 `message` | 文案是展示职责；模型层带着用户文案，语言就被钉死在数据里 |
-| 提前抽一层「文案常量表」 | 单语言下它只是多一层间接；真要多语言时该引入的是 l10n，不是自制的表 |
-| 在 core / data 层拼用户可见文案 | 展示层才认识语言（现在没有语言层，但结构要留着给以后） |
-| 以为 `wrapPage()` 需要挂 l10n delegate | 本项目没有 l10n；`wrapPage()` 只挂主题（`buildLightTheme()`） |
+- 在 `Failure` 上加回 `message`
+- 提前抽一层「文案常量表」：真要多语言时该引入的是 l10n，不是自制的表
+- 在 core / data 层拼用户可见文案：文案只在展示层
+- 以为 `wrapPage()` 需要挂 l10n delegate：本项目没有 l10n，`wrapPage()` 只挂主题（`buildLightTheme()`）
 
 ---
 
 ## 需要多语言时怎么加回来
 
-没有反向工具（`prune.dart` 只做裁剪，不做恢复），这是一次手工活。标准做法：
+没有反向工具（`prune.dart` 只做裁剪，不做恢复），加回来是手工活：
 
 1. `pubspec.yaml`：加 `flutter_localizations`、`intl`，`flutter:` 下开 `generate: true`
 2. 新增 `l10n.yaml`、`lib/l10n/app_zh.arb`（模板语言）、`app_en.arb`；`flutter gen-l10n`
 3. 页面文案换成 `AppLocalizations.of(context).xxx`
 4. `failure_message.dart` 的 `localizedMessage` 改为接收 `AppLocalizations`
 5. 补 key 对齐测试（两个 ARB 的 key 集合相等）与语言切换测试
-6. `tool/prune.dart --l10n=single` 的**裁剪面清单**就是上面这些位置的完整列表（`.trellis/tasks/archive/2026-09/09-22-prune-l10n/prd.md`），照着逐条反向做，不会漏
+6. `tool/prune.dart --l10n=single` 的**裁剪面清单**就是上面这些位置的完整列表（`.trellis/tasks/archive/2026-09/09-22-prune-l10n/prd.md`），照着逐条反向做
 
-不做成分支，是因为 l10n 横切 `core/ui/failure_message.dart` 与 `core/config/user_preferences.dart`，做成分支会在这些文件上与其它分支反复冲突——一条可重跑的命令更省事。
+不做成分支：`tool/prune.dart --l10n=single` 一条可重跑的命令即可。

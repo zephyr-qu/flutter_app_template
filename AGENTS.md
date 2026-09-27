@@ -1,34 +1,43 @@
 # AI 协作契约
 
+## 开工前先读
 
-## 开工前必读三份
+| 要做什么                                        | 先读                                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 写页面 / provider / Notifier，或动 `core/` 的状态适配层 | [`.trellis/spec/frontend/state-management.md`](.trellis/spec/frontend/state-management.md)       |
+| 新增或改动 UI、组件、主题                              | [`.trellis/spec/frontend/quality-guidelines.md`](.trellis/spec/frontend/quality-guidelines.md)   |
+| 新建 feature、增删文件、判断某文件该放哪                    | [`.trellis/spec/frontend/directory-structure.md`](.trellis/spec/frontend/directory-structure.md) |
+| 门禁（含有意不设门禁的项）、codegen、集成测试、环境配置             | [`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)                               |
+| 其余规范（数据层 / 网络 / 错误处理 / 日志 / 类型安全…）          | [`.trellis/spec/index.md`](.trellis/spec/index.md)                                               |
 
-| 要做什么 | 先读 |
-|---|---|
-| 写页面 / provider / Notifier，或动 `core/` 的状态适配层 | [`.trellis/spec/frontend/state-management.md`](.trellis/spec/frontend/state-management.md) |
-| 新增或改动 UI、组件、主题 | [`.trellis/spec/frontend/quality-guidelines.md`](.trellis/spec/frontend/quality-guidelines.md) |
-| 新建 feature、增删文件、判断某文件该放哪 | [`.trellis/spec/frontend/directory-structure.md`](.trellis/spec/frontend/directory-structure.md) |
+## 改完必跑
 
-跨层的事（门禁、codegen、集成测试、环境配置）看
-[`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)；
-数据层与网络看 [`.trellis/spec/backend/index.md`](.trellis/spec/backend/index.md)。
+```bash
+just verify      # 全部门禁：format / analyze×2 / 插件规则测试 / flutter test
+```
+
+改动涉及注解（`@freezed` / `@RoutePage` / `@riverpod` / Drift 表）或增删文件后，先 `just codegen` 再验证。
 
 ## 照抄对象：`lib/features/sample/`
 
-新增 feature 时**先读 `features/sample/`**，按它的形状写。它覆盖了三种 data 形态
+新增 feature 时**先读** **`features/sample/`**，按它的形状写。它覆盖了三种 data 形态
 （Retrofit API / Drift DAO / `Result` 包装的 Service）与三种 provider 形态：
 
-| 想看什么 | 文件 |
-|---|---|
-| Retrofit API 定义 | `lib/features/sample/data/sample_api.dart` |
-| Drift 查询（**用** `@DriftAccessor`，见 `database-guidelines.md`） | `lib/features/sample/data/sample_dao.dart` |
-| Service（`Result` + 错误映射） | `lib/features/sample/data/sample_service.dart` |
-| Repository 抽象 + provider 装配 | `lib/features/sample/data/sample_repository.dart`、`sample_providers.dart` |
-| `@freezed` 模型 | `lib/features/sample/data/models/sample_item.dart` |
-| `AsyncNotifier` + `AsyncView` 页面 | `lib/features/sample/logic/sample_list_notifier.dart`、`page/sample_list_page.dart` |
-| 对应的四类测试 | `test/features/sample/**` |
+| 想看什么                                                        | 文件                                                                                 |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Retrofit API 定义                                             | `lib/features/sample/data/sample_api.dart`                                         |
+| Drift 查询（**用** `@DriftAccessor`，见 `database-guidelines.md`） | `lib/features/sample/data/sample_dao.dart`                                         |
+| Service（`Result` + 错误映射）                                    | `lib/features/sample/data/sample_service.dart`                                     |
+| Repository 抽象 + provider 装配                                 | `lib/features/sample/data/sample_repository.dart`、`sample_providers.dart`          |
+| `@freezed` 模型                                               | `lib/features/sample/data/models/sample_item.dart`                                 |
+| `AsyncNotifier` + `AsyncView` 页面                            | `lib/features/sample/logic/sample_list_notifier.dart`、`page/sample_list_page.dart` |
+| 对应的测试                                                       | `test/features/sample/**`                                                          |
 
+### 删除示例（派生新项目时）
 
+- 删目录：`lib/features/sample/` 与 `test/features/sample/`
+- 清引用：路由 `router.dart`（`SampleListRoute`）、mock `dio_client.dart`（`_registerMockRules()`）、Tab 与入口 `main_page.dart` / `home_page.dart` / `profile_page.dart`、路由测试 `main_shell_test.dart`
+- 收尾 `just codegen`
 
 ## 工作原则
 
@@ -43,8 +52,8 @@
 - 用户明确要求修改、修复、实现、创建或删除时，视为已授权执行范围内的可逆本地变更；完成必要勘察后直接实施和验证，无需再次等待确认。
 - 跨模块、公共接口或数据模型改动先做必要勘察，简要说明方案、影响和验证方式；范围明确且已授权的可逆本地修改继续实施。仅在存在尚未授权的重大兼容性变化、真实数据影响，或无法从需求确定的关键选择时，先确认相关事项。
 - 用户仅要求计划、分析、解释、诊断、Review 或报告状态时，只进行只读检查，不修改环境。
-- 新增依赖的实际安装、数据库写入或迁移执行、真实环境配置或权限变更、提交、推送、合并、发布、部署及其他高风险或不可逆操作，执行前须说明影响并取得明确授权。已有授权覆盖同一操作和范围时不重复询问，工具强制审批除外。
-- 在上述执行步骤前，先完成已授权范围内可供审阅的本地代码、配置草稿、SQL 脚本和必要验证；准备文件不等于授权在真实环境执行。
+- 新增依赖的实际安装、Drift schema 迁移、真实环境配置或权限变更、提交、推送、合并、发布、部署及其他高风险或不可逆操作，执行前须说明影响并取得明确授权。已有授权覆盖同一操作和范围时不重复询问，工具强制审批除外。
+- 在上述执行步骤前，先完成已授权范围内可供审阅的本地代码、配置草稿、迁移代码和必要验证；准备文件不等于授权在真实环境执行。
 - 需要扩大范围，或方案变化会显著影响兼容性、数据、安全或成本时，先确认受影响部分；范围内的常规实现调整自行处理。
 - 信息不足时，低风险、可逆且不改变目标的事项可明确假设后继续；关键选择会显著影响结果、兼容性或风险时先询问。等待期间可继续不依赖该答案的已授权工作。
 - 完成标准是实现用户要求、完成最小充分验证并修复本次改动造成的问题；达到标准后交付，不追加无关重构或美化。遇到阻塞时说明已完成内容、具体阻塞和所需信息，不以反复重试代替判断。
@@ -57,7 +66,7 @@
 - 优先使用现有依赖、标准库和原生能力；避免过度抽象，仅在确有复用、独立业务语义或能显著降低复杂度时提取模块。
 - 可恢复错误就近处理并记录必要上下文；不可恢复错误快速失败并向上抛出。禁止空 `catch`、吞异常或伪成功。
 - 日志只记录必要的入参摘要、分支决策、状态变化和异常，不记录敏感信息或制造高频噪声。
-- 跨层规则变更应同步维护相关校验、类型、接口契约、权限、字段展示和文案。
+- 跨层规则变更应同步维护相关校验、类型、接口契约、模型字段与展示、文案。
 - 保持现有接口兼容；新增接口仅返回业务所需字段。
 - 注释、文档和提交说明优先使用中文，专有名词与 API 名称保持原文；文件使用 UTF-8 无 BOM 和 LF。
 
@@ -65,21 +74,20 @@
 
 - 涉及业务逻辑或数据流变化时，检查受影响的入口、核心逻辑、边界、异常和出口；文案或样式修改不扩展为完整业务链路审查。
 - 根据改动范围和风险执行最小充分验证，避免把全量构建、全量测试或真实环境联调作为普通改动的默认步骤。优先覆盖核心业务、回归边界、数据转换、权限、安全和外部集成关键路径。
-- 默认只对本次改动文件执行快速静态检查，并执行低成本的差异检查；修改 XML 或 SQL 时仅补充对应的结构或语法校验。没有相关改动时不运行无关检查；最后一次检查后若只修改了文案、注释或格式，不重复执行高成本验证。
-- 未经用户明确要求，不执行 Maven 编译，也不使用 `javac` 等方式替代编译；默认不连接数据库，不执行真实登录态、第三方服务或生产环境联调。
-- 普通前端页面、样式和局部逻辑改动默认只运行目标文件的 ESLint、类型检查或最相关的单测，按项目现有能力选择其中必要项，不要求全部执行。
-- 前端生产构建默认不运行。仅在用户明确要求，或改动涉及依赖、构建配置、入口、路由装配、全局注册、代码分割、编译兼容性，且轻量检查无法覆盖风险时运行。
-- 不为普通改动主动启动开发服务或浏览器验证；仅在交互、布局、运行时行为必须通过页面确认，或用户明确要求时执行。可视化界面有现成运行环境时，优先验证直接受影响的页面，不做无关页面巡检。
-- Word、PDF、PPT、Excel、打印模板等可视化产物必须优先进行渲染或截图级验证；缺少所需工具时，只能声明已完成的结构校验及其残余风险，不得断言视觉效果正常。
-- 交付时简要说明修改内容、实际执行的验证和与本次改动直接相关的残余风险。无需罗列本就不适用、项目规则默认禁止或用户未要求的 Maven、数据库、部署等未执行项；只有其缺失会影响结论可信度时才说明。
+- 默认只对本次改动文件执行快速静态检查，并执行低成本的差异检查；修改平台配置（AndroidManifest / Gradle / Info.plist）时只补充对应的结构或语法校验。没有相关改动时不运行无关检查；最后一次检查后若只修改了文案、注释或格式，不重复执行高成本验证。
+- 未经用户明确要求，不执行真实登录态、第三方服务或生产环境联调；也不跑 `flutter build`（apk / iOS）来确认「写得对不对」——静态检查用 `dart analyze`（`just analyze`）。
+- 普通页面、样式和局部逻辑改动默认只对目标文件跑静态检查（`dart analyze <file>`）与最相关的单测（`flutter test <file>`），按项目现有能力选择其中必要项，不要求全部执行。
+- 生产构建只在用户明确要求，或改动涉及依赖、构建配置、入口、路由装配、全局注册、平台原生配置（Android / iOS），且轻量检查无法覆盖风险时才跑。
+- 不为普通改动主动启动开发服务或模拟器验证；仅在交互、布局、运行时行为必须通过页面确认，或用户明确要求时执行。可视化界面有现成运行环境时，优先验证直接受影响的页面，不做无关页面巡检。
+- UI 类改动（布局 / 主题 / 组件）在有可用运行环境时必须优先做渲染级验证（模拟器 / 真机截图或实际交互）；没有时只能声明已完成的结构校验与其残余风险，不得断言视觉效果正常。
+- 交付时简要说明修改内容、实际执行的验证和与本次改动直接相关的残余风险。无需罗列本就不适用、项目规则默认禁止或用户未要求的构建、联调、部署等未执行项；只有其缺失会影响结论可信度时才说明。
 
 ## 联网与工具
 
 - 用户明确禁止联网时不联网。纯本地修改优先使用仓库信息；仅在结论依赖最新状态、版本差异、标准、安全公告、价格、政策或必要信息缺失时查询权威来源。
 - 优先使用官方文档、标准、项目仓库和发行说明，并区分事实、推断和建议；网络不可用时给出保守答案并标注不确定性。
 - 库或框架问题仅在仓库不足以确认所需 API 或版本行为时查询外部文档，Context7 可用且适用时优先使用；仅提到框架名不构成联网理由。用户提供准确官方链接时直接读取，内容不足时再搜索。
-- 本地代码理解、修改和 Review 优先使用 `rg`、源码阅读及项目内验证；需要交互或必须保持原生行为时直接执行相应命令。
-- 复杂架构或跨文件调用链分析可优先使用目标仓库已有的 CodeGraph，并显式传入 `projectPath`；简单定位使用 `rg`。索引结果必须回到当前源码验证，不主动初始化。
+- 源码阅读及项目内验证；需要交互或必须保持原生行为时直接执行相应命令。
 - 工具输出与当前源码、配置或测试冲突时，以项目实际状态为准。
 
 ## Shell 与 Git
@@ -88,3 +96,4 @@
 - 暂存或提交前确认只包含本次目标文件，不包含本地环境文件或用户已有改动。
 - 未经用户明确要求，不创建提交、不推送、不合并、不发布或部署。
 - Git commit message 使用中文，并且严禁添加 `Co-Authored-By`、Claude 贡献者或任何 AI 署名标识。
+

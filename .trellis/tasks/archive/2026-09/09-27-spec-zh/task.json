@@ -1,0 +1,28 @@
+{
+  "id": "spec-zh",
+  "name": "spec-zh",
+  "title": "spec 中文化：标题与正文全量换成中文",
+  "description": "16 个文件的英文 H1（17 个）、90 个英文二三级标题、75 行英文正文全部中文化；同步 9 处引英文章节名的交叉引用；改掉 comment-guidelines 的「章节名用英文」约定；顺手在 spec/index.md 补 Trellis 约定的「开工前必读」「完成前自检」两节。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "zs",
+  "assignee": "zs",
+  "createdAt": "2026-09-27",
+  "completedAt": "2026-09-27",
+  "branch": null,
+  "base_branch": "preset/ai-starter",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/spec/ (18 个 .md：backend 5 / frontend 6 / guides 5 / cross-cutting.md / index.md)"
+  ],
+  "notes": "",
+  "meta": {}
+}
