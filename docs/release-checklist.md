@@ -12,23 +12,19 @@
 
 ## 1. 环境与地址
 
-- [ ] `.env.production` 的 `BASE_URL` 换成真实域名（当前是 `https://api.example.com`）
+- [ ] `BASE_URL` 换成真实域名：用 `--dart-define=BASE_URL=...` 传，或把它写进你自己的
+      `.env.production`（已被 `.gitignore` 忽略）再用 `--dart-define-from-file=.env.production` 注入。
 - [ ] 确认 `USE_MOCK=false`——为 `true` 时请求会被 `msw_dio_interceptor` 拦截，
       界面一切正常但数据全是假的
-- [ ] 真实地址优先用 `--dart-define` 传，而不是写进 `.env`：
+- [ ] 复核 `.env.example` 里**没有密钥**——它会被提交进 git。
+      密钥只能走 `--dart-define`（不进 git，但仍可从产物提取，敏感场景要放服务端）。
+- [ ] 确认 `.env.production` / `.env.development` 没被 `git add -f` 带进仓库：
+      它们已列入 `.gitignore`，真实地址与密钥都只该留在本地或 CI secret 里。
 
 ```bash
-flutter build apk --dart-define=env=production \
+flutter build apk --dart-define-from-file=.env.production \
   --dart-define=BASE_URL=https://api.your-domain.com
 ```
-
-- [ ] 复核 `.env` / `.env.development` / `.env.production` 里**没有密钥**。
-      这三个文件会被提交进 git，并作为 asset 打进产物，任何有 apk 的人都能提取出来。
-      密钥只能走 `--dart-define`（不进 git，但仍可从产物提取，敏感场景要放服务端）。
-- [ ] **不要**把 `_activeEnv` 改成 `String.fromEnvironment('env', defaultValue: 'development')`：
-      那样 release 也会加载 `.env.development`，包静默跑在 localhost + mock 上。
-      （`bootstrap.dart` 里有详细注释）
-
 ## 2. 版本与标识
 
 - [ ] `pubspec.yaml` 的 `version:`（`versionCode` / `versionName` 由它推导）
@@ -96,7 +92,7 @@ flutter build appbundle --obfuscate --split-debug-info=build/symbols
 
 ## 4. 构建变体（按需）
 
-脚手架用 `--dart-define=env=` 区分环境，**没有** build flavor。需要 dev/staging/prod
+脚手架用 `--dart-define-from-file=<file>` 区分环境，**没有** build flavor。需要 dev/staging/prod
 三个可同时安装的包时，照 [optional-additions.md](./optional-additions.md) 第七节的可复制
 片段加 `productFlavors` + `flavorDimensions` + `applicationIdSuffix`（只有非 prod 的
 flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS scheme 与「`--flavor` 必填」。
@@ -110,32 +106,23 @@ flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS schem
 
 ## 6. 代码生成与质量门禁
 
-- [ ] 重新生成产物（模型、DI、路由、l10n、资源引用）：
+- [ ] 重新生成产物（模型、DI、路由）—— 生成物**不入库**，本地那份必须与源一致：
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
-flutter gen-l10n
+just codegen
 ```
 
-- [ ] 生成物已随源一起提交（`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` /
-      `app_localizations*`）——CI 的 `analyze` job 会跑一遍 codegen 再比对 `git diff`，
-      漏提交会被拦下（策略与时机见 `.trellis/spec/cross-cutting.md`）
-
-- [ ] 门禁全绿：
+- [ ] 门禁全绿（本地与 CI 是同一条命令）：
 
 ```bash
-dart run tool/check_boundaries.dart     # 架构边界
-dart run tool/check_conventions.dart    # 形态约定（AsyncState.map / 注释块上限）
-flutter analyze lib/ test/              # 静态分析
-dart analyze tool/                      # 工具脚本
-flutter test --coverage                 # 单元 + widget 测试（顺带产出覆盖率数据）
-(cd packages/app_core && flutter test --coverage)   # 共享包，必须在包目录里采集
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info  # 门禁：手写代码 ≥ 80%（逐份校验）
-flutter test integration_test/          # 端到端冒烟
+just verify        # format / analyze / 插件规则 / 目录树 / 测试 + 覆盖率
 ```
 
-- [ ] 新增文案已同时补 `lib/l10n/app_zh.arb` 与 `app_en.arb`
-      （`test/l10n/` 会校验两边 key 对齐）
+  逐项对照：`just analyze` 的两组 `dart analyze --fatal-infos`（含 `depend_on_referenced_packages`）、
+  `just test-app-lints`、`just check-readme-tree`、`just test-coverage` + `just check-coverage`
+  （手写代码 ≥ 80%）。
+
+- [ ] 端到端冒烟：`just e2e`
 
 - [ ] 依赖过一遍：`dart pub outdated` 看 `Current / Upgradable / Resolvable / Latest` 四列，
       能升的走 `dart pub upgrade`（改动 `pubspec.lock` 后记得重跑测试与 codegen）；
@@ -148,7 +135,7 @@ flutter test integration_test/          # 端到端冒烟
 - [ ] 真机跑一遍：登录 → 令牌过期（可把 `expiresIn` 调小）→ 自动刷新不弹登录页
 - [ ] 断网启动：文章列表应回退到 Drift 缓存，而不是空白页
 - [ ] 首次冷启动：确认没有「首个请求少带 `Authorization`」导致的多余 401
-- [ ] 关掉 `.env` 里的 mock，确认真实接口连通
+- [ ] 关掉 env 里的 mock（`.env.example` / 你自己那份），确认真实接口连通
 - [ ] 权限清单符合实际使用（AndroidManifest / Info.plist 里不要留多余权限）
 - [ ] 隐私政策与合规文案（若上架）已就位
 - [ ] 崩溃/错误上报已接入——`bootstrap.dart` 的 `runZonedGuarded`、

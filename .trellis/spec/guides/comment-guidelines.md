@@ -41,7 +41,7 @@
 **超过 10 行的解释搬进 spec，代码里只留一行链接。**
 
 - 按**连续注释行**计数，`//` 与 `///` 同等对待；空行或代码行把两块切开
-- 门禁：`dart run tool/check_conventions.dart`（规则 `comment_block_too_long`，扫 `lib/`），测试在 `test/tool/check_conventions_test.dart`
+- 门禁：`comment_block_too_long` 规则（见 [cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」），正反例在 `packages/app_lints/test/rules_test.dart`
 - 限度只管 `lib/` —— `tool/` 脚本的头注释本身就是门禁的设计说明，`test/` 的说明性注释同理
 
 10 行是「还能一眼看完」的经验值，不是精确常数。需要更多空间时不要放宽阈值，把推导写进 spec：那本来就是它该在的地方。

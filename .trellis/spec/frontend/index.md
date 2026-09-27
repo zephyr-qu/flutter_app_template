@@ -20,7 +20,7 @@
 
 ## 跨层与门禁
 
-不属于单一层的约定在 [Cross-Cutting Concerns](../cross-cutting.md)：架构边界检查、覆盖率门禁、依赖声明检查、代码生成与生成物（提交策略、重新生成时机、CI 漂移检查）、`leak_tracker`、集成测试、环境配置与 release 构建。
+不属于单一层的约定在 [Cross-Cutting Concerns](../cross-cutting.md)：架构边界与代码形态（`packages/app_lints` 分析插件）、覆盖率门禁、依赖声明（`depend_on_referenced_packages`）、代码生成与生成物（生成物不入库、重新生成时机、CI 现场生成）、`leak_tracker`、集成测试、环境配置与 release 构建。
 
 ---
 

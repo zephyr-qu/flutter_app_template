@@ -19,7 +19,7 @@ dart run tool/init_project.dart --yes --name=your_app \
 | # | 位置 | 改什么 |
 | --- | ------ | ------- |
 | 1 | `pubspec.yaml` | `name:`（同时决定所有 import 路径）、`description:` |
-| 2 | `lib/` `test/` `integration_test/` `tool/` | `package:<旧名>/` → `package:<新名>/`（含生成物，省得再跑 codegen） |
+| 2 | `lib/` `test/` `integration_test/` `tool/` `packages/` | `package:<旧名>/` → `package:<新名>/`（生成物不入库，不必管它们） |
 | 3 | `lib/app/app.dart`、`lib/bootstrap.dart` 及引用它们的测试 | 根组件类名 `MyApp` → 新类名（整词替换） |
 | 4 | `android/app/build.gradle.kts` | `namespace` 与 `applicationId`（`applicationIdSuffix` 是 flavor 的事，见下） |
 | 5 | `android/app/src/main/AndroidManifest.xml` | `android:label`（用户看到的桌面名） |
@@ -38,18 +38,18 @@ dart run tool/init_project.dart --yes --name=your_app \
   id 前缀就能全带上。
 - **`CFBundleDisplayName` 与 `CFBundleName` 是两个 key**，值也不同（`Flutter App`
   vs `flutter_app`）。按 key 定位，别按值匹配。
-- **`tool/check_boundaries.dart` 里硬编码了 `package:<包名>/` 前缀**（正则级检查靠它
-  把 import 解析成仓库内路径）。忘了它，边界门禁会静默失效——所有 import 都被当成
-  外部包放行。脚本会一起改掉。
+- **`packages/app_lints/lib/src/paths.dart` 里硬编码了 `selfPackagePrefix`（`package:<包名>/`）**——
+  规则 1/2 靠它把 import 解析成仓库内路径。忘了它，门禁会**静默失效**：所有 import 都被当成
+  外部包放行。`tool/init_project.dart` 改名会一起改掉，`test/tool/self_package_prefix_test.dart`
+  会在 `flutter test` 时复核两者一致。
 - **`.dart_tool/package_config.json` 不用管**：它由 `flutter pub get` 重新生成，
   改完名跑一次 `flutter pub get` 即可。
 
 ## 之后
 
-1. `dart run build_runner build --delete-conflicting-outputs` —— 改了注解 / 增删文件后
-   必须重跑（生成物提交入库，CI 会比对漂移）；纯改名其实已经由脚本覆盖了生成物
+1. `just codegen` —— 改了注解 / 增删文件后必须重跑（生成物不入库，改名后本地那份已经不匹配源）
 2. `flutter clean && flutter pub get`
-3. `flutter analyze` + 门禁脚本（清单以 `.githooks/pre-commit` 为准）
+3. `just verify`（清单以根 `justfile` 为准）
 4. 需要图标就 `dart run flutter_launcher_icons`（`assets/icon/icon.png` 得先存在）
 
 ## 回归测试
@@ -63,9 +63,9 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 ### CI Pipeline / 门禁
 
-清单以 `.github/workflows/ci.yml` 与 `.githooks/pre-commit` 为准（codegen 漂移检查、
-`tool/check_boundaries.dart`、`tool/check_conventions.dart`、目录树一致性、依赖检查、
-覆盖率门禁）。改名不影响这些步骤，但**边界脚本里的包名前缀**是例外，见上面的坑。
+清单以 `.github/workflows/ci.yml` 与 `.githooks/pre-commit` 为准 —— 两处都只是 `just verify`
+（format、两组 `dart analyze --fatal-infos`、依赖检查、插件规则测试、目录树一致性、覆盖率门禁）。
+改名不影响这些步骤，但**插件包里的包名前缀**是例外，见上面的坑。
 
 ### Environment Validation
 
@@ -76,9 +76,8 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 - **applicationId**（`com.example.flutter_app`）是设备与商店里的唯一标识，首次发布前
   必须改掉。
-- **package name** 影响 Dart import 路径。生成物（`*.g.dart` /
-  `service_locator.config.dart`）已经随脚本一起改；只有在你额外改了注解时才需要重跑
-  build_runner。
+- **package name** 影响 Dart import 路径。生成物不入库（`.gitignore` 排除），改名后本地那份
+  已经不匹配源，跑一次 `just codegen` 即可。
 - **显示名**（`CFBundleDisplayName` / `android:label`）才是用户看到的那个名字。
 - **build flavor** 会让 `applicationId` 分散到多个 flavor 块里，脚本届时会「找不到
   模式」而失败退出。顺序上建议先初始化、后加 flavor；已经加了 flavor 就先手工改

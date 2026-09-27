@@ -101,7 +101,7 @@
 | `patrol` | 端到端测试 | 比 `integration_test/` 强：能操作系统弹窗、原生权限框 |
 | `alchemist` / 内建 `matchesGoldenFile` | 视觉回归测试 | 改主题、改多语言时的护栏 |
 | `dio_cache_interceptor` | HTTP 缓存拦截器 | 比 `ArticleService` 手写的缓存旁路完整（ETag / max-age / 过期策略）；需求简单就别上 |
-| `custom_lint` | 自定义 lint 规则 | ⚠️ **只在 IDE 里生效**，CLI/CI 跑不到——所以本项目的边界与形态约定仍用 `tool/check_boundaries.dart` / `tool/check_conventions.dart` 脚本做门禁，别搬过去 |
+| `custom_lint` | 自定义 lint 规则 | ⚠️ **IDE-only 的第二套机制**：本项目的边界与形态约定用官方 `analysis_server_plugin`（`packages/app_lints/`）+ `dart analyze` 落地，`custom_lint` 是另一条路，别混进来 |
 | `very_good_analysis` | 更严格的 lint 集 | ✅ **已采用**：规则集在 `analysis_options.yaml` 的 `include:`；存量用 `dart fix` 批量修 + 少量带理由的 `// ignore`，三条不适用规则在文件里注明理由 |
 | `flutter_flavorizr` | 生成 build flavor 脚手架 | 需要 dev/staging/prod 同机共存时用它最省事；只改 Android 的话照第七节的片段手改即可，不用装 |
 
@@ -140,11 +140,11 @@
 
 ## 七、可选脚手架：build flavor（dev / staging / prod 同机共存）
 
-脚手架默认**不做 flavor**：环境靠 `--dart-define=env=` 切换（见
+脚手架默认**不做 flavor**：环境靠 `--dart-define-from-file=<file>` 切换（见
 [README](../README.md#环境配置与-release-构建)），一套代码、一个包，构建时换地址。
 什么时候才值得加 flavor？只有一种场景——**同一台手机上要同时装多个环境**
 （dev 包连测试服、prod 包连线上，互不覆盖、不用卸载）。如果只是「构建时换地址」，
-`--dart-define` 就够了，别为它引入 flavor 的复杂度。
+`--dart-define` / `--dart-define-from-file` 就够了，别为它引入 flavor 的复杂度。
 
 需要时按下面四步加，Android 部分可以直接复制。
 

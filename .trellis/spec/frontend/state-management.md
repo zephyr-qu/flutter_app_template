@@ -362,7 +362,7 @@ final dashboard = computedFrom([profileSignal, statsSignal], () => ...);
 
 ## 页面 ↔ ViewModel 生命周期
 
-页面通过 `getIt` 获取 ViewModel（`factory` 实例随页面生命周期，由 GC 回收，无需手动 dispose——只有 VM 订阅了全局信号时才需要处理，见「什么时候才需要 dispose」），**但必须留出可选注入点**给页面测试（[ADR-0001](../../../docs/adr/ADR-0001.md) 的缓解措施，`tool/check_boundaries.dart` 规则 4 会拦）：
+页面通过 `getIt` 获取 ViewModel（`factory` 实例随页面生命周期，由 GC 回收，无需手动 dispose——只有 VM 订阅了全局信号时才需要处理，见「什么时候才需要 dispose」），**但必须留出可选注入点**给页面测试（[ADR-0001](../../../docs/adr/ADR-0001.md) 的缓解措施，`page_must_expose_view_model_injection_point` 规则会拦）：
 
 ```dart
 @RoutePage()

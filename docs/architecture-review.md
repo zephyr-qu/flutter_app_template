@@ -8,6 +8,11 @@
 
 ## 阅读提示
 
+> **本文是当时（一次架构评审）的快照，不是现行规范。** 其中的 `tool/check_boundaries.dart` /
+> `tool/check_conventions.dart` 两个脚本**已退役**：六条规则改由 `packages/app_lints` 的分析插件
+> 实现（现行口径见 `.trellis/spec/cross-cutting.md`「架构边界与代码形态」）。凡本文提到脚本的地方，
+> 都当作历史记录读。
+
 评估覆盖 `lib/` 全部代码、`tool/check_boundaries.dart`、`tool/init_project.dart`、`.trellis/spec/` 与 `test/`。
 
 **本仓库在评估期间仍在演进**，下面每一条都带「最新状态」。引用本文件时**先看状态，不要只看原始判断**。
@@ -116,6 +121,8 @@ if (disposed) {
 
 ### P4 — 边界检查是正则级，不是语义级
 
+> **已完成迁移**：本节描述的边界脚本已退役，六条规则改由 `packages/app_lints` 的分析插件（AST）实现。下面的分析保留为当时的判断依据与迁移理由。
+
 **原始判断**：多行 `import`、`part` / `part of`、条件导入都会漏；`.config.dart` 整文件豁免也是缺口。
 
 **最新状态**：**部分成立**——原始表述过宽，需按缺口类型区分。
@@ -208,7 +215,7 @@ await context.router.replaceRoute(
 
 | # | 事项 | 触发条件 |
 |---|------|---------|
-| 1 | 条件导入出现时，把 `check_boundaries.dart` 迁到 `package:analyzer` 的 AST | 首次使用 `if (dart.library.…)` 条件导入。**现在会被脚本的 warning 直接指出来**，不必靠人盯 |
+| 1 | **已完成**：把边界检查迁到 `package:analyzer` 的 AST | 已由 `packages/app_lints` 的分析插件承担（六条规则，见 `.trellis/spec/cross-cutting.md`「架构边界与代码形态」） |
 | 2 | ✅ **已完成** —— 边界脚本已加「import 行没被完整解析」的 warning（`isWarning`，不拦退出码） | — |
 | 3 | 给 `ArticleService` 的缓存回退结果加 `fromCache` 标记 | 需要「离线数据」的 UI 提示时 |
 | 4 | 明确 `core/models/` 的准入标准（或改名 `core/entities/`） | 模型数量超过 ~5 个 |

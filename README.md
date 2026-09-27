@@ -13,12 +13,11 @@
 - **认证与令牌** — 访问/刷新令牌存平台安全存储（KeyStore / Keychain）；令牌临近过期时主动刷新，401 时刷新并重放原请求，刷新失败才登出（登出不依赖网络）
 - **错误处理** — 统一的 `Result<T, E>` + `Failure` 密封类（携带错误码，文案由 UI 层翻译），`PlatformDispatcher.onError` 兜底
 - **MD3 主题** — `flex_color_scheme`，亮/暗主题完整支持
-- **国际化** — `flutter_localizations` + ARB，内置中文/英文，设置里可切换并持久化
+- **单语言** — 用户可见文案直接写中文，没有 ARB / `flutter_localizations`（要加回来看 [localization.md](.trellis/spec/frontend/localization.md)）
 - **通用组件** — Loading / Error / Empty 三态组件
-- **代码生成** — `freezed` / `json_serializable` / `retrofit_generator`
-- **架构边界检查** — `tool/check_boundaries.dart`（core 不得依赖上层、跨 feature 只共享 data 层、ViewModel 不得用 getIt、页面必须给可选注入点、`app_core` 不得依赖状态管理），跑在 pre-commit 与 CI
-- **代码形态约定** — `tool/check_conventions.dart`（禁用 `AsyncState.map`、注释块 ≤10 行），同样跑在 pre-commit 与 CI
-- **覆盖率门禁** — `tool/check_coverage.dart`，只统计手写代码、按行数加权，默认阈值 80%，同样是 pre-commit 与 CI 的一道门
+- **代码生成** — `freezed` / `json_serializable` / `retrofit`；生成物**不入库**，clone 后跑 `just codegen`
+- **架构边界与形态约定** — 由 `packages/app_lints` 的**分析插件**强制：`core/` 不得依赖上层、跨 feature 只共享 `data/`、`logic/` 不得用 `getIt`、取 ViewModel 的页面必须给可选注入点、禁 `AsyncState.map`、注释块 ≤10 行
+- **门禁** — `just verify` 一条命令跑完：format / 两步 `dart analyze --fatal-infos` / 依赖声明 / 插件规则测试 / 目录树一致性 / 测试 + **覆盖率门禁**（只统计手写代码、按行数加权，默认阈值 80%）
 - **数据库** — `Drift`（SQLite ORM，可选按需使用）
 - **测试基础设施** — `mocktail` 模拟，已含 ViewModel / Widget / 数据库测试
 
@@ -36,7 +35,7 @@
 | 代码生成 | `freezed` `json_serializable` `build_runner` |
 | 主题 | `flex_color_scheme` |
 | 日志 | `logger` |
-| 静态分析 | `very_good_analysis`（规则集）+ `tool/check_boundaries.dart` / `tool/check_conventions.dart`（架构边界与形态约定） |
+| 静态分析 | `very_good_analysis`（规则集）+ `packages/app_lints`（架构边界与形态约定的分析插件） |
 | 测试 | `flutter_test` `mocktail` |
 
 ## 📁 目录结构
@@ -47,7 +46,7 @@ lib/
 ├── bootstrap.dart                          # 启动初始化（环境 + DI + 异常兜底）
 │
 ├── app/                                    # 应用层（组合根：只做装配）
-│   ├── app.dart                            # 根组件（主题 + 路由 + l10n 装到一起）
+│   ├── app.dart                            # 根组件（主题 + 路由装到一起）
 │   ├── routing/                            # 路由配置（组合层）
 │   │   ├── router.dart                     # auto_route 配置 + AuthGuard
 │   │   ├── router.gr.dart                  # 生成的路由类
@@ -56,21 +55,17 @@ lib/
 │       ├── splash_page.dart                # 启动页
 │       └── not_found_page.dart             # 404
 │
-├── core/                                   # 只剩「状态耦合的适配层」（基础设施已抽到 packages/app_core）
-│   ├── base/                               # 基础抽象
-│   │   └── run_async.dart                  # runAsync 三态助手（依赖 signals，故留应用侧）
-│   ├── config/                             # 应用配置
-│   │   └── user_preferences.dart           # 用户偏好（信号 + 持久化）
+├── core/                                   # 基础设施 + 状态耦合的适配层
+│   ├── base/                               # Failure / Result / runCatching / runAsync
+│   ├── config/                             # NetworkConfig、用户偏好（信号 + 持久化）
 │   ├── data/
-│   │   ├── network/
-│   │   │   └── dio_client.dart             # Dio 的 DI 装配 + 应用专属 Mock 规则
-│   │   └── storage/
-│   │       └── auth_storage.dart           # 令牌/用户存储（实现 app_core 的 TokenStore）
-│   ├── ui/                                 # 共享 UI（读 l10n，故留应用侧）
-│   │   ├── async_view.dart                 # AsyncState → Widget（三态渲染入口）
-│   │   ├── failure_message.dart            # FailureCode → 用户文案
-│   │   ├── loading_indicator.dart          # LoadingIndicator / ScreenLoadingIndicator
-│   │   └── error_text.dart                 # 错误 + 重试
+│   │   ├── database/                       # Drift 连接 + schema + 表
+│   │   ├── network/                        # Dio 工厂 / 认证拦截器 / TokenStore 契约
+│   │   └── storage/                        # FileStorage、AuthStorage（令牌 / 用户存储）
+│   ├── logging/                            # 日志封装 + 调试日志脱敏
+│   ├── models/                             # User / TokenSet
+│   ├── theme/                              # 色板 / ThemeData 组装 / 设计 token
+│   ├── ui/                                 # 共享 UI：AsyncView / EmptyWidget / 错误文案
 │   └── core_module.dart                    # 共享依赖的 DI 装配（@module）
 │
 ├── features/                               # 业务功能模块
@@ -86,23 +81,6 @@ lib/
 └── di/                                     # 依赖注入注册
     ├── service_locator.dart                 # configureDependencies() 入口
     └── service_locator.config.dart          # injectable 自动生成
-```
-
-与状态管理无关的基础设施抽到了本地包，由 signals 栈与 Riverpod 栈共用
-（拆分依据见 `.trellis/tasks/09-22-extract-app-core/design.md`）：
-
-```
-packages/app_core/lib/
-├── base/                               # Failure / Result / runCatching
-├── config/                             # NetworkConfig（环境变量值对象）
-├── data/
-│   ├── database/                       # Drift 连接 + schema + 表
-│   ├── network/                        # Dio 工厂 / 认证拦截器 / TokenStore 契约
-│   └── storage/                        # FileStorage
-├── logging/                            # 日志封装 + 调试日志脱敏
-├── models/                             # User / TokenSet
-├── theme/                              # 色板 / ThemeData 组装 / 设计 token
-└── ui/                                 # 无 l10n 依赖的共享组件（EmptyWidget）
 ```
 
 模块内部每层职责：
@@ -121,35 +99,26 @@ packages/app_core/lib/
 
 - Flutter SDK >= 3.44.0（开发与 CI 钉 3.47.5，见 `.fvmrc`）
 - Dart SDK >= 3.13.0
+- [`just`](https://just.systems) >= 1.58.0（门禁与常用命令的入口）
 
 ```bash
-# 安装依赖
-flutter pub get
+just deps       # flutter pub get + 插件包 dart pub get
+just codegen    # 生成物不入库，clone 后必跑（详见下）
 
-# 代码生成（生成物已提交进仓库；改了注解 / 模型后再跑一次即可）
-dart run build_runner build --delete-conflicting-outputs
-flutter gen-l10n        # 只在改了 lib/l10n/*.arb 时需要
+just run        # = flutter run --dart-define-from-file=.env.example（USE_MOCK=true，无需后端）
 
-# 运行
-flutter run
-
-# 代码分析
-flutter analyze
-
-# 运行测试
-flutter test
+just verify     # 全部门禁：format / analyze / 依赖 / 插件规则 / 目录树 / 测试 + 覆盖率
 ```
 
-### 代码生成（生成物提交策略）
+### 代码生成（生成物不入库）
 
-生成物是**提交进仓库**的：`*.g.dart`、`*.freezed.dart`、`*.gr.dart`、`*.config.dart`、`lib/l10n/app_localizations*.dart`。所以 clone 之后不跑 codegen 也能 `flutter analyze` / `flutter test`。
+生成物**不提交进仓库**：`*.g.dart`、`*.freezed.dart`、`*.gr.dart`、`*.config.dart`、`*.gen.dart`、`app_localizations*`。它们由 `.gitignore` 排除，所以 clone 之后**必须**先 `just codegen`，否则 `dart analyze` / `flutter test` 会因为缺 `part` 与 provider 而失败。
 
-改了注解（`@freezed` / `@JsonSerializable` / `@RoutePage` / `@injectable`、Drift 表）、增删了代码文件，或升级了任一 codegen 依赖之后，**必须重新生成并把生成物一起提交**——CI 会跑一遍 `build_runner build` 再比对 `git diff`，漏提交直接红（`analyze` job 的 `Check generated code is up to date`）。
+改了注解（`@freezed` / `@JsonSerializable` / `@RoutePage` / `@injectable`、Drift 表）、增删了代码文件之后都要重新生成。CI 在门禁前**现场生成**，所以不存在「忘了提交生成物」这类失败，也没有「生成物与源不一致」的比对。
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs   # 改了注解 / 增删文件
-flutter gen-l10n                                          # 改了 lib/l10n/*.arb
-dart run build_runner clean && dart run build_runner build -d  # 升级 codegen 包 / SDK 后全量重建
+just codegen          # 改了注解 / 增删文件
+just codegen-reset    # 升级 codegen 包 / SDK 后全量重建（clean + build）
 ```
 
 生成物冲突时不要手工 merge，解决源文件冲突后重跑 codegen 覆盖。完整策略、重新生成时机表、以及 build_runner 升级与「目录级 cache」的评估结论见 [.trellis/spec/cross-cutting.md](.trellis/spec/cross-cutting.md)「代码生成与生成物」。
@@ -158,11 +127,10 @@ dart run build_runner clean && dart run build_runner build -d  # 升级 codegen 
 
 ```bash
 # 交互式：逐个问包名 / applicationId / iOS Bundle ID / 显示名 / 描述
-dart run tool/init_project.dart
+just init
 
 # 非交互（CI、脚本里用这个）
-dart run tool/init_project.dart --yes --name=my_next_app \
-  --application-id=com.example.my_next_app
+just init --yes --name=my_next_app --application-id=com.example.my_next_app
 ```
 
 一次改完：`pubspec.yaml`（`name` / `description`）、全仓库 `package:<旧名>/` 与根组件
@@ -178,39 +146,26 @@ dart run tool/init_project.dart --yes --name=my_next_app \
 
 ### 环境配置与 release 构建
 
-`.env` 文件按「环境名」加载，环境名的解析优先级：
-
-1. `--dart-define=env=xxx`（显式指定，发版脚本 / CI 用这个）
-2. 构建模式默认值：debug / profile → `development`，release → `production`
+环境值以**编译期常量**注入（`String.fromEnvironment`），不走 `.env` 文件加载：
 
 ```bash
-flutter run                                                        # 加载 .env.development（USE_MOCK=true，无需后端）
-flutter run --dart-define=env=production                           # 加载 .env.production
-flutter build apk --dart-define=env=production \
-  --dart-define=BASE_URL=https://api.your-domain.com               # 真实地址建议这样传
+just run                                               # = flutter run --dart-define-from-file=.env.example
+flutter run --dart-define-from-file=.env.development   # 自己的那份（已被 .gitignore 忽略）
+flutter build apk --dart-define=BASE_URL=https://api.your-domain.com
 ```
 
-需要注意：
-
-- **不要**改成 `String.fromEnvironment('env', defaultValue: 'development')`——那会让 release 也加载 `.env.development`，包静默跑在 localhost + mock 上，界面正常但数据全假。
-- `.env` / `.env.development` / `.env.production` 是**有意提交**的（`pubspec.yaml` 的 `assets` 里列着它们，会随包打进产物），**没有**被 `.gitignore` 忽略——不要把它们加回忽略列表，那只会让「本地改了以为不会提交」的误解一直存在。也正因如此，它们**只能放非密钥配置**（`BASE_URL`、`USE_MOCK`）；密钥写进去既会进 git，也能从 apk 里提取，只能走 `--dart-define`。
-- `.env.example` 只是模板（`tool/init_project.dart` 会拿它生成 `.env.development`），**运行时不会被加载**——加载的永远是 `.env.<环境名>`。
+- **只提交 `.env.example`**：它是默认值与示例（`USE_MOCK=true`，无需后端）。真实 `.env*` 不入库。
+- 密钥只走 `--dart-define`（不进 git，但仍可从产物提取，敏感场景要放服务端）。
 - 缺少 `BASE_URL` 时 `bootstrap()` 会直接抛异常（fail fast），不会静默启动。
-
+- 没有 `dotenv`、也没有 `assets`：不加载文件、不进 `pubspec.yaml` 的 `assets`。
+- `just init` 会从 `.env.example` 复制一份 `.env.development` 供你改，默认不用它。
 **release 构建有意留白**，属于目标应用的职责，脚手架不做：release 仍用 debug keystore 签名、未开启 minify/混淆、未做 build flavor、iOS 签名需在 Xcode 配置。发版前按 [docs/release-checklist.md](docs/release-checklist.md) 逐项补齐（签名 / 混淆 / 符号表 / 真实 `BASE_URL` / 权限与上报接入点）。
 
-### 国际化
+### 文案（单语言）
 
-文案放在 `lib/l10n/app_zh.arb`（模板语言：中文）与 `app_en.arb`，生成 `AppLocalizations`；`l10n.yaml` 是配置，生成物 `lib/l10n/app_localizations*.dart` 不要手改。
+用户可见文案**直接写中文**，没有 ARB、没有 `AppLocalizations`、没有语言切换（脚手架已用 `tool/prune.dart --l10n=single` 裁掉多语言形态）。
 
-```dart
-final l10n = AppLocalizations.of(context);
-Text(l10n.loginButton);
-```
-
-「个人 → 设置 → 语言」可切换跟随系统 / 中文 / English，结果持久化到 `app.locale`，切换后界面立即生效。新增文案先加 `app_zh.arb` 再补 `app_en.arb`（`test/l10n/` 会校验两边 key 对齐）。
-
-错误提示同样走 l10n：`Failure` 只携带 `FailureCode` 而不带文案，由展示层按当前语言翻译，所以切到英文后错误提示也是英文。
+`Failure` 只携带 `FailureCode` 而不带文案，由 `lib/core/ui/failure_message.dart` 统一翻译成中文 —— 因此新增一个 `FailureCode` **不补文案就编译不过**。要加回多语言见 [localization.md](.trellis/spec/frontend/localization.md)（思路是反向做 `prune.dart` 的裁剪面）。
 
 ## 📖 示例代码说明
 
@@ -222,14 +177,14 @@ Text(l10n.loginButton);
 | 文章 | `lib/features/article/` | 列表页 → 详情页，Retrofit + Drift 离线缓存 + 加载三态 |
 | 本地存储 | `lib/features/demo/` | `FileStorage` 文件读写/占用统计 + Drift 缓存填充（入口：个人 → 设置） |
 
-- **开箱即用**：`.env.development` 中 `USE_MOCK=true`，由 `msw_dio_interceptor` 拦截请求（Mock 规则见 `lib/core/data/network/dio_client.dart` 的 `_registerMockRules()`），无需后端即可跑通完整数据流。接入真实后端时把 `USE_MOCK` 改成 `false` 即可
+- **开箱即用**：`.env.example` 中 `USE_MOCK=true`，由 `msw_dio_interceptor` 拦截请求（Mock 规则见 `lib/core/data/network/dio_client.dart` 的 `_registerMockRules()`），无需后端即可跑通完整数据流。接入真实后端时把 `USE_MOCK` 改成 `false` 即可
 - **学习路径**：`flutter run` 跑起来 → 从 `page/`（UI）→ `logic/`（ViewModel）→ `data/`（API / Service / Model）逐层阅读，新功能模块照此结构复制
 - **删除示例**：确认了解结构后，删除 `lib/features/auth/` 与 `lib/features/article/` 两个目录，并同步清理：
   1. `lib/app/routing/router.dart` 中的对应路由与 `@RoutePage` 注解
   2. `lib/core/data/network/dio_client.dart` 中 `_registerMockRules()` 的对应 Mock 规则
   3. `lib/features/home/page/main_page.dart` 底部导航中的文章 Tab
   4. `lib/features/profile/page/profile_page.dart` 中对 `AuthViewModel` / `User` 的引用
-  5. 最后执行 `dart run build_runner build` 重新生成 DI 注册
+  5. 最后执行 `just codegen` 重新生成 DI 注册与路由
 - **删除本地存储示例**：用不到 `FileStorage` / Drift 缓存时，删掉 `lib/features/demo/`，再清理两处引用：
   1. `lib/app/routing/router.dart` 中的 `StorageDemoRoute`
   2. `lib/features/profile/page/profile_page.dart` 中「设置」里的示例入口
@@ -244,7 +199,7 @@ Text(l10n.loginButton);
 |------|------|------|
 | 「设置」→ 通知 / 隐私 / 帮助 | 只有入口，`onTap` 为空 | 替换 `onTap`，或整项删掉（连同其下的 `_Divider`） |
 | 首页「最近动态」 | 静态空态占位 | 换成自己的数据源 |
-| `.env*` 三个文件 | 只放非密钥配置（`BASE_URL` / `USE_MOCK`），会提交并打进产物 | 密钥改走 `--dart-define` |
+| `.env.example` | 默认值与示例（`BASE_URL` / `USE_MOCK`），会提交；真实 `.env*` 已被 gitignore | 密钥改走 `--dart-define` |
 | 应用图标 | `pubspec.yaml` 的 `flutter_launcher_icons.image_path` 指向 `assets/icon/icon.png`，**该文件不存在**（跑图标命令会直接失败） | 补上图标文件，或删掉这段配置 |
 | release 构建 | 仍用 debug keystore、未 minify、无 flavor、iOS 未签名 | 见 [docs/release-checklist.md](docs/release-checklist.md) |
 
@@ -277,146 +232,71 @@ features/your_feature/
     └── your_page.dart                 # UI 页面
 ```
 
-### ViewModel 模板
-
-```dart
-@injectable
-class YourViewModel {
-  final YourService _service;
-
-  YourViewModel(this._service);
-
-  final items = asyncSignal<List<Item>>(AsyncState.data([]));
-
-  Future<void> load() async {
-    await runAsync(items, () => _service.getItems());
-  }
-}
-```
-
-### 页面模板
-
-```dart
-@RoutePage()
-class YourPage extends HookWidget {
-  /// 可选注入点——只有测试会传值（ADR-0001；漏了会被 check_boundaries 规则 4 拦）
-  final YourViewModel? viewModel;
-
-  const YourPage({super.key, this.viewModel});
-
-  @override
-  Widget build(BuildContext context) {
-    final vm = useMemoized(() => viewModel ?? getIt<YourViewModel>());
-    final async = useSignalValue(vm.items);
-
-    useEffect(() {
-      vm.load();
-      return null;
-    }, []);
-
-    return Scaffold(
-      body: AsyncView<List<Item>>(
-        state: async,
-        loading: () => const LoadingIndicator(),
-        error: (Object error, StackTrace stackTrace) =>
-            ErrorText(error: error, onRetry: vm.load),
-        data: (items) => ListView.builder(/* ... */),
-      ),
-    );
-  }
-}
-```
+模板照抄 `lib/features/article/`：`data/`（API / DAO / Service / Repository / models）、
+`logic/`（ViewModel）、`page/`（页面）三层的完整写法与对应测试都在那里；命名与「某个文件
+该放哪」的裁决见 [.trellis/spec/frontend/directory-structure.md](.trellis/spec/frontend/directory-structure.md)。
 
 ## 🧪 测试
 
 ```bash
-# 全部测试
-flutter test
+just test                                   # 全部测试
+just test test/features/article/logic/article_view_model_test.dart   # 指定文件
 
-# 特定测试文件
-flutter test test/features/article/logic/article_view_model_test.dart
-
-# 共享包的测试（独立 package，必须进包目录跑）
-cd packages/app_core && flutter test
-
-# 覆盖率数据 + 门禁校验
-flutter test --coverage
-(cd packages/app_core && flutter test --coverage)
-dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info
+just test-coverage && just check-coverage    # 覆盖率数据 + 门禁校验
+just test-app-lints                          # 插件包自己的规则测试
 ```
 
 测试原则：
 
 - ViewModel 测试直接构造，无需 DI：`ArticleViewModel(mockRepo)`
 - 使用 `mocktail` 模拟外部依赖
-- widget 测试用 `test/support/app_test_harness.dart` 的 `wrapPage()`（负责挂 l10n delegate 与主题）；生产页面统一是 `HookWidget` + `useSignalValue` + `AsyncView`，`SignalBuilder` 只是可选路线
-- 取 ViewModel 的页面直接注入假实例：`LoginPage(viewModel: fakeVm)`，不必 `setUpTestApp()`——注入点的存在由 `tool/check_boundaries.dart` 规则 4 保证
+- widget 测试用 `test/support/app_test_harness.dart` 的 `wrapPage()`（负责测试环境：主题等）；生产页面统一是 `HookWidget` + `useSignalValue` + `AsyncView`，`SignalBuilder` 只是可选路线
+- 取 ViewModel 的页面直接注入假实例：`LoginPage(viewModel: fakeVm)`，不必 `setUpTestApp()`——注入点的存在由 `page_must_expose_view_model_injection_point` 规则保证
 
 ### 覆盖率门禁
 
-`tool/check_coverage.dart` 读取 `flutter test --coverage` 产出的 lcov，按**手写代码**的行覆盖率与阈值比较：
+`just check-coverage` 读取 `flutter test --coverage` 产出的 lcov，按**手写代码**的行覆盖率与阈值比较：
 
 - 剔除生成文件（`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` / `*.gen.dart` / `app_localizations*`）——它们的行数不是人能守的
 - 按行数加权，不是按文件平均
-- 默认阈值 80%，低于阈值退出码为 1；已接入 pre-commit 与 CI 的 `unit-test` job
+- 默认阈值 80%，低于阈值退出码为 1；`just verify` 与 CI 都跑它
+- 打开**差集检查**（`--src=lib`）：扫描根下没被这份 lcov 覆盖的手写文件按「0 命中 / 非空行数」计入分母 —— 少了它，一个从没被加载过的新文件不会让阈值下降
 
 ```bash
-dart run tool/check_coverage.dart          # 默认 80%，只查 coverage/lcov.info
-dart run tool/check_coverage.dart --min=85
+just check-coverage                            # 默认 80%
+dart run tool/check_coverage.dart coverage/lcov.info --src=lib --min=85
 ```
 
-**必须采集两份 lcov**：`app_core` 是独立 package，根工程跑 `--coverage` 时包内文件的命中不会被
-归集（根 lcov 里一条 `packages/` 记录都没有），只能在包目录里单独跑一次。两份**逐份独立校验、
-不合并**：路径都是相对各自包根的 `lib/...`，合并会搅在一起；包内的低覆盖也不该被 `lib/` 稀释。
+## 🔍 架构边界与代码形态（分析插件）
 
-## 🔍 架构边界检查
-
-边界规则由一个脚本执行（**不是** analyzer 插件——插件规则只在 IDE 生效，CLI/CI 跑不到）：
-
-```bash
-dart run tool/check_boundaries.dart          # 默认扫 lib 与 packages/app_core/lib
-```
-
-已接入 pre-commit 与 CI 的 `analyze` job，`flutter test` 里也有一条针对真实仓库的回归测试。
+六条规则由 `packages/app_lints/` 的 **analyzer 插件**实现（`analysis_server_plugin`，声明在根 `analysis_options.yaml` 顶层的 `plugins:`）：
 
 | 规则 | 说明 |
 |------|------|
-| core 不得依赖上层 | `core/**` 不能 import `features/**` / `app/**` |
-| 跨 feature 只共享 data 层 | 不能引用其他 feature 的 `page/` / `logic/` |
-| ViewModel 不得用 service locator | `features/*/logic/` 里不能出现 `getIt`，强制构造器注入 |
-| 页面必须给可选注入点 | 用 `getIt<*ViewModel>()` 的页面要同时给出 `final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
-| app_core 不得依赖状态管理 | `packages/app_core` 里不能出现 `signals_*` / `riverpod*` / `get_it` / `injectable` |
+| `no_upper_import_in_core` | `core/**` 不能 import/export `features/**` / `app/**` |
+| `cross_feature_only_data` | 跨 feature 只共享 `data/`，不能引用其他 feature 的 `page/` / `logic/` |
+| `no_service_locator_in_logic` | `features/*/logic/` 里不能出现 `getIt`，强制构造器注入 |
+| `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()` 的页面要同时给出 `final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
+| `avoid_async_state_map` | 三态渲染用 `AsyncView`（`map` 的 `error` 回调签名运行期才校验，写错整页红屏） |
+| `comment_block_too_long` | 注释块 ≤10 行，超限就把解释搬进 `.trellis/spec/`，代码里只留一行链接 |
 
-**扫描根是两处**：`lib` 与 `packages/app_core/lib`。抽包之后只扫 `lib/` 的话，新包就成了边界真空。
-最后一条是共享包的**存在前提**——包里一旦出现 signals / Riverpod，另一个栈就用不了它。
+判据都是 **AST 级**，正则替代不了：`AsyncState.map` 要看「是否同时带 `data` 与 `error` 两个具名实参」（否则分不清它与 `list.map(...)`，误报会挡住提交）；注释块要看字符偏移（多行字符串里的 `//` 不是注释）。
+
+**`flutter analyze` 不加载插件**，门禁是 `just analyze` 的两步 `dart analyze --fatal-infos`，且**必须显式传文件名**——传目录不报错、只是静默少跑规则。实现见 `packages/app_lints/lib/src/rules.dart`，正反例见它的 `test/rules_test.dart`；`test/tool/self_package_prefix_test.dart` 专门盯「包名前缀与 `pubspec.name` 不同步 → 规则静默失效」。
 
 组合根（`lib/app/`）可以引用任何 feature——FSD 的 app 层负责装配。
-倒数第二条不是依赖方向，是可测性约定（[ADR-0001](docs/adr/ADR-0001.md) 的缓解措施）：页面仍从容器取 ViewModel，但必须给测试留一个注入口，否则页面测试只能装配全局容器。`home_page` / `profile_page` 直接取 `AuthStorage` / `UserPreferences`（不是 ViewModel），不在此列。
-
-## 📏 代码形态约定
-
-边界脚本管「谁能依赖谁」，`tool/check_conventions.dart` 管「代码写成什么样」：
-
-```bash
-dart run tool/check_conventions.dart
-```
-
-| 规则 | 说明 |
-|------|------|
-| 禁用 `AsyncState.map` | 三态渲染用 `AsyncView`（`map` 的 `error` 回调签名运行期才校验，写错整页红屏） |
-| 注释块 ≤10 行 | 超限就把解释搬进 `.trellis/spec/`，代码里只留一行链接（口径见 `.trellis/spec/guides/comment-guidelines.md`） |
-
-它用 `package:analyzer` 的 `parseString` 判 AST 而不是正则：`AsyncState.map` 的判据是「同时带 `data` 与 `error` 两个具名实参」，正则分不清它和 `list.map(...)`，而误报会挡住提交。已接入 pre-commit 与 CI 的 `analyze` job。
+`page_must_expose_view_model_injection_point` 不是依赖方向，是可测性约定（[ADR-0001](docs/adr/ADR-0001.md) 的缓解措施）：页面仍从容器取 ViewModel，但必须给测试留一个注入口，否则页面测试只能装配全局容器。`home_page` / `profile_page` 直接取 `AuthStorage` / `UserPreferences`（不是 ViewModel），不在此列。
 
 ## 🔧 开发工具
 
 - **`.trellis/spec/`** — 项目规范入口（架构与目录、数据层、状态管理、组件、注释与文档约定）；改某一层的代码前先读对应的 spec
-- **代码生成** — 生成物提交入库 + 重生成时机 + CI 漂移检查；build_runner 升级与 codegen 缓存评估见 `.trellis/spec/cross-cutting.md`
-- **`tool/init_project.dart`** — 项目初始化，改包名 / `namespace` / iOS Bundle ID / 显示名（交互或 `--yes` 非交互）
-- **`tool/check_boundaries.dart`** — 架构边界检查（见上）
-- **`tool/check_conventions.dart`** — 代码形态约定检查（见上）
-- **`.githooks/pre-commit`** — 提交前跑一组检查（格式、架构边界、形态约定、目录树一致性、依赖声明、analyze、覆盖率门禁…），清单以脚本本身为准。安装：`git config core.hooksPath .githooks`
+- **`justfile`** — 唯一命令清单（`deps` / `fmt` / `analyze` / `test` / `verify` / `codegen` / `init` / `prune`）
+- **`packages/app_lints/`** — 架构边界与代码形态的分析插件（见上）
+- **`tool/init_project.dart`** — 项目初始化，改包名 / `namespace` / iOS Bundle ID / 显示名（`just init`，交互或 `--yes` 非交互）
+- **`tool/check_coverage.dart`** — 覆盖率门禁（见上）
 - **`tool/check_readme_tree.dart`** — 校验文档里的 `lib/` 目录树与实际文件一致（见下）
+- **`tool/prune.dart`** — 正交裁剪（如 `--l10n=single`）
+- **`.githooks/pre-commit`** — 提交前跑 `just verify`（首个失败即停）。安装：`git config core.hooksPath .githooks`
 - **`msw_dio_interceptor`** — 开发期 API Mock 拦截器
 
 ## 🎨 架构原则

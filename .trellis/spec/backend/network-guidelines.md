@@ -3,8 +3,8 @@
 > How the HTTP layer is wired in this project.
 
 > **Scaffold note**: 网络能力分成两半 —— **与状态管理无关**的那半在
-> `packages/app_core/lib/data/network/`（两个栈共用，见 `app_core` 的抽包说明），
-> **装配**那半留在 `lib/core/data/network/dio_client.dart`。
+> `lib/core/data/network/`（`dio_factory.dart` 只看配置与 `TokenStore`，
+> **不知道 signals / DI 的存在**），**装配**那半留在同目录的 `dio_client.dart`。
 > 各 feature 只写 Retrofit 接口（`features/{feature}/data/{feature}_api.dart`），
 > 不接触 Dio、令牌、Mock。
 
@@ -14,30 +14,31 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `packages/app_core/lib/data/network/dio_factory.dart` | `createDio()`：拦截器栈 + 兜底解码 + Retry + Mock，**不知道 signals / Riverpod 的存在** |
-| `packages/app_core/lib/data/network/auth_interceptor.dart` | 请求附加令牌；401 时刷新并重放；刷新用尽则清凭证 |
-| `packages/app_core/lib/data/network/token_refresher.dart` | single-flight 换令牌 |
-| `packages/app_core/lib/data/network/token_store.dart` | 令牌存取的**能力契约**（`ready` / 读写 / 过期判断 / 清除），各栈自己实现 |
-| `packages/app_core/lib/data/network/auth_extra_keys.dart` | `RequestOptions.extra` 的两个标记键 |
-| `packages/app_core/lib/config/network_config.dart` | 不可变的网络配置（超时、重试次数、mock 开关） |
-| `lib/core/data/network/dio_client.dart` | `NetworkModule`：取 `dotenv` 配置、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
+| `lib/core/data/network/dio_factory.dart` | `createDio()`：拦截器栈 + 兜底解码 + Retry + Mock，**不知道 signals / Riverpod 的存在** |
+| `lib/core/data/network/auth_interceptor.dart` | 请求附加令牌；401 时刷新并重放；刷新用尽则清凭证 |
+| `lib/core/data/network/token_refresher.dart` | single-flight 换令牌 |
+| `lib/core/data/network/token_store.dart` | 令牌存取的**能力契约**（`ready` / 读写 / 过期判断 / 清除），各栈自己实现 |
+| `lib/core/data/network/auth_extra_keys.dart` | `RequestOptions.extra` 的两个标记键 |
+| `lib/core/config/network_config.dart` | 不可变的网络配置（超时、重试次数、mock 开关） |
+| `lib/core/data/network/dio_client.dart` | `NetworkModule`：构造编译期 `NetworkConfig`、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
 
 `TokenStore` 是这层的反转点：网络层只依赖它，令牌存在哪里（安全存储 + 内存缓存）
-以及登录态用哪种状态管理暴露，都不是网络层该知道的事。signals 分支的实现是
-`lib/core/data/storage/auth_storage.dart`，Riverpod 分支会是另一个类。
-代价是纯包测试要用假 `TokenStore` 驱动（`packages/app_core/test/support/`）。
+以及登录态用哪种状态管理暴露，都不是网络层该知道的事。本项目的实现是
+`lib/core/data/storage/auth_storage.dart`。代价是网络层测试要用假 `TokenStore` 驱动
+（`test/core/support/` 的 `fake_token_store.dart`）。
 
 401 刷新的完整约定在 [error-handling.md](./error-handling.md#401-与令牌刷新)，本页不重复。
 
 ---
 
-## 配置：`dotenv` 只读一次
+## 配置：只有一个来源
 
-`CoreModule` / `NetworkModule` 里**只有 `networkConfig()` 一处读 `dotenv.env`**，之后所有消费者拿到的都是同一个不可变 `NetworkConfig`。
+`NetworkModule.networkConfig()` 是**全项目唯一**构造 `NetworkConfig` 的地方（内部读 `--dart-define`
+注入的编译期常量），之后所有消费者拿到的都是同一个不可变 `NetworkConfig`。
 
-- 不要写成 `static` 类：`static` + `dotenv.env` 是全局可变状态，测试里没有干净的覆盖点，用例之间会互相污染
+- 不要写成 `static` 类：`static` 字段是全局可变状态，测试里没有干净的覆盖点，用例之间会互相污染
 - 测试直接构造自己的实例即可：`const NetworkConfig(baseUrl: 'http://localhost:8080/api')`
-- 正常路径走不到「`BASE_URL` 缺失」的回退值 —— `bootstrap()` 的 `_validateEnv()` 会在 DI 初始化前 fail fast
+- 正常路径走不到「`BASE_URL` 缺失」的回退值 —— `bootstrap()` 会在 DI 初始化前 fail fast
 
 ---
 
@@ -67,11 +68,11 @@ Dio 对**请求**按添加顺序正向穿过，对**响应 / 错误**按相反�
 
 > 改拦截器顺序或增删拦截器前，先跑这两个：
 >
-> - `packages/app_core/test/data/network/dio_factory_test.dart` —— 钉住 `createDio`
+> - `test/core/data/network/dio_factory_test.dart` —— 钉住 `createDio`
 >   装出来的栈（Auth → 解码 → Retry 的相对顺序、mock 开关、调试日志开关），
 >   以及「Retry 不吞 401 / 5xx 走重试」两条语义
 > - `test/core/data/network/interceptor_stack_test.dart` —— 钉住 lib 侧
->   `NetworkModule.dio()` 的等价行为（同一套栈，另加 `UserPreferences` / `dotenv` 装配）
+>   `NetworkModule.dio()` 的等价行为（同一套栈，另加 `UserPreferences` / `NetworkConfig` 装配）
 >
 > 别拿 `token_refresh_test.dart` 当替代：它自建的 Dio 只挂了 `AuthInterceptor`，
 > 那条链上根本不存在 Retry，上面两点它验不到。
@@ -122,5 +123,5 @@ if (config.isMock) {
 - ❌ **在业务代码里自己加 `Authorization` 头** —— 交给 `AuthInterceptor`，否则会出现两套令牌来源
 - ❌ **把拦截器顺序当成无关紧要** —— 顺序反了会让 Retry 吞掉 401，或让重放绕开 Mock
 - ❌ **用 `MockRule(path: ...)` 写 mock 规则** —— 静默失效，请求会打到真实网络
-- ❌ **在 feature 里读 `dotenv` 或自建 `NetworkConfig`** —— 配置只有 `networkConfig()` 一个来源
+- ❌ **在 feature 里自建 `NetworkConfig`** —— 配置只有 `networkConfig()` 一个来源
 - ❌ **在拦截器里做页面跳转** —— 拦截器没有 `BuildContext`；只清凭证，导航由路由守卫负责（见 [error-handling.md](./error-handling.md#登出语义)）

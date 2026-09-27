@@ -18,12 +18,16 @@ lib/
 │   ├── routing/               #   路由：AppRouter + AuthGuard + 登录态桥接（生成物同目录）
 │   └── pages/                 #   全局页面：启动页、404（不属于任何 feature）
 │
-├── core/                      # 只剩「状态耦合的适配层」；基础设施在 packages/app_core
-│   ├── base/                  #   基础抽象：runAsync（依赖 signals）
-│   ├── config/                #   配置：UserPreferences（信号 + 持久化）
-│   ├── data/                  #   数据基础设施的装配层
-│   │   ├── network/           #     Dio 的 DI 装配 + 应用专属 Mock 规则
-│   │   └── storage/           #     令牌/用户存储（实现 app_core 的 TokenStore）
+├── core/                      # 基础设施 + 状态耦合的适配层
+│   ├── base/                  #   Failure / Result / runCatching / runAsync
+│   ├── config/                #   NetworkConfig、UserPreferences（信号 + 持久化）
+│   ├── data/                  #   数据基础设施
+│   │   ├── database/          #     Drift 连接 + schema + 表
+│   │   ├── network/           #     Dio 工厂 / 认证拦截器 / TokenStore 契约 / 装配
+│   │   └── storage/           #     FileStorage、AuthStorage（令牌 / 用户存储）
+│   ├── logging/               #   日志封装 + 调试日志脱敏
+│   ├── models/                #   User / TokenSet
+│   ├── theme/                 #   色板 / ThemeData 组装 / 设计 token
 │   ├── ui/                    #   共享 UI：三态组件 + Failure 文案翻译（读 l10n）
 │   └── core_module.dart       #   共享依赖的 DI 装配（@module）
 │
@@ -50,7 +54,7 @@ lib/
 
 **不存在** `domain/`、`application/`、`shared/`、`core/error/`、`core/local/` 这些目录 —— 它们属于本脚手架迁移走的旧 Clean Architecture 布局。若在别处看到对它们的引用，那处引用是过期的。
 
-与状态管理无关的基础设施（Failure / Result / 日志 / 模型 / 网络 / 数据库 / 主题 / 无文案 UI 组件）已抽到本地包 `packages/app_core`，由 signals 栈与 Riverpod 栈共用。包内**不得**出现 `signals` / `riverpod` / `get_it` / `injectable`——这条由 `tool/check_boundaries.dart` 的规则 5 强制。主题层现在也在包里，其两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
+主题层（`core/theme/`）的两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
 
 ---
 

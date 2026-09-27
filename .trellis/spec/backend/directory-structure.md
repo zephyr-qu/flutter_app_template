@@ -17,7 +17,7 @@ Page → ViewModel → Repository (接口) → Service (实现) → Api (Retrofi
                                      Dao (Drift)  ← 缓存旁路
 ```
 
-- 依赖方向是 `page/ → logic/ → data/ → core/`，由 `tool/check_boundaries.dart` 强制（`core/` 不得 import 上层，跨 feature 只共享 `data/`）
+- 依赖方向是 `page/ → logic/ → data/ → core/`，由 `packages/app_lints` 的分析插件强制（`core/` 不得 import 上层，跨 feature 只共享 `data/`）
 - `Dto / Model` 只在 `data/` 层转换：Retrofit 拿到 JSON → 模型（`@freezed`），Service 返回 `Result<T, Failure>`
 - **缓存旁路**：Service 同时消费网络与 DAO —— 网络成功就刷新缓存，网络失败就回退到缓存。见 [database-guidelines.md](./database-guidelines.md) 的「Drift」一节
 

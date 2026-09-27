@@ -1,5 +1,5 @@
 ---
-description: 项目性质、语言政策、目录地图与硬性总纲（所有会话默认生效）
+description: 项目性质、技术栈、语言政策、目录地图与硬性总纲（所有会话默认生效）
 alwaysApply: true
 ---
 
@@ -8,26 +8,37 @@ alwaysApply: true
 个人 Flutter 脚手架（包名 `my_app`），面向中小型 App 的起点，不是生产应用。
 技术栈已定，不要替换或「顺手升级」选型：FSD 简化版目录 + signals/ViewModel + auto_route
 + injectable/GetIt + Material 3 + Retrofit/Dio + Drift/SharedPreferences/flutter_secure_storage
-+ l10n（模板语言为中文）。
++ **单语言中文**（没有 l10n）。仓库里**没有** `riverpod` / `lib/l10n/` / ARB —— 不要按印象补回来。
 
-本文件只做拦截；**权威规范在 `.trellis/spec/`**，写某层代码前先读对应 index：
-`.trellis/spec/frontend/index.md`、`.trellis/spec/backend/index.md`、`.trellis/spec/cross-cutting.md`。
+本文件**只做拦截，不复述细则**；权威规范在 `.trellis/spec/`。写某层代码前先读对应索引：
+
+| 要动什么 | 先读 |
+| --- | --- |
+| 页面 / ViewModel / 状态适配 | `.trellis/spec/frontend/state-management.md` |
+| UI、组件、主题 | `.trellis/spec/frontend/quality-guidelines.md` |
+| 新建 feature、增删文件 | `.trellis/spec/frontend/directory-structure.md` |
+| 数据层 / 网络 / 数据库 | `.trellis/spec/backend/index.md` |
+| 门禁、codegen、集成测试、环境配置 | `.trellis/spec/cross-cutting.md` |
+
+更完整、可照抄的版本见仓库根 `AGENTS.md`。
 
 ## 硬约束清单
 
-1. **架构边界**：改完 `lib/` 必须 `dart run tool/check_boundaries.dart`（退出码 0）。
-   见 `architecture-boundaries` 规则。
-2. **静态检查零容忍**：`flutter analyze lib/ test/` 与 `dart analyze tool/` 必须干净；
-   依赖「声明与使用」必须一致（`dart run dependency_validator`）。
-3. **覆盖率门禁**：`flutter test --coverage` 后 `dart run tool/check_coverage.dart`，阈值 80%。
-4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案一律走 l10n，
-   widget 里**禁止**硬编码字符串。
-5. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` /
-   `lib/l10n/app_localizations*.dart`。改注解或模型后 `dart run build_runner build`；
-   改 ARB 后 `flutter gen-l10n`。
-6. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
-   设计取舍、踩坑、验证命令、对照表格写 `.trellis/spec/`，不要塞进代码。
-7. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、
+1. **架构边界与形态**：改完 `lib/` 必须通过 `packages/app_lints` 的分析插件（六条规则）；
+   门禁统一执行 `just verify`。判据与放行条件见 cross-cutting.md「架构边界与代码形态」。
+2. **静态检查零容忍**：`just analyze` 的两步 `dart analyze --fatal-infos` 必须干净，含
+   `depend_on_referenced_packages`。**显式传文件名**是加载插件的前提；`flutter analyze`
+   不加载插件，不要拿它当门禁。
+3. **覆盖率门禁**：`just check-coverage`（`--src=lib`，按行数加权，阈值 80%）。
+4. **环境配置**：编译期注入 —— `--dart-define` / `--dart-define-from-file=.env.example`
+   （`just run` / `just e2e` 已带上）。真实 `.env*` 不入库，`bootstrap()` 缺 `BASE_URL` 直接抛。
+5. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**（单语言脚手架，
+   不走 ARB、不引入 `intl`）。新增 `FailureCode` 必须补 `lib/core/ui/failure_message.dart` 的文案。
+6. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart`。
+   改注解或模型后 `just codegen`；**生成物不入库**，clone 后必跑。
+7. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
+   设计取舍、踩坑、验证命令、对照表格写 `.trellis/spec/`。连续注释块上限 10 行（插件会拦）。
+8. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、
    崩溃上报）不是待办，除非用户明确要求。
 
 ## 目录地图（唯一合法布局）
@@ -35,17 +46,18 @@ alwaysApply: true
 ```
 lib/
 ├── app/          # 组合根：app.dart / routing/ / pages/（可 import 任何东西）
-├── core/         # 共享基础设施，严格克制；不得 import features/ 或 app/
-│   ├── base/ config/ data/{database,network,storage}/ logging/ models/ ui/ theme/
+├── core/         # 共享基础设施 + 状态耦合的适配层；不得 import features/ 或 app/
+│   ├── base/ config/ data/{database,network,storage}/ logging/ models/ theme/ ui/
 ├── features/{feature}/
-│   ├── logic/    # ViewModel + signals
+│   ├── logic/    # ViewModel + signals（依赖一律构造器注入）
 │   ├── data/     # api / dao / service / repository（按需）/ models / module
 │   └── page/     # 页面
-├── l10n/         # app_zh.arb（模板语言） + app_en.arb
-└── di/           # service_locator.config.dart（生成）
+└── di/           # service_locator.dart + service_locator.config.dart（生成）
+packages/app_lints/   # 唯一的独立包：本仓库的架构边界与形态规则
+tool/                 # 脚手架运维脚本（init / prune / 覆盖率 / 目录树）；just verify 调用
 ```
 
-依赖方向：`app → features → core`，由 `tool/check_boundaries.dart` 强制。
+依赖方向：`app → features → core`，由 `packages/app_lints` 的分析插件强制。
 
 ## 命名（权威见 frontend/directory-structure.md「Naming Conventions」）
 
@@ -58,6 +70,7 @@ lib/
 ## 不存在的东西（不要「补回来」）
 
 - 没有 `domain/` `application/` `shared/` `core/error/` `core/local/`（旧 Clean Architecture 布局）
+- 没有 `packages/app_core`：基础设施已拍平回 `lib/core/`（单包化）
 - 没有 BaseViewModel、没有 ViewModel 的 `dispose()` 生命周期、没有 per-ViewModel 日志
 - 没有事件总线；feature 间通信**只能**通过 `core/` 全局信号
 - 没有崩溃上报（Sentry / Crashlytics）

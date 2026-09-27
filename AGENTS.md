@@ -13,7 +13,7 @@ This project is a **personal Flutter scaffold/template** for medium-small apps, 
 - **Injectable + GetIt** dependency injection
 - **Material Design 3** theming
 - **Retrofit + Dio** API client pattern
-- **Chinese-first UI**（用户可见文案走 l10n，模板语言中文，另有英文）+ **English identifiers**、**Chinese comments**
+- **Chinese-first UI**（用户可见文案直接写中文，单语言）+ **English identifiers**、**Chinese comments**
 
 ### Starting a New Project From This Scaffold
 
@@ -93,3 +93,37 @@ If you're using an agent-capable tool, additional project-scoped helpers live in
 Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
 
 <!-- TRELLIS:END -->
+
+<!-- 以下是仓库自己的契约；上面 TRELLIS:START/END 之间由 `trellis update` 托管，改动可能被覆盖 -->
+
+# AI 协作契约
+
+## 开工前必读
+
+门禁、codegen、集成测试、环境配置：`.trellis/spec/cross-cutting.md`；数据层与网络：
+`.trellis/spec/index.md`；前端（状态管理 / UI 质量 / 目录与命名）：`.trellis/spec/frontend/index.md`。
+分支策略见 `BRANCH.md`。写之前先读对应索引 —— 别凭印象写。
+
+## 改完必跑
+
+```bash
+just verify
+```
+
+它依次跑 format / 两组 `dart analyze --fatal-infos` / 插件规则测试 / 目录树一致性 / 测试 + 覆盖率门禁。
+**生成物不入库**：改了注解（`@freezed` / `@RoutePage` / `@injectable` / Drift 表）或增删文件后，先 `just codegen` 再验证
+（clone 后也必须先 `just codegen`，否则 analyze / test 会因为缺 `part` 而失败）。
+「有意不设门禁」的项见 [`cross-cutting.md`](.trellis/spec/cross-cutting.md)。
+
+## 照抄对象：`lib/features/article/`
+
+新增 feature 时**先读**它，按它的形状写：`data/` 覆盖 Retrofit API + `@DriftAccessor` DAO +
+Service（`Result` + 错误映射 + 缓存旁路）+ Repository 抽象与 DI 装配 + `@freezed` 模型；
+`logic/` 与 `page/` 是 signals ViewModel 与页面的标准写法；`test/features/article/**` 是对应测试。
+## 禁止模式速查
+
+`packages/app_lints` 插件强制六条：`core/` 不得依赖上层、跨 feature 只共享 `data/`、
+`features/*/logic/` 不得用 `getIt`、取 ViewModel 的页面必须给可选注入点三件套、
+禁 `AsyncState.map`（用 `AsyncView`）、注释块 ≤10 行。判据与放行条件见 `cross-cutting.md`。
+
+另外：不要手改生成物，也不要把生成物 `git add -f` 加回版本库。
