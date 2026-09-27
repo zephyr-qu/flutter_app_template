@@ -17,32 +17,18 @@ jobs:
           flutter-version: "3.47.5"
           channel: "stable"
 
+      - uses: extractions/setup-just@v3
+        with:
+          just-version: 1.58.0
+
       - name: Install dependencies
-        run: flutter pub get
+        run: just deps
 
       # 生成物（*.g.dart / *.freezed.dart / *.gr.dart / *.config.dart / app_localizations*）
-      # 是提交进仓库的，因此必须与源保持一致。改了注解或增删文件却忘了重新生成时，
-      # 这一步会拦下来。策略与重新生成时机见 .trellis/spec/cross-cutting.md「代码生成与生成物」。
-      - name: Check generated code is up to date
-        run: |
-          dart run build_runner build --delete-conflicting-outputs
-          flutter gen-l10n
-          # app_core 是独立 package，生成物（user.freezed.dart / app_database.g.dart 等）
-          # 只能在包目录内生成 —— 根目录跑的 build_runner 不会碰它。
-          (cd packages/app_core && flutter pub get && dart run build_runner build --delete-conflicting-outputs)
-          # -N（intent to add）让「新增」的生成物也进入 diff —— 只用 git diff 会漏掉
-          # 「新增一个 @freezed 模型 → 多出一个 .freezed.dart」这种最常见的漂移。
-          git add -N -- lib packages
-          git diff --exit-code -- lib packages || {
-            echo "::error::生成物与源不一致（见上方 diff）。本地执行 dart run build_runner build --delete-conflicting-outputs && flutter gen-l10n（app_core 需在包目录内跑 build_runner），并把生成物一起提交。";
-            exit 1;
-          }
-
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test tool packages
-
-      - name: Check dependencies (unused / undeclared)
-        run: dart run dependency_validator
+      # 不入库，analyze / test 前必须现场生成。策略与重新生成时机见
+      # .trellis/spec/cross-cutting.md「代码生成与生成物」。
+      - name: Generate code
+        run: just codegen
 
       # 「过期」不等于「有漏洞」，也不等于必须马上升 —— 所以这一步**只报告**：
       # 实测 dart pub outdated 有可升级项时仍返回 0，判定口径不在它的退出码上；
@@ -52,66 +38,23 @@ jobs:
         run: dart pub outdated
         continue-on-error: true
 
-      - name: Check architecture boundaries (FSD)
-        run: dart run tool/check_boundaries.dart
-
-      # 页面注入点 / AsyncState.map / 注释块上限（扫 lib/，见 tool/check_conventions.dart）
-      - name: Check code conventions
-        run: dart run tool/check_conventions.dart
-
-      - name: Check documented directory trees (README / spec)
-        run: dart run tool/check_readme_tree.dart
-
-      - name: Analyze app source (lib/)
-        run: flutter analyze lib/
-
-      - name: Analyze app tests (test/)
-        run: flutter analyze test/
-
-      - name: Analyze tool scripts (tool/)
-        run: dart analyze tool/
-
-      # 共享基础设施包。它不被 lib/ 的 analyze 覆盖，漏掉这一步等于给新包免检。
-      - name: Analyze shared package (packages/)
-        run: dart analyze packages/
+      # 格式、两步 analyze（app_lints 插件 + very_good_analysis，含依赖声明规则）、
+      # 插件规则测试、目录树一致性、单元与 widget 测试、覆盖率门禁 —— 本地同一条
+      # 命令，原样跑一遍。analyze **必须显式传文件名**（传目录会静默丢插件诊断），
+      # 口径与调用形式见 .trellis/spec/cross-cutting.md；CI 不另写第二份。
+      - name: Run gates (just verify)
+        run: just verify
 
       # 改名脚本的回归：`tool/init_project.dart` 会把仓库复制到临时目录、真的改一次名，
       # 再用 flutter analyze 验证改完的仓库自洽（import 没断、包名一致）。
       # SCAFFOLD_E2E=1 才跑那条端到端用例 —— 它要 pub get + analyze，慢。
       - name: Regression test (rename scaffold in temp dir)
-        run: flutter test test/tool/init_project_test.dart
+        run: just test test/tool/init_project_test.dart
         env:
           SCAFFOLD_E2E: "1"
 
-  unit-test:
-    needs: analyze
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.47.5"
-          channel: "stable"
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run unit & widget tests
-        run: flutter test --coverage
-
-      # app_core 是独立 package：根工程跑 --coverage 时包内文件的命中不会被归集
-      # （lcov 里一条 packages/ 记录都没有），只能在包目录里单独采集。
-      - name: Run app_core tests
-        run: cd packages/app_core && flutter test --coverage
-
-      # 生成文件不计入阈值（口径与理由见 .trellis/spec/cross-cutting.md）。
-      # 两份 lcov 逐份独立校验：包内的低覆盖不该被 lib/ 的高覆盖稀释。
-      # --src 与 lcov 按序配对，开启差集检查：扫描根下没被该 lcov 覆盖的手写文件
-      # 按 0 计入分母 —— 少了它，一个从没被加载过的新文件不会让阈值下降。
-      - name: Check coverage threshold
-        run: dart run tool/check_coverage.dart coverage/lcov.info packages/app_core/coverage/lcov.info --src=lib --src=packages/app_core/lib --min=80
-
+  # 单元与 widget 测试没有单独 job：`just verify` 已经跑了 `flutter test`
+  # 与覆盖率门禁。
   integration-test:
     needs: analyze
     runs-on: ubuntu-latest
@@ -137,8 +80,16 @@ jobs:
           flutter-version: "3.47.5"
           channel: "stable"
 
+      - uses: extractions/setup-just@v3
+        with:
+          just-version: 1.58.0
+
       - name: Install dependencies
-        run: flutter pub get
+        run: just deps
+
+      # 生成物不入库，集成测试同样要现场生成
+      - name: Generate code
+        run: just codegen
 
       # 目标平台是 Android / iOS，集成测试就跑在 Android 模拟器上。
       # 不要用 xvfb：那是给 Linux 桌面目标用的，本项目没有 linux/ 平台目录。
@@ -151,10 +102,10 @@ jobs:
           profile: pixel_5
           # 不要传 emulator-options —— 一旦指定会覆盖 action 的全部默认值
           # （默认已含 -no-window / -gpu swiftshader_indirect，headless 需要它们）
-          script: flutter test integration_test/
+          script: just e2e
 
   # ── 供应链门禁：拿 pubspec.lock 去 OSV 数据库查**已知漏洞**，命中即失败 ──
-  # 它和 dependency_validator 是两件事：后者管「声明与使用是否一致」，这里管
+  # 它和 `depend_on_referenced_packages` 是两件事：后者管「声明与使用是否一致」，这里管
   # 「锁定住的版本有没有被披露过漏洞」。口径与理由见 .trellis/spec/cross-cutting.md。
   #
   # 用官方 reusable workflow 而不是自己拼 `run: osv-scanner …`：CLI 参数在
@@ -162,10 +113,11 @@ jobs:
   osv-scan:
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0
     with:
-      # 只扫 lockfile。默认的 `-r ./` 会把 build/、.dart_tool/ 这些产物
-      # 一并扫进去，又慢又吵，而依赖清单在仓库里只有 pubspec.lock 一份。
+      # 只扫根工程与独立插件包的 lockfile。默认的 `-r ./` 会把 build/、
+      # .dart_tool/ 这些产物一并扫进去，又慢又吵。
       scan-args: |-
         --lockfile=./pubspec.lock
+        --lockfile=./packages/app_lints/pubspec.lock
       # 结果只落在 job 日志里，不上传 Code Scanning —— 私有仓库或没开
       # Code Scanning 的仓库不会因为这一步变红；要那份展示就改成 true。
       upload-sarif: false
