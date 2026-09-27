@@ -101,7 +101,7 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 ## 开工前必读
 
 门禁、codegen、集成测试、环境配置：`.trellis/spec/cross-cutting.md`；数据层与网络：
-`.trellis/spec/index.md`；前端（状态管理 / UI 质量 / 目录与命名）：`.trellis/spec/frontend/index.md`。
+`.trellis/spec/backend/index.md`；前端（状态管理 / UI 质量 / 目录与命名）：`.trellis/spec/frontend/index.md`。
 分支策略见 `BRANCH.md`。写之前先读对应索引 —— 别凭印象写。
 
 ## 改完必跑
