@@ -47,7 +47,6 @@ dependencies:
   flex_color_scheme: ^8.4.0 # core/theme/app_theme.dart（仅此一处使用）
 
   # ── Utils ──
-  flutter_dotenv: ^6.0.0
   flutter_secure_storage: ^11.2.0
   leak_tracker: ^11.0.2 # 内存泄漏检测（debug 模式自动启用）
   logger: ^2.6.2 # core/logging/logging.dart
@@ -102,7 +101,3 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
-  assets:
-    - .env
-    - .env.development
-    - .env.production

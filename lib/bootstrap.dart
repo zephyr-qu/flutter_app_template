@@ -1,26 +1,16 @@
-import 'package:app_core/logging/logging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:leak_tracker/leak_tracker.dart';
 import 'package:my_app/app/app.dart';
+import 'package:my_app/core/logging/logging.dart';
 import 'package:my_app/di/service_locator.dart';
 
-/// Required environment variables for the app.
-const _requiredEnvKeys = ['BASE_URL'];
-
-/// 当前环境名：`--dart-define=env=xxx` 优先，否则按构建模式取
-/// development / production。
+/// 环境值与它的来源：`--dart-define` / `--dart-define-from-file` 注入的**编译期常量**。
 ///
-/// **不能**用 `defaultValue` 兜底，见 backend/quality-guidelines.md「环境配置」。
-String get _activeEnv {
-  const defined = String.fromEnvironment('env');
-  if (defined.isNotEmpty) return defined;
-  return kReleaseMode ? 'production' : 'development';
-}
-
-/// 对应的 .env 文件名
-String get _envFileName => '.env.$_activeEnv';
+/// 不走 `.env` 文件 + `dotenv` 的那套：文件要作为 asset 打进产物、要按环境名选文件、
+/// 还要在启动期 `await` 一次 IO，而编译期常量这三件事都不需要。
+const _baseUrl = String.fromEnvironment('BASE_URL');
+const _useMock = String.fromEnvironment('USE_MOCK', defaultValue: 'false');
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,22 +30,18 @@ Future<void> bootstrap() async {
     return true; // 已处理，不继续传播
   };
 
-  await dotenv.load(fileName: _envFileName);
-  Logging.info('Environment: $_activeEnv ($_envFileName)');
-  _validateEnv();
+  // 缺 BASE_URL 直接抛，不静默启动 —— 否则会带着空地址跑到第一次网络请求才炸。
+  if (_baseUrl.isEmpty) {
+    throw Exception(
+      '缺少 BASE_URL：用 --dart-define-from-file=.env.example 注入（见 .env.example）',
+    );
+  }
+  Logging.info('Network: BASE_URL=$_baseUrl, USE_MOCK=$_useMock');
 
   _initLeakTracker();
 
   await configureDependencies();
   runApp(const MyApp());
-}
-
-void _validateEnv() {
-  for (final key in _requiredEnvKeys) {
-    if (dotenv.env[key] == null || dotenv.env[key]!.isEmpty) {
-      throw Exception('Missing required env key: $key');
-    }
-  }
 }
 
 void _initLeakTracker() {
