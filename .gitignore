@@ -5,10 +5,13 @@
 *.swp
 .DS_Store
 .atom/
-# .env* 有意**不**忽略：它们是脚手架的非密钥配置（BASE_URL / USE_MOCK），
-# 会提交进 git，并由 pubspec.yaml 的 assets 声明打进产物。
-# 密钥一律走 --dart-define；不要把 .env* 加回这里 —— 那会让人以为本地改动
-# 不会被提交，与 README「环境配置与 release 构建」的说法互相矛盾。
+# 真实 env 不入库，只提交 .env.example（示例 / 默认值）。
+# 运行时用 `--dart-define-from-file=.env.example`（或你自定义的 .env.development）注入；
+# 密钥一律走 --dart-define。
+.env
+.env.*
+!.env.example
+.codebuddy/
 .build/
 .buildlog/
 .history
@@ -39,12 +42,20 @@ my_app.code-workspace
 signals.md
 /build/
 /coverage/
-# 本地包的产物：包目录下的 build/coverage 与 pubspec.lock。
-# lock 不提交 —— 路径依赖的解析由根 pubspec.lock 统一锁定，
-# 包内再存一份只会变成第二个真相来源。
+# 包目录下的构建产物（`packages/` 只放独立工具包）
 /packages/*/build/
 /packages/*/coverage/
-/packages/*/pubspec.lock
+
+# 代码生成物：不入库，clone 后跑 `just codegen`。
+# 口径与 packages/app_lints 的 isGeneratedPath() 对齐；策略见
+# .trellis/spec/cross-cutting.md「代码生成与生成物」。
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.config.dart
+*.gen.dart
+**/gen/
+*app_localizations*
 # Platform specific
 **/ios/Pods/
 **/macos/Pods/
