@@ -1,8 +1,8 @@
 # 分析器配置。
 #
 # 规则集由 very_good_analysis 提供（`include:`）。换规则集时必须同步改
-# `pubspec.yaml` 的 dev_dependencies —— dependency_validator 只认被 include 的那个包，
-# 留着旧的会被判成「声明了没用」。
+# `pubspec.yaml` 的 dev_dependencies、删掉旧的那个包 —— 留着没人用的声明，
+# 现在没有任何门禁会抓（详见 cross-cutting.md「依赖声明」）。
 #
 # 本文件只放两类内容：规则集之外的 analyzer 设置，以及**对本项目不成立**的规则。
 # 单条豁免写进对应代码（`// ignore: rule -- 理由`），不要往这里堆。
@@ -15,6 +15,9 @@ analyzer:
     strict-inference: true
   errors:
     invalid_annotation_target: ignore
+    # 取代已退役的 dependency_validator：import 了却没在 pubspec 声明的包直接报错。
+    # 反向（声明了没用）没有门禁，口径见 cross-cutting.md「依赖声明」。
+    depend_on_referenced_packages: error
   exclude:
     - build/**
     - android/**
@@ -35,18 +38,19 @@ linter:
     # 该规则偏好同步的 dart:io。Flutter 里同步 IO 会阻塞 UI 线程，异步才是对的。
     avoid_slow_async_io: false
 
-# ──────────────────────────────────────────────
-# 架构边界与约定（非 analyzer 规则）
-# ──────────────────────────────────────────────
-# 这两类检查**不是** analyzer 插件：`analysis_server_plugin` 规则只在 IDE 里生效，
-# `dart analyze` 与 `flutter analyze` 都不会执行（历史上 `features/profile` 引用过
-# `features/auth/logic`，而 analyze 一直报告「No issues found」）。
-# 所以它们在 CI 与 pre-commit 里以脚本方式跑：
-#
-#   dart run tool/check_boundaries.dart    # 依赖方向 + 页面必须给出 ViewModel 注入点
-#   dart run tool/check_conventions.dart   # 禁用 AsyncState.map、注释块上限
-#
-# 细节见 tool/ 下的脚本与 .trellis/spec/cross-cutting.md。
+# ── 架构边界与代码形态（app_lints 插件）──
+# 依赖方向（core 不得依赖上层、跨 feature 只共享 data）、logic 层禁 service locator、
+# 页面必须给 ViewModel 可选注入点、禁 AsyncState.map、注释块上限 —— 这六条由
+# `packages/app_lints/` 实现，声明在下面的 `plugins:` 里。判据与豁免细节见
+# .trellis/spec/cross-cutting.md「架构边界与代码形态约定」。
+
+# 插件必须在**顶层** `plugins:` 下声明（不是 `analyzer: plugins:`，那是旧版
+# custom_lint 的写法）。`flutter analyze` **不加载插件**（只报 No issues found），
+# 所以门禁用 `dart analyze --fatal-infos` 并**显式传文件名**——传目录会静默少跑
+# 规则。调用形式见 cross-cutting.md。
+plugins:
+  app_lints:
+    path: packages/app_lints
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

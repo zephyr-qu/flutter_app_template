@@ -86,12 +86,11 @@ dev_dependencies:
 
   # ── Lint 规则集 ──
   # 由 analysis_options.yaml 的 `include:` 引用。换规则集时必须同步删掉旧的那个：
-  # dependency_validator 只认被 include 的包，留着会被判成「声明了没用」。
+  # 没有任何门禁会抓「声明了却没用」；换规则集时顺手删掉旧的那个。
   very_good_analysis: ^11.0.0
 
   # ── 构建工具 ──
   flutter_launcher_icons: ^0.14.4
-  dependency_validator: ^5.1.0
 
 # ──────────────────────────────────────────────
 # 插件配置
