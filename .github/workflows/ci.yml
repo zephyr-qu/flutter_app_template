@@ -39,7 +39,7 @@ jobs:
         continue-on-error: true
 
       # 格式、两步 analyze（app_lints 插件 + very_good_analysis，含依赖声明规则）、
-      # 插件规则测试、目录树一致性、单元与 widget 测试、覆盖率门禁 —— 本地同一条
+      # 插件规则测试、目录树一致性、单元与 widget 测试 —— 本地同一条
       # 命令，原样跑一遍。analyze **必须显式传文件名**（传目录会静默丢插件诊断），
       # 口径与调用形式见 .trellis/spec/cross-cutting.md；CI 不另写第二份。
       - name: Run gates (just verify)
@@ -53,8 +53,7 @@ jobs:
         env:
           SCAFFOLD_E2E: "1"
 
-  # 单元与 widget 测试没有单独 job：`just verify` 已经跑了 `flutter test`
-  # 与覆盖率门禁。
+  # 单元与 widget 测试没有单独 job：`just verify` 已经跑了 `flutter test`。
   integration-test:
     needs: analyze
     runs-on: ubuntu-latest

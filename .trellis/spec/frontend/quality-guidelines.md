@@ -113,7 +113,7 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 | --- | --- |
 | 架构边界（`no_upper_import_in_core` / `cross_feature_only_data` / `no_service_locator_in_logic` / `page_must_expose_view_model_injection_point`）与禁止模式 | [../cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」 |
 | 代码形态约定（`avoid_async_state_map`、`comment_block_too_long`） | [../cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」 |
-| 覆盖率门禁（`tool/check_coverage.dart`） | [../cross-cutting.md](../cross-cutting.md)「覆盖率门禁」 |
+| 覆盖率（不设门禁） | [../cross-cutting.md](../cross-cutting.md)「覆盖率」 |
 | 依赖声明（`depend_on_referenced_packages`） | [../cross-cutting.md](../cross-cutting.md)「依赖声明」 |
 | 内存泄漏检测（`leak_tracker`） | [../cross-cutting.md](../cross-cutting.md)「Memory Leak Detection」 |
 | 集成测试（`integration_test/`，含「widget 测试里不要用真实 I/O」） | [../cross-cutting.md](../cross-cutting.md)「Integration Testing」 |

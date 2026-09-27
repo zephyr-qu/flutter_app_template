@@ -1,6 +1,6 @@
 #!/bin/sh
 # 门禁：一条命令 `just verify`（format / 两步 analyze / 插件规则测试 / 目录树 /
-# 测试 + 覆盖率，首个失败即停）。清单见根 `justfile`；单项重跑直接手跑
+# 测试，首个失败即停）。清单见根 `justfile`；单项重跑直接手跑
 # 对应 recipe。
 #
 # Install with: git config core.hooksPath .githooks

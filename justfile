@@ -52,13 +52,7 @@ test-app-lints:
 test-readme-tree:
     dart run tool/check_readme_tree.dart
 
-test-coverage:
-    flutter test --coverage
-
-check-coverage:
-    dart run tool/check_coverage.dart coverage/lcov.info --src=lib
-
-verify: fmt-check analyze test-app-lints test-readme-tree test-coverage check-coverage
+verify: fmt-check analyze test-app-lints test-readme-tree test
     @echo All gates passed.
 
 codegen *args:

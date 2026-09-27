@@ -17,7 +17,7 @@
 - **通用组件** — Loading / Error / Empty 三态组件
 - **代码生成** — `freezed` / `json_serializable` / `retrofit`；生成物**不入库**，clone 后跑 `just codegen`
 - **架构边界与形态约定** — 由 `packages/app_lints` 的**分析插件**强制：`core/` 不得依赖上层、跨 feature 只共享 `data/`、`logic/` 不得用 `getIt`、取 ViewModel 的页面必须给可选注入点、禁 `AsyncState.map`、注释块 ≤10 行
-- **门禁** — `just verify` 一条命令跑完：format / 两步 `dart analyze --fatal-infos` / 依赖声明 / 插件规则测试 / 目录树一致性 / 测试 + **覆盖率门禁**（只统计手写代码、按行数加权，默认阈值 80%）
+- **门禁** — `just verify` 一条命令跑完：format / 两步 `dart analyze --fatal-infos` / 依赖声明 / 插件规则测试 / 目录树一致性 / 全部测试
 - **数据库** — `Drift`（SQLite ORM，可选按需使用）
 - **测试基础设施** — `mocktail` 模拟，已含 ViewModel / Widget / 数据库测试
 
@@ -107,7 +107,7 @@ just codegen    # 生成物不入库，clone 后必跑（详见下）
 
 just run        # = flutter run --dart-define-from-file=.env.example（USE_MOCK=true，无需后端）
 
-just verify     # 全部门禁：format / analyze / 依赖 / 插件规则 / 目录树 / 测试 + 覆盖率
+just verify     # 全部门禁：format / analyze / 依赖 / 插件规则 / 目录树 / 测试
 ```
 
 ### 代码生成（生成物不入库）
@@ -241,8 +241,6 @@ features/your_feature/
 ```bash
 just test                                   # 全部测试
 just test test/features/article/logic/article_view_model_test.dart   # 指定文件
-
-just test-coverage && just check-coverage    # 覆盖率数据 + 门禁校验
 just test-app-lints                          # 插件包自己的规则测试
 ```
 
@@ -253,19 +251,9 @@ just test-app-lints                          # 插件包自己的规则测试
 - widget 测试用 `test/support/app_test_harness.dart` 的 `wrapPage()`（负责测试环境：主题等）；生产页面统一是 `HookWidget` + `useSignalValue` + `AsyncView`，`SignalBuilder` 只是可选路线
 - 取 ViewModel 的页面直接注入假实例：`LoginPage(viewModel: fakeVm)`，不必 `setUpTestApp()`——注入点的存在由 `page_must_expose_view_model_injection_point` 规则保证
 
-### 覆盖率门禁
+### 覆盖率（不设门禁）
 
-`just check-coverage` 读取 `flutter test --coverage` 产出的 lcov，按**手写代码**的行覆盖率与阈值比较：
-
-- 剔除生成文件（`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` / `*.gen.dart` / `app_localizations*`）——它们的行数不是人能守的
-- 按行数加权，不是按文件平均
-- 默认阈值 80%，低于阈值退出码为 1；`just verify` 与 CI 都跑它
-- 打开**差集检查**（`--src=lib`）：扫描根下没被这份 lcov 覆盖的手写文件按「0 命中 / 非空行数」计入分母 —— 少了它，一个从没被加载过的新文件不会让阈值下降
-
-```bash
-just check-coverage                            # 默认 80%
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib --min=85
-```
+覆盖率**不进门禁**：没有阈值检查，`just verify` 里跑的就是 `flutter test`。想临时看数字自己跑 `flutter test --coverage`，那是人工参考、不拦提交 —— 取舍与理由见 [.trellis/spec/cross-cutting.md](.trellis/spec/cross-cutting.md)「覆盖率」。
 
 ## 🔍 架构边界与代码形态（分析插件）
 
@@ -293,7 +281,6 @@ dart run tool/check_coverage.dart coverage/lcov.info --src=lib --min=85
 - **`justfile`** — 唯一命令清单（`deps` / `fmt` / `analyze` / `test` / `verify` / `codegen` / `init` / `prune`）
 - **`packages/app_lints/`** — 架构边界与代码形态的分析插件（见上）
 - **`tool/init_project.dart`** — 项目初始化，改包名 / `namespace` / iOS Bundle ID / 显示名（`just init`，交互或 `--yes` 非交互）
-- **`tool/check_coverage.dart`** — 覆盖率门禁（见上）
 - **`tool/check_readme_tree.dart`** — 校验文档里的 `lib/` 目录树与实际文件一致（见下）
 - **`tool/prune.dart`** — 正交裁剪（如 `--l10n=single`）
 - **`.githooks/pre-commit`** — 提交前跑 `just verify`（首个失败即停）。安装：`git config core.hooksPath .githooks`

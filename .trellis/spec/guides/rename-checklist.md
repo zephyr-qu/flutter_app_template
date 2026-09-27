@@ -64,7 +64,7 @@ dart run tool/init_project.dart --yes --name=your_app \
 ### CI Pipeline / 门禁
 
 清单以 `.github/workflows/ci.yml` 与 `.githooks/pre-commit` 为准 —— 两处都只是 `just verify`
-（format、两组 `dart analyze --fatal-infos`、依赖检查、插件规则测试、目录树一致性、覆盖率门禁）。
+（format、两组 `dart analyze --fatal-infos`、依赖检查、插件规则测试、目录树一致性、测试）。
 改名不影响这些步骤，但**插件包里的包名前缀**是例外，见上面的坑。
 
 ### Environment Validation

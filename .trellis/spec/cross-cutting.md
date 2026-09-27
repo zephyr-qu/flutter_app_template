@@ -47,7 +47,7 @@ plugins:
 
 - **`dart analyze` 必须显式传文件名**：插件诊断只在显式传文件时输出，单文件、多文件都行，**传目录不行**——目录模式不报错、只是静默少跑规则，正是「有门禁的错觉」的形态。
 - **`flutter analyze` 不加载插件**：同一份 `plugins:` 配置它只报「No issues found」。所以门禁是 `justfile` 里的两步 `dart analyze --fatal-infos`（`lib + test` 与 `tool + packages`），文件列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤）。**CI 与 pre-commit 都不自己拼这两步，统一跑 `just verify`** —— 调用形式抄错不报错、只少跑，所以不留第二份。
-- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/dart_files.dart` 一致，改动时要一起改。
+- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/generated_paths.dart` 一致，改动时要一起改。
 - **判据细节**：全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。
 - 规则 4 只看 `*ViewModel` 类型：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 也由规则 3 直接禁止取容器，不重复报。
 
@@ -99,58 +99,13 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 
 ---
 
-## 覆盖率门禁（`tool/check_coverage.dart`）
+## 覆盖率（不设门禁）
 
-架构边界管「谁能依赖谁」，覆盖率管「有没有测过」，两者互补。
+覆盖率**不进门禁**：没有阈值脚本、不生成 lcov，`just verify` 里跑的就是 `flutter test`。
 
-```bash
-just test-coverage                                        # → coverage/lcov.info
-just check-coverage                                       # --src=lib，阈值 80%
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib --min=85
-dart run tool/check_coverage.dart --min=85                # 不传路径则只查 coverage/lcov.info
-```
-
-- 跑在 `just verify` 里，pre-commit 与 CI 因此都覆盖到
-- **只统计手写代码**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart` / `*.gen.dart` / `app_localizations*` 不计入。生成代码的行数不是人能守的，算进去只会稀释阈值
-- 判定复用 `tool/dart_files.dart` 的 `isGeneratedPath`，两处口径不会漂移
-- 按**行数加权**，不是按文件平均——500 行的文件与 5 行的文件不该等权
-- 阈值默认 80%（`test/tool/check_coverage_test.dart` 覆盖脚本自身的解析与差集逻辑）
-
-可传多份 lcov，但**逐份独立校验，不合并**：它们的路径都是相对各自包根的 `lib/...`，合并会把
-命名空间搅在一起，包内的低覆盖也不该被 `lib/` 的高覆盖稀释。本仓库只有根工程一份。
-
-### 差集检查（`--src`）
-
-`--src` 与位置参数的 lcov **按序配对**，开启差集检查：拿扫描根下（`dartFiles()`，与
-`handwrittenOnly()` 同一口径）的手写文件清单，减去该 lcov 的 `SF:` 集合。
-
-```bash
-dart run tool/check_coverage.dart coverage/lcov.info --src=lib
-```
-
-- 个数不匹配直接以非零退出码结束：按序配对的参数错位**不会报错、只会静默算错分母**，这是这里最坏的失败形态
-- 差集里的文件按 `0 命中 / 非空行数` **计入分母**（不是只报告）：没有豁免时门禁自动变严，
-  新增一个没测的大文件不必等谁记得加规则。行数是代理值——精确的可执行行数拿不到，
-  用非空行数刻意从严
-- 路径匹配是**边界感知的后缀**匹配：lcov 的 `SF:` 相对包根（`lib/core/base/result.dart`），
-  扫描根是仓库相对路径，用 `repoPath == sfPath || repoPath.endsWith('/$sfPath')` 对上，
-  不需要额外传前缀
-
-**豁免清单**（`tool/check_coverage.dart` 的 `loadingExemptions`）是唯一的逃生口，只放
-**结构上不可能被加载**的文件，每条必须写理由。这来自一个反例：`auth_extra_keys.dart`
-与 `token_store.dart` 被 `auth_interceptor.dart` 的 import 链加载了，却仍不出现在 lcov 里——
-它们只有 `const` 与声明，没有可执行行。所以「不在 lcov 里」有两种成因，**差集检查只能看见
-第一种**，第二种必须显式写进豁免（理由即证据）。过期豁免（已进分母）只打 warning，不拦提交。
-
-| 类别 | 例子 | 处理 |
-|---|---|---|
-| 抽象声明 / redirecting factory | `article_api.dart`、`article_repository.dart` | 豁免（无可执行行） |
-| 只有 `const` / 纯接口 | `auth_extra_keys.dart`、`token_store.dart` | 豁免（无可执行行） |
-| 只被 `integration_test` 执行的入口 | `main.dart`、`bootstrap.dart` | 豁免（`flutter test --coverage` 不含 `integration_test/`） |
-| **本该被测但没测** | —— | **补测试，不许豁免** |
-
-> 加豁免时先问一句：这是「结构上不可能被加载」，还是「暂时来不及测」？
-> 后者要补测试。条目变多本身就是信号。
+- 想临时看数字自己跑 `flutter test --coverage` —— 那是人工参考，不拦提交
+- 因此也不再需要「只统计手写代码」的剔除逻辑：生成物已由 `.gitignore` 排除，不必再为它们写豁免
+- 门禁里也因此**没有自定义脚本**了：`tool/` 只剩目录树一致性那一个（`tool/check_readme_tree.dart`）
 
 ---
 
@@ -234,7 +189,7 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
 
 ### 策略：生成物不入库（gitignore）
 
-`.gitignore` **排除**生成物，它们不提交进 git。判定「哪些是生成物」的口径与 `tool/dart_files.dart` 的 `isGeneratedPath()`、`packages/app_lints/lib/src/paths.dart` 的同名函数一致（三处改动要同步）：
+`.gitignore` **排除**生成物，它们不提交进 git。判定「哪些是生成物」的口径与 `tool/generated_paths.dart` 的 `isGeneratedPath()`、`packages/app_lints/lib/src/paths.dart` 的同名函数一致（三处改动要同步）：
 
 | 形态 | 例子 |
 |------|------|

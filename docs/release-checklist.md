@@ -115,12 +115,13 @@ just codegen
 - [ ] 门禁全绿（本地与 CI 是同一条命令）：
 
 ```bash
-just verify        # format / analyze / 插件规则 / 目录树 / 测试 + 覆盖率
+just verify        # format / analyze / 依赖 / 插件规则 / 目录树 / 测试
 ```
 
   逐项对照：`just analyze` 的两组 `dart analyze --fatal-infos`（含 `depend_on_referenced_packages`）、
-  `just test-app-lints`、`just check-readme-tree`、`just test-coverage` + `just check-coverage`
-  （手写代码 ≥ 80%）。
+  `just deps-check`、`just test-app-lints`、`just check-readme-tree`、`just test`。
+  覆盖率**不设门禁**：要看数字自己跑 `flutter test --coverage`（见
+  [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)「覆盖率」）。
 
 - [ ] 端到端冒烟：`just e2e`
 

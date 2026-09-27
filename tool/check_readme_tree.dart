@@ -22,7 +22,7 @@
 
 import 'dart:io';
 
-import 'dart_files.dart' show isGeneratedPath;
+import 'generated_paths.dart' show isGeneratedPath;
 
 /// 要检查的「文档 → 目录树根」对。
 const targets = <(String, String)>[

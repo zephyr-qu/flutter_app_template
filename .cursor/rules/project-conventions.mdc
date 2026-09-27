@@ -29,16 +29,15 @@ alwaysApply: true
 2. **静态检查零容忍**：`just analyze` 的两步 `dart analyze --fatal-infos` 必须干净，含
    `depend_on_referenced_packages`。**显式传文件名**是加载插件的前提；`flutter analyze`
    不加载插件，不要拿它当门禁。
-3. **覆盖率门禁**：`just check-coverage`（`--src=lib`，按行数加权，阈值 80%）。
-4. **环境配置**：编译期注入 —— `--dart-define` / `--dart-define-from-file=.env.example`
+3. **环境配置**：编译期注入 —— `--dart-define` / `--dart-define-from-file=.env.example`
    （`just run` / `just e2e` 已带上）。真实 `.env*` 不入库，`bootstrap()` 缺 `BASE_URL` 直接抛。
-5. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**（单语言脚手架，
+4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**（单语言脚手架，
    不走 ARB、不引入 `intl`）。新增 `FailureCode` 必须补 `lib/core/ui/failure_message.dart` 的文案。
-6. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart`。
+5. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart`。
    改注解或模型后 `just codegen`；**生成物不入库**，clone 后必跑。
-7. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
+6. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
    设计取舍、踩坑、验证命令、对照表格写 `.trellis/spec/`。连续注释块上限 10 行（插件会拦）。
-8. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、
+7. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、
    崩溃上报）不是待办，除非用户明确要求。
 
 ## 目录地图（唯一合法布局）
@@ -54,7 +53,7 @@ lib/
 │   └── page/     # 页面
 └── di/           # service_locator.dart + service_locator.config.dart（生成）
 packages/app_lints/   # 唯一的独立包：本仓库的架构边界与形态规则
-tool/                 # 脚手架运维脚本（init / prune / 覆盖率 / 目录树）；just verify 调用
+tool/                 # 脚手架运维脚本（init / prune / 目录树一致性）；just verify 调用
 ```
 
 依赖方向：`app → features → core`，由 `packages/app_lints` 的分析插件强制。
