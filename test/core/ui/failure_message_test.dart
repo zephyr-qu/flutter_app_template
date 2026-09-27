@@ -63,5 +63,27 @@ void main() {
 
       expect(message, contains('?'));
     });
+
+    test('FailureCode.values 里每个 code 都有非空文案', () {
+      for (final code in FailureCode.values) {
+        expect(
+          _failureFor(code).localizedMessage(),
+          isNotEmpty,
+          reason: 'code=$code',
+        );
+      }
+    });
   });
 }
+
+/// 为每个 `FailureCode` 造一个对应子类的实例（归类与 `failure.dart` 的四个子类一致）。
+Failure _failureFor(FailureCode code) => switch (code) {
+  FailureCode.timeout ||
+  FailureCode.connection ||
+  FailureCode.badCertificate => NetworkFailure(code: code),
+  FailureCode.unauthorized || FailureCode.forbidden => AuthFailure(code: code),
+  FailureCode.cancelled ||
+  FailureCode.unexpected ||
+  FailureCode.unknown => UnknownFailure(code: code),
+  _ => ServerFailure(code: code),
+};

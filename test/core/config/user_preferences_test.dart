@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _MockPrefs extends Mock implements SharedPreferences;
 
 /// 这一层只负责**落盘与读回**：变更通知与内存快照在
 /// `core/config/app_settings.dart`（provider 侧），所以这里全是同步断言。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    registerFallbackValue('');
+    registerFallbackValue(0);
+  });
 
   late SharedPreferences prefs;
 
@@ -86,6 +94,17 @@ void main() {
       await preferences.setDefaultPageSize(100);
 
       expect(UserPreferences(prefs).defaultPageSize, 100);
+    });
+
+    test('setX 返回 false 时抛 PreferenceWriteException', () async {
+      final mock = _MockPrefs();
+      when(() => mock.setInt(any(), any())).thenAnswer((_) async => false);
+      final preferences = UserPreferences(mock);
+
+      await expectLater(
+        preferences.setThemeMode(ThemeMode.light),
+        throwsA(isA<PreferenceWriteException>()),
+      );
     });
   });
 }

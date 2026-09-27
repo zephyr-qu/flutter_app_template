@@ -28,12 +28,36 @@ class UserPreferences {
   /// 列表分页大小
   int get defaultPageSize => _prefs.getInt(_keyDefaultPageSize) ?? 20;
 
-  Future<void> setThemeMode(ThemeMode mode) =>
-      _prefs.setInt(_keyThemeMode, mode.index);
+  /// 落盘失败时抛 [PreferenceWriteException]（`SharedPreferences` 用返回值表示成功，不抛异常）。
+  Future<void> setThemeMode(ThemeMode mode) async {
+    if (!await _prefs.setInt(_keyThemeMode, mode.index)) {
+      throw const PreferenceWriteException(_keyThemeMode);
+    }
+  }
 
-  Future<void> setDebugLogging({required bool enabled}) =>
-      _prefs.setBool(_keyDebugLogging, enabled);
+  Future<void> setDebugLogging({required bool enabled}) async {
+    if (!await _prefs.setBool(_keyDebugLogging, enabled)) {
+      throw const PreferenceWriteException(_keyDebugLogging);
+    }
+  }
 
-  Future<void> setDefaultPageSize(int size) =>
-      _prefs.setInt(_keyDefaultPageSize, size);
+  Future<void> setDefaultPageSize(int size) async {
+    if (!await _prefs.setInt(_keyDefaultPageSize, size)) {
+      throw const PreferenceWriteException(_keyDefaultPageSize);
+    }
+  }
+}
+
+/// 偏好落盘失败。
+///
+/// `SharedPreferences` 的 `setX` 用**返回值**表示成功（失败返回 `false`，不抛异常），
+/// 这个异常把「写失败」变成调用方无法忽略的信号：`AppSettingsNotifier` 接住它并回滚内存快照。
+class PreferenceWriteException implements Exception {
+  const new(this.key);
+
+  /// 写入失败的 prefs 键（如 `app.theme.mode`）。
+  final String key;
+
+  @override
+  String toString() => 'PreferenceWriteException: 写入 $key 失败';
 }

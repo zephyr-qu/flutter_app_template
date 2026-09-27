@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:my_app/core/config/app_settings.dart';
 import 'package:my_app/core/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _MockPrefs extends Mock implements SharedPreferences;
 
 /// 偏好的**可订阅快照**：初值读一次存储，之后写入是「先改内存再落盘」。
 /// 纯存储层（读回与越界回落）在 user_preferences_test.dart。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() {
+    registerFallbackValue('');
+    registerFallbackValue(0);
+  });
 
   late SharedPreferences prefs;
   late ProviderContainer container;
@@ -95,6 +102,26 @@ void main() {
           .setThemeMode(ThemeMode.dark);
 
       expect(seen, isEmpty);
+    });
+
+    test('落盘失败：回滚内存（不假装成功）', () async {
+      final mock = _MockPrefs();
+      when(() => mock.getInt(any())).thenReturn(null);
+      when(() => mock.getBool(any())).thenReturn(null);
+      when(() => mock.setInt(any(), any())).thenAnswer((_) async => false);
+
+      final failing = ProviderContainer(
+        overrides: [prefsProvider.overrideWithValue(mock)],
+      );
+      addTearDown(failing.dispose);
+      failing.listen(appSettingsProvider, (_, _) {});
+
+      await failing
+          .read(appSettingsProvider.notifier)
+          .setThemeMode(ThemeMode.light);
+
+      // 落盘失败 → 内存快照回到旧值，界面不会显示一个没写进磁盘的主题
+      expect(failing.read(appSettingsProvider).themeMode, ThemeMode.system);
     });
   });
 
