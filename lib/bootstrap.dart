@@ -10,17 +10,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _requiredEnvKeys = ['BASE_URL'];
 
-/// 当前环境名：`--dart-define=env=xxx` 优先，否则按构建模式取
-/// development / production。
+/// dotenv 加载的文件名：只入库这一份，`pubspec.yaml` 的 `assets:` 里声明的也是它。
 ///
-/// **不能**用 `defaultValue` 兜底，见 cross-cutting.md「环境配置与 release 构建」。
-String get _activeEnv {
-  const defined = String.fromEnvironment('env');
-  if (defined.isNotEmpty) return defined;
-  return kReleaseMode ? 'production' : 'development';
-}
-
-String get _envFileName => '.env.$_activeEnv';
+/// 要连自己的后端就直接改这个文件（会显示为 dirty，预期行为）；
+/// 换环境不再靠「换文件」—— dotenv 只能加载声明为 asset 的文件。
+const _envFileName = '.env.example';
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +35,7 @@ Future<void> bootstrap() async {
   };
 
   await dotenv.load(fileName: _envFileName);
-  Logging.info('Environment: $_activeEnv ($_envFileName)');
+  Logging.info('Environment: $_envFileName');
   _validateEnv();
 
   _initLeakTracker();

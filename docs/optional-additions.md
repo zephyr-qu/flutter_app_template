@@ -1,9 +1,5 @@
 # 可选增强清单
 
-脚手架**有意不预装**很多东西：每多一个包，就要跟着 Flutter SDK 升级、就要进构建、
-就要让新人多犹豫一次"我该用哪个"。但"不预装"不等于"你不知道它存在"——这份清单
-就是那份知识，并且每条都配了「什么时候才该加」。
-
 > 本文只写包名与用途，**不锁版本号**。加的时候用 `flutter pub add <pkg>`，让 pub
 > 挑当前与你的 SDK 兼容的版本，别照抄别人 pubspec 里的 `^x.y.z`。
 
@@ -43,6 +39,7 @@
 | `flutter_gen`      | 资源类型安全访问器（`Assets.xxx`）    | assets 多到记不住路径、且改动频繁   | 手写 `lib/core/assets.dart` 常量，20 行搞定                                                                                                                                                |
 | `device_info_plus` | 机型、系统版本、`isPhysicalDevice` | **接崩溃上报时**当上下文用        | 只要系统版本的话，`dart:io` 的 `Platform.operatingSystemVersion` 够                                                                                                                           |
 | `google_fonts`     | Google Fonts 的 1000+ 款字体   | 需要**品牌字体**、且不想自己管字体文件时 | 把 ttf 放进 `assets/`，在 `pubspec.yaml` 的 `flutter: fonts:` 里声明——没有网络依赖。⚠️ 明确不要走它的默认模式（渲染时从 `fonts.gstatic.com` 下载）：弱网/无网下字体不生效，冷启动会先渲染系统字体再"跳"一下。另外中文字体（如思源黑体）全字库单个字重常有数 MB，要有子集裁剪的准备 |
+| `flutter_dotenv`   | 从 `.env` 文件读环境变量（需声明为 asset） | 想在运行时读文件，而非编译期注入 | **本项目在用**：`bootstrap()` 用 dotenv 加载入库的 `.env.example`（见 [README](../README.md#环境与构建)）。密钥仍走 `--dart-define` |
 
 > `lottie` 和 `flutter_gen` 是联动的：想用类型安全访问器读 Lottie，`flutter_gen` 会
 > 一起回来（多一个 `build_runner` builder，首次构建会变慢）。加之前想清楚这笔账。
@@ -61,7 +58,7 @@
 | 网络调试 UI（真机上抓包看请求） | `talker_flutter`（`alice` 的后继）                      | 替换 `dio_client.dart` 里 `PrettyDioLogger` 的挂载位置                                                     |
 | 本地通知 / 推送         | `flutter_local_notifications`、`firebase_messaging` | `ProfilePage` 的 `TODO(template): 接入通知设置页`                                                          |
 | 原生启动图             | `flutter_native_splash`                            | `splash_page.dart` 是 **Flutter 层**启动页；native 层冷启动白屏要靠它                                             |
-| 应用图标              | `flutter_launcher_icons`（已在依赖里）                    | 默认占位图 `assets/icon/icon.png` 已存在；发版前换成自己的图再跑                                     |
+| 应用图标              | `flutter_launcher_icons`（已在依赖里）                    | 默认占位图 `assets/icon/icon.png` 已存在；发版前换成自己的图再跑                                                       |
 | 主题模式 UI           | 不需要新包                                              | 已闭环：`appSettingsProvider` 的 `themeMode` + `ProfilePage` 的「外观」弹窗                                    |
 
 ***
@@ -82,7 +79,7 @@
 | 图表              | `fl_chart`                                                                                  |
 | 声明式动画           | `flutter_animate`（比手写 `AnimationController` 省事）                                             |
 | 分页加载            | `infinite_scroll_pagination`（或照 `SampleListNotifier` 自己写）                                   |
-| 表单校验            | `formz`（或在状态快照上写 `bool get canSubmit => ...`）                                             |
+| 表单校验            | `formz`（或在状态快照上写 `bool get canSubmit => ...`）                                               |
 | 日期 / 货币格式化      | **需要时加**：`flutter pub add intl`，用它的 `DateFormat` / `NumberFormat`（本项目已裁剪 l10n，`intl` 不在依赖里） |
 | 下拉刷新            | **已有**：`RefreshIndicator`（见 `sample_list_page.dart`）                                        |
 | 列表三态            | **已有**：`LoadingIndicator` / `ErrorText` / `EmptyWidget`                                     |
@@ -96,15 +93,13 @@
 
 ## 四、开发期工具
 
-| 工具                                   | 用途                  | 备注                                                                                                                                                                                                                      |
-| ------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `patrol`                             | 端到端测试               | 比 `integration_test/` 强：能操作系统弹窗、原生权限框                                                                                                                                                                                   |
-| `alchemist` / 内建 `matchesGoldenFile` | 视觉回归测试              | 改主题时的护栏                                                                                                                                                                                                                 |
-| `dio_cache_interceptor`              | HTTP 缓存拦截器          | 比 `SampleService` 手写的缓存旁路完整（ETag / max-age / 过期策略）；需求简单就别上                                                                                                                                                              |
-| `riverpod_lint`                      | Riverpod 的 lint 与重构 | ✅ **已采用**：3.1.0 起用 `analysis_server_plugin`，不再需要 `custom_lint`；配置见 `analysis_options.yaml`，门禁用 `dart analyze --fatal-infos` 显式分析手写文件。它不覆盖本仓库的架构边界与形态约定，这些由 `packages/app_lints/` 承担（见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)） |
-| `custom_lint`                        | 自定义 lint 规则框架       | ⚠️ 建在官方的 legacy `analyzer_plugin` 协议上（该包页面自己标注 "not recommended for new plugin development"），最新 0.8.1 停在 2025-09。写自己的 lint 规则应走 `analysis_server_plugin`，别从它起步                                                          |
-| `very_good_analysis`                 | 更严格的 lint 集         | ✅ **已采用**：规则集在 `analysis_options.yaml` 的 `include:`；存量用 `dart fix` 批量修 + 少量带理由的 `// ignore`，三条不适用规则在文件里注明理由                                                                                                             |
-| `flutter_flavorizr`                  | 生成 build flavor 脚手架 | 需要 dev/staging/prod 同机共存时用它最省事；只改 Android 的话照第七节的片段手改即可，不用装                                                                                                                                                             |
+| 工具                                   | 用途                  | 备注                                                                                                                                                             |
+| ------------------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `patrol`                             | 端到端测试               | 比 `integration_test/` 强：能操作系统弹窗、原生权限框                                                                                                                          |
+| `alchemist` / 内建 `matchesGoldenFile` | 视觉回归测试              | 改主题时的护栏                                                                                                                                                        |
+| `dio_cache_interceptor`              | HTTP 缓存拦截器          | 比 `SampleService` 手写的缓存旁路完整（ETag / max-age / 过期策略）；需求简单就别上                                                                                                     |
+| `custom_lint`                        | 自定义 lint 规则框架       | ⚠️ 建在官方的 legacy `analyzer_plugin` 协议上（该包页面自己标注 "not recommended for new plugin development"），最新 0.8.1 停在 2025-09。写自己的 lint 规则应走 `analysis_server_plugin`，别从它起步 |
+| `flutter_flavorizr`                  | 生成 build flavor 脚手架 | 需要 dev/staging/prod 同机共存时用它最省事；只改 Android 的话照第七节的片段手改即可，不用装                                                                                                    |
 
 ***
 
@@ -112,15 +107,15 @@
 
 技术选型不是不能换，这里附上迁移成本，便于评估：
 
-| 现在用的                                 | 替代                                                            | 迁移成本                                                        |
-| ------------------------------------ | ------------------------------------------------------------- | ----------------------------------------------------------- |
-| `riverpod` | `signals` / `bloc` / `provider`                               | **高**。Notifier 与页面订阅写法全变，`ref.watch` 要逐个换掉                  |
-| `auto_route`                         | `go_router`（官方，无 codegen）                                     | 中。`@RoutePage` 全删，路由表改写成 `GoRouter` 的 `routes` / `redirect` |
-| provider 装配（无 DI 容器）                 | `get_it` + `injectable`                                       | 低 \~ 中。装配方式整体换掉，页面侧还要重新开注入口                                 |
-| `retrofit`                           | 手写 Dio 调用                                                     | **低**。只有 1 个 API 文件                                         |
-| `freezed`                            | 只留 `json_serializable` + 手写 `copyWith`/`==`                   | 中。只有 1 个模型（`SampleItem`）                                    |
-| `Drift`                              | `shared_preferences`（纯 KV）、`sqflite`（手写 SQL）、`objectbox`（性能好） | **低**。只影响 `SampleService` 的缓存与 `SampleDao`                  |
-| `dio`                                | `http`（官方）                                                    | 低，但会失去整套拦截器生态                                               |
+| 现在用的                 | 替代                                                            | 迁移成本                                                        |
+| -------------------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `riverpod`           | `signals` / `bloc` / `provider`                               | **高**。Notifier 与页面订阅写法全变，`ref.watch` 要逐个换掉                  |
+| `auto_route`         | `go_router`（官方，无 codegen）                                     | 中。`@RoutePage` 全删，路由表改写成 `GoRouter` 的 `routes` / `redirect` |
+| provider 装配（无 DI 容器） | `get_it` + `injectable`                                       | 低 \~ 中。装配方式整体换掉，页面侧还要重新开注入口                                 |
+| `retrofit`           | 手写 Dio 调用                                                     | **低**。只有 1 个 API 文件                                         |
+| `freezed`            | 只留 `json_serializable` + 手写 `copyWith`/`==`                   | 中。只有 1 个模型（`SampleItem`）                                    |
+| `Drift`              | `shared_preferences`（纯 KV）、`sqflite`（手写 SQL）、`objectbox`（性能好） | **低**。只影响 `SampleService` 的缓存与 `SampleDao`                  |
+| `dio`                | `http`（官方）                                                    | 低，但会失去整套拦截器生态                                               |
 
 ***
 
@@ -141,11 +136,11 @@
 
 ## 七、可选脚手架：build flavor（dev / staging / prod 同机共存）
 
-脚手架默认**不做 flavor**：环境靠 `--dart-define=env=` 切换（见
-[README](../README.md#环境配置与-release-构建)），一套代码、一个包，构建时换地址。
+脚手架默认**不做 flavor**：环境靠 `--dart-define-from-file` 切换（见
+[README](../README.md#环境与构建)），一套代码、一个包，构建时换地址。
 什么时候才值得加 flavor？只有一种场景——**同一台手机上要同时装多个环境**
 （dev 包连测试服、prod 包连线上，互不覆盖、不用卸载）。如果只是「构建时换地址」，
-`--dart-define` 就够了，别为它引入 flavor 的复杂度。
+`--dart-define-from-file` 就够了，别为它引入 flavor 的复杂度。
 
 需要时按下面四步加，Android 部分可以直接复制。
 
@@ -195,24 +190,17 @@ android {
   `tool/init_project.dart` 写入）。不想动 manifest 就改用
   `manifestPlaceholders["appName"]` + `android:label="${appName}"`。
 
-### 2. 让 flavor 决定加载哪个 `.env`
+### 2. flavor 与 env 的关系
 
-Flutter 工具会把 flavor **自动注入成 dart-define**：`--flavor dev` 等价于多传一个
-`FLUTTER_APP_FLAVOR=dev`（这个名字是保留的，自己再传会被工具拒绝）。所以
-`lib/bootstrap.dart` 的 `_activeEnv` 可以多一条兜底，把 flavor 名直接当环境名：
+env 已改用 `--dart-define-from-file`（不再有 `.env.<环境名>` 自动加载），所以给每个
+flavor 配一份 env、构建时显式选择即可，不需要再改 `bootstrap.dart`：
 
-```dart
-String get _activeEnv {
-  const defined = String.fromEnvironment('env');
-  if (defined.isNotEmpty) return defined;      // 显式指定优先
-  const flavor = String.fromEnvironment('FLUTTER_APP_FLAVOR');
-  if (flavor.isNotEmpty) return flavor;        // 约定：flavor 名 == 环境名
-  return kReleaseMode ? 'production' : 'development';
-}
+```bash
+flutter build apk --flavor dev --dart-define-from-file=.env.dev
 ```
 
-这样 `--flavor dev` 会去加载 `.env.dev`——**记得把它加进** **`pubspec.yaml`** **的
-`flutter: assets:`**，否则运行时会报找不到文件。
+env 文件是**构建期读取**的，不必声明成 asset；想少敲参数就一个 flavor 一条 `just` recipe。
+（Flutter 会把 flavor 自动注入成 `FLUTTER_APP_FLAVOR`，但那与本项目的 env 加载无关了。）
 
 ### 3. iOS：一个 flavor 一个 scheme
 

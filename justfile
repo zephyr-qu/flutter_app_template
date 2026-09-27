@@ -38,6 +38,14 @@ analyze-tool:
 test *args:
     flutter test {{ args }}
 
+# 本地运行：dotenv 会加载入库的 .env.example（bootstrap 校验 BASE_URL）
+run *args:
+    flutter run {{ args }}
+
+# 端到端冒烟：集成测试启动真 App，同样走 dotenv
+e2e:
+    flutter test integration_test/
+
 test-app-lints:
     cd packages/app_lints && dart test
 

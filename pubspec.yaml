@@ -97,6 +97,4 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
-    - .env
-    - .env.development
-    - .env.production
+    - .env.example
