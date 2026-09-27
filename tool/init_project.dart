@@ -152,7 +152,8 @@ int runCli(
   say('  1. Review changes with: git diff');
   say('  2. Regenerate code: dart run build_runner build');
   say('  3. Verify with: flutter analyze');
-  say('  4. Set environment: edit .env.development');
+  say('  4. Env: 默认用 .env.example；要改就编辑 .env.development，');
+  say('     运行加 --dart-define-from-file=.env.development');
   say('  5. Commit: git add -A && git commit -m "chore: init as $newName"');
   return 0;
 }
@@ -206,7 +207,7 @@ String? _validateAppId(String value, String label) =>
     ? null
     : '$label $value 不合法：至少两段、以字母开头（如 com.example.my_app）';
 
-/// `.env.development` 不存在时用 `.env.example` 生成一份（缺失也能跑）。
+/// `.env.development` 不存在时用 `.env.example` 生成一份本地覆盖（缺失也能跑）。
 void _ensureEnvDevelopment(Directory root, void Function(String) say) {
   final target = File('${root.path}/.env.development');
   if (target.existsSync()) return;

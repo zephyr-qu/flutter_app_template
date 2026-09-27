@@ -46,8 +46,9 @@ void main(List<String> args) {
     return;
   }
   if (parsed.error != null) {
-    stderr.writeln('❌ ${parsed.error}');
-    stderr.writeln(_usage);
+    stderr
+      ..writeln('❌ ${parsed.error}')
+      ..writeln(_usage);
     exitCode = 1;
     return;
   }
@@ -77,6 +78,8 @@ void main(List<String> args) {
       stderr.writeln('  • $failure');
     }
     stderr.writeln(
+      // 中文句子在换行处本来就不加空格，这条规则的前提是英文长句
+      // ignore: missing_whitespace_between_adjacent_strings
       '   源文件已经变了 —— 请同步更新 tool/prune.dart 里对应的 recipe'
       '（改完重跑即可，本脚本全有或全无）。',
     );
@@ -123,19 +126,21 @@ void main(List<String> args) {
   for (final dir in <String>['lib', 'test']) {
     final fix = Process.runSync('dart', <String>['fix', '--apply', dir]);
     if (fix.exitCode != 0) {
-      stderr.writeln('❌ `dart fix --apply $dir` 失败：');
-      stderr.writeln('${fix.stdout}${fix.stderr}');
+      stderr
+        ..writeln('❌ `dart fix --apply $dir` 失败：')
+        ..writeln('${fix.stdout}${fix.stderr}');
       exitCode = 1;
       return;
     }
   }
   Process.runSync('dart', <String>['format', 'lib', 'test']);
 
-  stdout.writeln('\n✅ 裁剪完成（--l10n=single）。接下来请手动确认：');
-  stdout.writeln('   1. flutter analyze lib/ test/');
-  stdout.writeln('   2. flutter test');
-  stdout.writeln('   3. .trellis/spec/frontend/localization.md 描述的是多语言形态，');
-  stdout.writeln('      单语言分支上它已过期 —— 删掉或改写，并同步 frontend/index.md 的链接');
+  stdout
+    ..writeln('\n✅ 裁剪完成（--l10n=single）。接下来请手动确认：')
+    ..writeln('   1. flutter analyze lib/ test/')
+    ..writeln('   2. flutter test')
+    ..writeln('   3. .trellis/spec/frontend/localization.md 描述的是多语言形态，')
+    ..writeln('      单语言分支上它已过期 —— 删掉或改写，并同步 frontend/index.md 的链接');
 }
 
 // ──────────────────────────────────────────────
@@ -273,6 +278,8 @@ void _applyReplacements(PrunePlan plan, List<Replacement> list) {
     }
     if (!r.all && count > 1) {
       plan.failures.add(
+        // 中文句子在换行处本来就不加空格，这条规则的前提是英文长句
+        // ignore: missing_whitespace_between_adjacent_strings
         '${r.path}  替换「${r.description}」在文件里出现 $count 次，无法确定改哪一处'
         '（要么补足上下文使其唯一，要么显式用 all: true）',
       );
@@ -430,8 +437,9 @@ String rewriteLocalizations(
       replacement = _literal(value);
     }
 
-    buffer.write(content.substring(cursor, match.start));
-    buffer.write(replacement);
+    buffer
+      ..write(content.substring(cursor, match.start))
+      ..write(replacement);
     cursor = consumedTo;
   }
   buffer.write(content.substring(cursor));
@@ -636,7 +644,7 @@ final List<Replacement> _l10nReplacements = <Replacement>[
   const Replacement(
     'lib/core/config/user_preferences.dart',
     '移除只被语言加载使用的 logging import',
-    "import 'package:app_core/logging/logging.dart';\n",
+    "import 'package:my_app/core/logging/logging.dart';\n",
     '',
   ),
   const Replacement(
@@ -679,7 +687,9 @@ final List<Replacement> _l10nReplacements = <Replacement>[
   const Replacement(
     'test/features/demo/page/storage_demo_page_test.dart',
     'pumpPage 去掉 locale 形参与空命名参数块',
-    "    WidgetTester tester, {\n    Locale locale = const Locale('zh'),\n  }) async {\n",
+    '    WidgetTester tester, {\n'
+        "    Locale locale = const Locale('zh'),\n"
+        '  }) async {\n',
     '    WidgetTester tester,\n  ) async {\n',
   ),
   // 英文用例删掉后，这些测试文件只剩中文用例，material 里用到的 `Locale`
@@ -692,13 +702,13 @@ final List<Replacement> _l10nReplacements = <Replacement>[
   ),
   // 语言选择器整块删掉后，主题相关的文档注释里指向已删符号的 `[...]` 成了
   // 悬空引用（`comment_references`，dart fix 不修），顺手改掉。
-  Replacement(
+  const Replacement(
     'lib/features/profile/page/profile_page.dart',
     '去掉注释里对 _languageLabel 的引用',
     '  /// 与 [_languageLabel] 相反，主题名用当前界面语言书写（见 frontend/localization.md）\n',
     '  /// 主题名用当前界面语言书写（见 frontend/localization.md）\n',
   ),
-  Replacement(
+  const Replacement(
     'lib/features/profile/page/profile_page.dart',
     '去掉注释里对 _LanguageChoice 的引用',
     '  /// 那样另立枚举把 null 让给「跟随系统」（见 [_LanguageChoice]）。\n',
@@ -749,7 +759,8 @@ final List<Removal> _l10nRemovals = <Removal>[
     'lib/core/config/user_preferences.dart',
     '移除 setLocale 方法',
     '  /// 传 `null` 表示跟随系统\n',
-    '      unawaited(_prefs.setString(_keyLocale, value.languageCode));\n    }\n  }\n',
+    '      unawaited(_prefs.setString(_keyLocale, value.languageCode));\n'
+        '    }\n  }\n',
   ),
 
   // ── profile_page.dart：语言设置入口整体移除 ──
