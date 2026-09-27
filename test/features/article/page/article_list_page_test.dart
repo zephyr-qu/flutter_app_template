@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:app_core/base/failure.dart';
-import 'package:app_core/base/result.dart';
-import 'package:app_core/ui/empty_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:my_app/core/base/failure.dart';
+import 'package:my_app/core/base/result.dart';
+import 'package:my_app/core/ui/empty_widget.dart';
 import 'package:my_app/core/ui/error_text.dart';
 import 'package:my_app/core/ui/loading_indicator.dart';
 import 'package:my_app/features/article/data/article_repository.dart';

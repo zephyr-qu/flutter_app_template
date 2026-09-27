@@ -14,12 +14,17 @@ part of 'router.dart';
 /// [ArticleDetailPage]
 class ArticleDetailRoute extends PageRouteInfo<ArticleDetailRouteArgs> {
   ArticleDetailRoute({
-    Key? key,
     required int articleId,
+    Key? key,
+    ArticleViewModel? viewModel,
     List<PageRouteInfo>? children,
   }) : super(
          ArticleDetailRoute.name,
-         args: ArticleDetailRouteArgs(key: key, articleId: articleId),
+         args: ArticleDetailRouteArgs(
+           articleId: articleId,
+           key: key,
+           viewModel: viewModel,
+         ),
          initialChildren: children,
        );
 
@@ -29,48 +34,93 @@ class ArticleDetailRoute extends PageRouteInfo<ArticleDetailRouteArgs> {
     name,
     builder: (data) {
       final args = data.argsAs<ArticleDetailRouteArgs>();
-      return ArticleDetailPage(key: args.key, articleId: args.articleId);
+      return ArticleDetailPage(
+        articleId: args.articleId,
+        key: args.key,
+        viewModel: args.viewModel,
+      );
     },
   );
 }
 
 class ArticleDetailRouteArgs {
-  const ArticleDetailRouteArgs({this.key, required this.articleId});
-
-  final Key? key;
+  const ArticleDetailRouteArgs({
+    required this.articleId,
+    this.key,
+    this.viewModel,
+  });
 
   final int articleId;
 
+  final Key? key;
+
+  final ArticleViewModel? viewModel;
+
   @override
   String toString() {
-    return 'ArticleDetailRouteArgs{key: $key, articleId: $articleId}';
+    return 'ArticleDetailRouteArgs{articleId: $articleId, key: $key, viewModel: $viewModel}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! ArticleDetailRouteArgs) return false;
-    return key == other.key && articleId == other.articleId;
+    return articleId == other.articleId &&
+        key == other.key &&
+        viewModel == other.viewModel;
   }
 
   @override
-  int get hashCode => key.hashCode ^ articleId.hashCode;
+  int get hashCode => articleId.hashCode ^ key.hashCode ^ viewModel.hashCode;
 }
 
 /// generated route for
 /// [ArticleListPage]
-class ArticleListRoute extends PageRouteInfo<void> {
-  const ArticleListRoute({List<PageRouteInfo>? children})
-    : super(ArticleListRoute.name, initialChildren: children);
+class ArticleListRoute extends PageRouteInfo<ArticleListRouteArgs> {
+  ArticleListRoute({
+    Key? key,
+    ArticleViewModel? viewModel,
+    List<PageRouteInfo>? children,
+  }) : super(
+         ArticleListRoute.name,
+         args: ArticleListRouteArgs(key: key, viewModel: viewModel),
+         initialChildren: children,
+       );
 
   static const String name = 'ArticleListRoute';
 
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      return const ArticleListPage();
+      final args = data.argsAs<ArticleListRouteArgs>(
+        orElse: () => const ArticleListRouteArgs(),
+      );
+      return ArticleListPage(key: args.key, viewModel: args.viewModel);
     },
   );
+}
+
+class ArticleListRouteArgs {
+  const ArticleListRouteArgs({this.key, this.viewModel});
+
+  final Key? key;
+
+  final ArticleViewModel? viewModel;
+
+  @override
+  String toString() {
+    return 'ArticleListRouteArgs{key: $key, viewModel: $viewModel}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ArticleListRouteArgs) return false;
+    return key == other.key && viewModel == other.viewModel;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ viewModel.hashCode;
 }
 
 /// generated route for
@@ -91,18 +141,51 @@ class HomeRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [LoginPage]
-class LoginRoute extends PageRouteInfo<void> {
-  const LoginRoute({List<PageRouteInfo>? children})
-    : super(LoginRoute.name, initialChildren: children);
+class LoginRoute extends PageRouteInfo<LoginRouteArgs> {
+  LoginRoute({
+    Key? key,
+    AuthViewModel? viewModel,
+    List<PageRouteInfo>? children,
+  }) : super(
+         LoginRoute.name,
+         args: LoginRouteArgs(key: key, viewModel: viewModel),
+         initialChildren: children,
+       );
 
   static const String name = 'LoginRoute';
 
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      return const LoginPage();
+      final args = data.argsAs<LoginRouteArgs>(
+        orElse: () => const LoginRouteArgs(),
+      );
+      return LoginPage(key: args.key, viewModel: args.viewModel);
     },
   );
+}
+
+class LoginRouteArgs {
+  const LoginRouteArgs({this.key, this.viewModel});
+
+  final Key? key;
+
+  final AuthViewModel? viewModel;
+
+  @override
+  String toString() {
+    return 'LoginRouteArgs{key: $key, viewModel: $viewModel}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! LoginRouteArgs) return false;
+    return key == other.key && viewModel == other.viewModel;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ viewModel.hashCode;
 }
 
 /// generated route for
@@ -171,16 +254,49 @@ class SplashRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [StorageDemoPage]
-class StorageDemoRoute extends PageRouteInfo<void> {
-  const StorageDemoRoute({List<PageRouteInfo>? children})
-    : super(StorageDemoRoute.name, initialChildren: children);
+class StorageDemoRoute extends PageRouteInfo<StorageDemoRouteArgs> {
+  StorageDemoRoute({
+    Key? key,
+    StorageDemoViewModel? viewModel,
+    List<PageRouteInfo>? children,
+  }) : super(
+         StorageDemoRoute.name,
+         args: StorageDemoRouteArgs(key: key, viewModel: viewModel),
+         initialChildren: children,
+       );
 
   static const String name = 'StorageDemoRoute';
 
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      return const StorageDemoPage();
+      final args = data.argsAs<StorageDemoRouteArgs>(
+        orElse: () => const StorageDemoRouteArgs(),
+      );
+      return StorageDemoPage(key: args.key, viewModel: args.viewModel);
     },
   );
+}
+
+class StorageDemoRouteArgs {
+  const StorageDemoRouteArgs({this.key, this.viewModel});
+
+  final Key? key;
+
+  final StorageDemoViewModel? viewModel;
+
+  @override
+  String toString() {
+    return 'StorageDemoRouteArgs{key: $key, viewModel: $viewModel}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! StorageDemoRouteArgs) return false;
+    return key == other.key && viewModel == other.viewModel;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ viewModel.hashCode;
 }

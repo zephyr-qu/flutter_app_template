@@ -1,5 +1,5 @@
-import 'package:app_core/base/failure.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:my_app/core/base/failure.dart';
 import 'package:my_app/core/ui/failure_message.dart';
 
 /// Failure 只带 code，文案在这里翻译；单语言形态下它只可能返回中文。

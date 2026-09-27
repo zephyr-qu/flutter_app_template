@@ -11,10 +11,13 @@ class MainPage extends StatelessWidget {
   const new({super.key});
 
   /// 三个标签对应的路由，顺序即索引
-  static const List<PageRouteInfo> _tabs = [
-    HomeRoute(),
+  ///
+  /// 不是 `const`：`ArticleListRoute` 带路由参数（页面有可选注入点，见
+  /// frontend/state-management.md），构造函数不是 const 的。
+  static final List<PageRouteInfo> _tabs = [
+    const HomeRoute(),
     ArticleListRoute(),
-    ProfileRoute(),
+    const ProfileRoute(),
   ];
 
   @override

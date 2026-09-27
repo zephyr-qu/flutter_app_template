@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../tool/check_coverage.dart';
 
 /// 覆盖率门禁是脚本 + 纯函数，所以能用普通 `test()` 覆盖，
-/// 不必真的跑一遍 `flutter test --coverage`。同 `check_boundaries_test.dart`。
+/// 不必真的跑一遍 `flutter test --coverage`。
 void main() {
   group('parseLcov', () {
     test('解析 SF / LF / LH 三段', () {
@@ -123,7 +123,7 @@ end_of_record
     test('SF 是相对包根的路径：按完整路径段后缀匹配', () {
       expect(
         coversPath(
-          'packages/app_core/lib/data/token_store.dart',
+          'vendor/core/lib/data/token_store.dart',
           'lib/data/token_store.dart',
         ),
         isTrue,
@@ -133,10 +133,7 @@ end_of_record
     test('后缀必须落在路径段边界上', () {
       // 少了这个边界，xlib/a.dart 会被 lib/a.dart 误判成已覆盖
       expect(coversPath('xlib/a.dart', 'lib/a.dart'), isFalse);
-      expect(
-        coversPath('packages/app_core/xlib/a.dart', 'lib/a.dart'),
-        isFalse,
-      );
+      expect(coversPath('vendor/core/xlib/a.dart', 'lib/a.dart'), isFalse);
     });
 
     test('文件名相同但目录不同不算覆盖', () {
@@ -168,11 +165,11 @@ end_of_record
 
     test('全部缺失时返回全部', () {
       final missing = missingFrom(
-        handwritten: ['packages/app_core/lib/x.dart'],
+        handwritten: ['lib/unloaded/x.dart'],
         covered: [const FileCoverage(path: 'lib/y.dart', hit: 0, found: 9)],
       );
 
-      expect(missing, ['packages/app_core/lib/x.dart']);
+      expect(missing, ['lib/unloaded/x.dart']);
     });
   });
 
@@ -238,7 +235,7 @@ end_of_record
     test('别的扫描根下的豁免不算过期（否则每份 lcov 都会误报）', () {
       final stale = staleExemptions(
         missing: const <String>[],
-        scanRoot: 'packages/app_core/lib',
+        scanRoot: 'tool',
         exemptions: exemptions,
       );
 

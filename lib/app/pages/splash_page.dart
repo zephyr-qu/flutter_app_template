@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/routing/router.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
 import 'package:my_app/di/service_locator.dart';
 
 /// 启动页——带渐入动画的品牌页。
@@ -66,9 +66,7 @@ class _SplashPageState extends State<SplashPage>
     // 页面在 app 层，可以直接用路由类（不再依赖 '/' / '/login' 这类字符串 path）
     // 注意 replaceRoute 是挂在 BuildContext 上的扩展，不是 StackRouter 的成员
     final isLoggedIn = getIt<AuthStorage>().isLoggedIn;
-    await context.replaceRoute(
-      isLoggedIn ? const MainRoute() : const LoginRoute(),
-    );
+    await context.replaceRoute(isLoggedIn ? const MainRoute() : LoginRoute());
   }
 
   @override

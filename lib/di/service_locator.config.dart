@@ -14,13 +14,13 @@ import 'package:dio/dio.dart' as _i361;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
-import 'package:app_core/config/network_config.dart' as _i734;
+import 'package:my_app/core/config/network_config.dart' as _i734;
 import 'package:my_app/core/config/user_preferences.dart' as _i257;
 import 'package:my_app/core/core_module.dart' as _i316;
-import 'package:app_core/data/database/app_database.dart' as _i157;
+import 'package:my_app/core/data/database/app_database.dart' as _i157;
 import 'package:my_app/core/data/network/dio_client.dart' as _i426;
 import 'package:my_app/core/data/storage/auth_storage.dart' as _i70;
-import 'package:app_core/data/storage/file_storage.dart' as _i477;
+import 'package:my_app/core/data/storage/file_storage.dart' as _i477;
 import 'package:my_app/features/article/data/article_api.dart' as _i582;
 import 'package:my_app/features/article/data/article_dao.dart' as _i1011;
 import 'package:my_app/features/article/data/article_module.dart' as _i481;
@@ -53,7 +53,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.singleton<_i558.FlutterSecureStorage>(() => coreModule.secureStorage);
     gh.singleton<_i157.AppDatabase>(() => coreModule.database);
-    gh.singleton<_i477.FileStorage>(() => _i477.FileStorage());
+    gh.singleton<_i477.FileStorage>(() => coreModule.fileStorage);
     gh.lazySingleton<_i734.NetworkConfig>(() => networkModule.networkConfig());
     gh.singleton<_i70.AuthStorage>(
       () => _i70.AuthStorage(

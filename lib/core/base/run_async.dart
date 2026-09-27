@@ -1,6 +1,6 @@
-import 'package:app_core/base/failure.dart';
-import 'package:app_core/base/result.dart';
-import 'package:app_core/logging/logging.dart';
+import 'package:my_app/core/base/failure.dart';
+import 'package:my_app/core/base/result.dart';
+import 'package:my_app/core/logging/logging.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 按 signal 记录最近一次调用的序号（用 [Expando]，不阻止 signal 被 GC）。

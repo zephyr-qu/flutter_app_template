@@ -1,5 +1,5 @@
-import 'package:app_core/data/database/app_database.dart';
 import 'package:drift/drift.dart';
+import 'package:my_app/core/data/database/app_database.dart';
 
 part 'article_dao.g.dart';
 

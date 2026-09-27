@@ -1,10 +1,10 @@
-import 'package:app_core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:my_app/core/config/user_preferences.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 页面测试的公共装配。

@@ -1,4 +1,4 @@
-import 'package:app_core/base/failure.dart';
+import 'package:my_app/core/base/failure.dart';
 
 /// 把 [Failure] 翻译成面向用户的文案。
 ///

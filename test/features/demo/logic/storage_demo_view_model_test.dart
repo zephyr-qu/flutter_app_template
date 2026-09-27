@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:app_core/data/database/app_database.dart';
-import 'package:app_core/data/storage/file_storage.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:my_app/core/data/database/app_database.dart';
+import 'package:my_app/core/data/storage/file_storage.dart';
 import 'package:my_app/features/article/data/article_dao.dart';
 import 'package:my_app/features/demo/logic/storage_demo_view_model.dart';
 import 'package:signals_flutter/signals_flutter.dart';

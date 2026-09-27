@@ -1,6 +1,6 @@
-import 'package:app_core/base/failure.dart';
-import 'package:app_core/theme/app_theme_extension.dart';
 import 'package:flutter/material.dart';
+import 'package:my_app/core/base/failure.dart';
+import 'package:my_app/core/theme/app_theme_extension.dart';
 import 'package:my_app/core/ui/failure_message.dart';
 
 /// 统一错误状态组件。
@@ -31,7 +31,6 @@ class ErrorText extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Error icon container ──
             Container(
               width: 72,
               height: 72,

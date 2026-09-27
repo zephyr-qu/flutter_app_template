@@ -1,10 +1,10 @@
-import 'package:app_core/base/failure.dart';
-import 'package:app_core/models/token_set.dart';
-import 'package:app_core/models/user.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:my_app/core/base/failure.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/models/token_set.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_api.dart';
 import 'package:my_app/features/auth/data/auth_service.dart';
 import 'package:my_app/features/auth/data/models/login_request.dart';

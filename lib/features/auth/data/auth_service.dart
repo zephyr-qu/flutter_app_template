@@ -1,10 +1,10 @@
-import 'package:app_core/base/failure.dart';
-import 'package:app_core/base/result.dart';
-import 'package:app_core/base/run_catching.dart';
-import 'package:app_core/logging/logging.dart';
-import 'package:app_core/models/user.dart';
 import 'package:injectable/injectable.dart';
+import 'package:my_app/core/base/failure.dart';
+import 'package:my_app/core/base/result.dart';
+import 'package:my_app/core/base/run_catching.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
+import 'package:my_app/core/logging/logging.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_api.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:my_app/features/auth/data/models/login_request.dart';

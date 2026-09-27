@@ -1,6 +1,6 @@
-import 'package:app_core/data/database/app_database.dart';
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
+import 'package:my_app/core/data/database/app_database.dart';
 import 'package:my_app/features/article/data/article_api.dart';
 import 'package:my_app/features/article/data/article_dao.dart';
 

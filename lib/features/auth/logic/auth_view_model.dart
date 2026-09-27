@@ -1,8 +1,8 @@
-import 'package:app_core/base/failure.dart';
-import 'package:app_core/base/result.dart';
-import 'package:app_core/models/user.dart';
 import 'package:injectable/injectable.dart';
+import 'package:my_app/core/base/failure.dart';
+import 'package:my_app/core/base/result.dart';
 import 'package:my_app/core/base/run_async.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:my_app/features/auth/data/auth_repository.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 

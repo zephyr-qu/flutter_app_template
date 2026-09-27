@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:app_core/data/network/token_store.dart';
-import 'package:app_core/logging/logging.dart';
-import 'package:app_core/models/token_set.dart';
-import 'package:app_core/models/user.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:injectable/injectable.dart';
+import 'package:my_app/core/data/network/token_store.dart';
+import 'package:my_app/core/logging/logging.dart';
+import 'package:my_app/core/models/token_set.dart';
+import 'package:my_app/core/models/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -18,8 +18,8 @@ import 'package:signals_flutter/signals_flutter.dart';
 ///
 /// 存储划分与读写失败策略（读软写硬）见 backend/database-guidelines.md。
 ///
-/// 实现 [TokenStore] 供 `app_core` 的网络层使用；[currentUser] / [isLoggedInSignal]
-/// 是本分支自己的事——路由守卫据此重评登录态。
+/// 实现 [TokenStore]（`AuthInterceptor` / `TokenRefresher` 只认这个接口）；
+/// [currentUser] / [isLoggedInSignal] 供路由守卫重评登录态。
 @Singleton()
 class AuthStorage implements TokenStore {
   new(this._prefs, this._secure) {

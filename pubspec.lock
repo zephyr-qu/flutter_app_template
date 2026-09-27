@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "103.0.0"
   analyzer:
-    dependency: "direct dev"
+    dependency: transitive
     description:
       name: analyzer
       sha256: "61c04d0c1bfed555c681ea079519933f071a5a026578ff73c4ff0df2d3462e5e"
@@ -33,13 +33,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
-  app_core:
-    dependency: "direct main"
-    description:
-      path: "packages/app_core"
-      relative: true
-    source: path
-    version: "0.1.0"
   archive:
     dependency: transitive
     description:
@@ -224,14 +217,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.13"
-  dependency_validator:
-    dependency: "direct dev"
-    description:
-      name: dependency_validator
-      sha256: "8f8590242efd1688747dfda5c3bb87b53b3b0c7c176cdd1f4ffbcd1c9b814c09"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.0"
   dio:
     dependency: "direct main"
     description:
@@ -241,7 +226,7 @@ packages:
     source: hosted
     version: "5.11.1"
   dio_smart_retry:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: dio_smart_retry
       sha256: c8e20da5f49289fa7dce5c9c6b5b120928e3661aefa0fa2d206ea6d93f580928
@@ -313,7 +298,7 @@ packages:
     source: hosted
     version: "1.1.1"
   flex_color_scheme:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flex_color_scheme
       sha256: ab854146f201d2d62cc251fd525ef023b84182c4a0bfe4ae4c18ffc505b412d3
@@ -333,14 +318,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_dotenv:
-    dependency: "direct main"
-    description:
-      name: flutter_dotenv
-      sha256: d41da11fb497314fbf89811ec30af02d1d898b47980a129f0a8c0a1720460ba2
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.0.1"
   flutter_driver:
     dependency: transitive
     description: flutter
@@ -615,7 +592,7 @@ packages:
     source: hosted
     version: "1.2.2"
   logger:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: logger
       sha256: "2a0dc097e7b01d942475bdd552356db2d0f768b05540bd4b2b53f1840f2239a7"
@@ -711,7 +688,7 @@ packages:
     source: hosted
     version: "1.9.1"
   path_provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path_provider
       sha256: a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825
@@ -799,7 +776,7 @@ packages:
     source: hosted
     version: "7.0.0"
   pretty_dio_logger:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: pretty_dio_logger
       sha256: "36f2101299786d567869493e2f5731de61ce130faa14679473b26905a92b6407"
