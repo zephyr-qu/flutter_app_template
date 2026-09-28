@@ -66,15 +66,29 @@ VERIFY_EXIT=$?
 
 remove_generated_not_in_index
 
+POP_FAILED=0
 if [ "$stashed" -eq 1 ]; then
     if ! git stash pop -q 2>/dev/null; then
-        echo ""
-        echo "⚠️  git stash pop 失败——检查 git stash list 与 git status；生成物已尽量恢复。"
+        POP_FAILED=1
     fi
 fi
 
 restore_generated
 rm -rf "$GEN_BACKUP"
+
+# pop 失败必须拦下来：此时工作区缺少被 stash 的改动，若照常提交，那份改动就只留在
+# stash 里没人管（2026-09-24 因此丢过 7 个未跟踪文件）。门禁通过也不放行。
+if [ "$POP_FAILED" -eq 1 ]; then
+    echo ""
+    echo "❌ 中止提交：git stash pop 失败"
+    echo "   未暂存的改动仍留在 stash，没有回到工作区。"
+    echo "   stash 名：$STASH_NAME（git stash list 可查）"
+    echo "   处理：git status 看冲突，再手工 git stash pop / git stash apply。"
+    if [ $VERIFY_EXIT -ne 0 ]; then
+        echo "   注意：门禁同时也失败了（见上面输出）。"
+    fi
+    exit 1
+fi
 
 if [ $VERIFY_EXIT -ne 0 ]; then
     echo ""
