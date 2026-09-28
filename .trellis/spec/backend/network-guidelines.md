@@ -20,7 +20,7 @@
 | `lib/core/data/network/token_store.dart` | 令牌存取的**能力契约**（`ready` / 读写 / 过期判断 / 清除），各栈自己实现 |
 | `lib/core/data/network/auth_extra_keys.dart` | `RequestOptions.extra` 的两个标记键 |
 | `lib/core/config/network_config.dart` | 不可变的网络配置（超时、重试次数、mock 开关） |
-| `lib/core/data/network/dio_client.dart` | `NetworkModule`：构造编译期 `NetworkConfig`、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
+| `lib/core/data/network/dio_client.dart` | `NetworkModule`：从 `dotenv` 构造 `NetworkConfig`、取调试开关、注册本应用专属 Mock 规则，产出的 `Dio` 必须是单例 |
 
 `TokenStore` 是这层的反转点：网络层只依赖它，令牌存在哪里（安全存储 + 内存缓存）
 以及登录态用哪种状态管理暴露，都不是网络层该知道的事。本项目的实现是
@@ -31,14 +31,17 @@
 
 ---
 
-## 配置：只有一个来源
+## 配置：dotenv 只读一次
 
-`NetworkModule.networkConfig()` 是**全项目唯一**构造 `NetworkConfig` 的地方（内部读 `--dart-define`
-注入的编译期常量），之后所有消费者拿到的都是同一个不可变 `NetworkConfig`。
+`NetworkModule.networkConfig()` 是**全项目唯一**构造 `NetworkConfig` 的地方（`NetworkConfig.fromEnv(dotenv.env)`），
+之后所有消费者拿到的都是同一个不可变 `NetworkConfig`；`bootstrap()` 负责
+`dotenv.load(fileName: '.env.example')` 与 `BASE_URL` 存在性校验，并在 DI 装配前 fail fast。
 
+- env 文件就是入库的 `.env.example`（`pubspec.yaml` 的 `assets:` 里声明的也是它）。dotenv 只能加载声明为
+  asset 的文件，所以**换环境不能靠换文件** —— 要连自己的后端就改它（会显示为 dirty）。
+- 不要在别处读 `dotenv`：`NetworkConfig` 只有这一个来源。
 - 不要写成 `static` 类：`static` 字段是全局可变状态，测试里没有干净的覆盖点，用例之间会互相污染
-- 测试直接构造自己的实例即可：`const NetworkConfig(baseUrl: 'http://localhost:8080/api')`
-- 正常路径走不到「`BASE_URL` 缺失」的回退值 —— `bootstrap()` 会在 DI 初始化前 fail fast
+- 测试直接构造自己的实例即可：`const NetworkConfig(baseUrl: 'http://localhost:8080/api')`（不读全局 `dotenv`）
 
 ---
 

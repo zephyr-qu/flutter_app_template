@@ -140,11 +140,11 @@
 
 ## 七、可选脚手架：build flavor（dev / staging / prod 同机共存）
 
-脚手架默认**不做 flavor**：环境靠 `--dart-define-from-file=<file>` 切换（见
-[README](../README.md#环境配置与-release-构建)），一套代码、一个包，构建时换地址。
+脚手架默认**不做 flavor**：环境靠改入库的 `.env.example` 切换（见
+[README](../README.md#环境配置与-release-构建)），一套代码、一个包，改文件换地址。
 什么时候才值得加 flavor？只有一种场景——**同一台手机上要同时装多个环境**
-（dev 包连测试服、prod 包连线上，互不覆盖、不用卸载）。如果只是「构建时换地址」，
-`--dart-define` / `--dart-define-from-file` 就够了，别为它引入 flavor 的复杂度。
+（dev 包连测试服、prod 包连线上，互不覆盖、不用卸载）。如果只是「换地址」，
+改一处 `.env.example` 就够了，别为它引入 flavor 的复杂度。
 
 需要时按下面四步加，Android 部分可以直接复制。
 
@@ -195,23 +195,16 @@ android {
   `manifestPlaceholders["appName"]` + `android:label="${appName}"`。
 
 ### 2. 让 flavor 决定加载哪个 `.env`
+### 2. flavor 与 env 的关系
 
-Flutter 工具会把 flavor **自动注入成 dart-define**：`--flavor dev` 等价于多传一个
-`FLUTTER_APP_FLAVOR=dev`（这个名字是保留的，自己再传会被工具拒绝）。所以
-`lib/bootstrap.dart` 的 `_activeEnv` 可以多一条兜底，把 flavor 名直接当环境名：
+env 只有一份、且是入库的 asset（`.env.example`）：**dotenv 只能加载 asset**，所以 flavor
+无法在构建时挑另一份 env 文件。要按 flavor 分环境，得自己加一层（本模板不提供）：
 
-```dart
-String get _activeEnv {
-  const defined = String.fromEnvironment('env');
-  if (defined.isNotEmpty) return defined;      // 显式指定优先
-  const flavor = String.fromEnvironment('FLUTTER_APP_FLAVOR');
-  if (flavor.isNotEmpty) return flavor;        // 约定：flavor 名 == 环境名
-  return kReleaseMode ? 'production' : 'development';
-}
-```
+- 让 `bootstrap()` 按 `String.fromEnvironment('env')` 选不同的 asset 名（各 flavor 一份
+  `.env.*` 并都声明进 `pubspec.yaml` 的 `assets:`），构建时传 `--dart-define=env=dev`
+- 或者去掉 dotenv，整体改成读 `String.fromEnvironment`
 
-这样 `--flavor dev` 会去加载 `.env.dev`——**记得把它加进 `pubspec.yaml` 的
-`flutter: assets:`**，否则运行时会报找不到文件。
+Flutter 会把 flavor 自动注入成 `FLUTTER_APP_FLAVOR`，但那与本项目的 env 加载无关。
 
 ### 3. iOS：一个 flavor 一个 scheme
 

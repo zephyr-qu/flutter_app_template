@@ -143,8 +143,6 @@ int runCli(
     say('  – 跳过：$skipped');
   }
 
-  _ensureEnvDevelopment(root, say);
-
   say('');
   say('✅ Project initialized!');
   say('');
@@ -152,8 +150,7 @@ int runCli(
   say('  1. Review changes with: git diff');
   say('  2. Regenerate code: dart run build_runner build');
   say('  3. Verify with: flutter analyze');
-  say('  4. Env: 默认用 .env.example；要改就编辑 .env.development，');
-  say('     运行加 --dart-define-from-file=.env.development');
+  say('  4. Env: 改 .env.example 里的 BASE_URL（它就是运行时被加载的那份）');
   say('  5. Commit: git add -A && git commit -m "chore: init as $newName"');
   return 0;
 }
@@ -206,18 +203,6 @@ String? _validateAppId(String value, String label) =>
     RegExp(r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)+$').hasMatch(value)
     ? null
     : '$label $value 不合法：至少两段、以字母开头（如 com.example.my_app）';
-
-/// `.env.development` 不存在时用 `.env.example` 生成一份本地覆盖（缺失也能跑）。
-void _ensureEnvDevelopment(Directory root, void Function(String) say) {
-  final target = File('${root.path}/.env.development');
-  if (target.existsSync()) return;
-
-  final example = File('${root.path}/.env.example');
-  if (!example.existsSync()) return;
-
-  target.writeAsStringSync(example.readAsStringSync());
-  say('  ✓ Created: .env.development (from .env.example)');
-}
 
 // ──────────────────────────────────────────────
 // 输入

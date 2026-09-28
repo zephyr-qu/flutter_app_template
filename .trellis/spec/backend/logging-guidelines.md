@@ -17,7 +17,7 @@ The facade lives at **`lib/core/logging/logging.dart`**.
 ### `Logging.info(String message)`
 
 - **When to use**: normal application flow — startup, config loaded, environment selected
-- **Example**: `Logging.info('Network: BASE_URL=…, USE_MOCK=…')`
+- **Example**: `Logging.info('Environment: $_envFileName')`
 
 ### `Logging.error(String message, {Object? exception, StackTrace? stackTrace})`
 

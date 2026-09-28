@@ -1,16 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:leak_tracker/leak_tracker.dart';
 import 'package:my_app/app/app.dart';
 import 'package:my_app/core/logging/logging.dart';
 import 'package:my_app/di/service_locator.dart';
 
-/// 环境值与它的来源：`--dart-define` / `--dart-define-from-file` 注入的**编译期常量**。
+const _requiredEnvKeys = ['BASE_URL'];
+
+/// dotenv 加载的文件名：只入库这一份，`pubspec.yaml` 的 `assets:` 里声明的也是它。
 ///
-/// 不走 `.env` 文件 + `dotenv` 的那套：文件要作为 asset 打进产物、要按环境名选文件、
-/// 还要在启动期 `await` 一次 IO，而编译期常量这三件事都不需要。
-const _baseUrl = String.fromEnvironment('BASE_URL');
-const _useMock = String.fromEnvironment('USE_MOCK', defaultValue: 'false');
+/// 要连自己的后端就直接改这个文件（会显示为 dirty，预期行为）；
+/// 换环境不再靠「换文件」—— dotenv 只能加载声明为 asset 的文件。
+const _envFileName = '.env.example';
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,18 +32,23 @@ Future<void> bootstrap() async {
     return true; // 已处理，不继续传播
   };
 
-  // 缺 BASE_URL 直接抛，不静默启动 —— 否则会带着空地址跑到第一次网络请求才炸。
-  if (_baseUrl.isEmpty) {
-    throw Exception(
-      '缺少 BASE_URL：用 --dart-define-from-file=.env.example 注入（见 .env.example）',
-    );
-  }
-  Logging.info('Network: BASE_URL=$_baseUrl, USE_MOCK=$_useMock');
+  await dotenv.load(fileName: _envFileName);
+  Logging.info('Environment: $_envFileName');
+  _validateEnv();
 
   _initLeakTracker();
 
   await configureDependencies();
   runApp(const MyApp());
+}
+
+/// 关键 env 缺失时直接抛（[bootstrap] 里 fail fast，不给「静默启动」留口子）。
+void _validateEnv() {
+  for (final key in _requiredEnvKeys) {
+    if (dotenv.env[key] == null || dotenv.env[key]!.isEmpty) {
+      throw Exception('Missing required env key: $key');
+    }
+  }
 }
 
 void _initLeakTracker() {

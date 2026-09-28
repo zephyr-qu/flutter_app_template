@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:injectable/injectable.dart';
 import 'package:msw_dio_interceptor/msw_dio_interceptor.dart';
 import 'package:my_app/core/config/network_config.dart';
@@ -10,14 +11,14 @@ import 'package:my_app/core/data/storage/auth_storage.dart';
 ///
 /// 拦截器栈本身在 [createDio] 里（那层与状态管理 / DI 无关）；
 /// 本层只做三件 signals / DI 专属的事：
-/// 1. 取编译期环境值（`--dart-define` / `--dart-define-from-file` 注入）
+/// 1. 取 dotenv 里的环境值（唯一入库的 `.env.example`，见 backend/network-guidelines.md）
 /// 2. 从 `UserPreferences` 取 `enableDebugLogging`
 /// 3. 注册本应用专属的 Mock 规则
 @module
 abstract class NetworkModule {
   /// 全项目唯一构造 `NetworkConfig` 的地方。
   @lazySingleton
-  NetworkConfig networkConfig() => NetworkConfig.fromEnvironment();
+  NetworkConfig networkConfig() => NetworkConfig.fromEnv(dotenv.env);
 
   /// 整个 App 共用一个 Dio（必须单例，理由见 backend/network-guidelines.md）。
   @lazySingleton

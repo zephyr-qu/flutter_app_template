@@ -19,17 +19,6 @@ void main() {
     });
   });
 
-  group('NetworkConfig.fromEnvironment', () {
-    test('没注入 --dart-define 时退回 fromEnv 的默认值', () {
-      // 真实启动路径上 bootstrap() 会先拦下缺 BASE_URL 的情况，
-      // 这里的兜底只为让「没注入」的测试环境有确定行为。
-      final config = NetworkConfig.fromEnvironment();
-
-      expect(config.baseUrl, 'https://api.example.com');
-      expect(config.isMock, isFalse);
-    });
-  });
-
   group('NetworkConfig 默认值', () {
     test('超时与重试有默认值', () {
       const config = NetworkConfig(baseUrl: 'https://api.test');

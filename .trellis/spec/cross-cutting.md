@@ -278,7 +278,7 @@ signals_flutter 的组件在 `dispose` 时会自动取消订阅；泄漏链里�
 ### 本地运行
 
 ```bash
-just e2e        # = flutter test integration_test/ --dart-define-from-file=.env.example
+just e2e        # = flutter test integration_test/（dotenv 自己读 .env.example）
 ```
 
 ### CI 运行
@@ -319,19 +319,20 @@ CI 用 `reactivecircus/android-emulator-runner` 跑 Android 模拟器（脚本�
 
 ## 环境配置与 release 构建
 
-环境值是**编译期常量**（`String.fromEnvironment`），来源是 `--dart-define` /
-`--dart-define-from-file=<file>`：
+环境值放在**入库的 `.env.example`**，由 `bootstrap()` 用 dotenv 加载
+（`await dotenv.load(fileName: '.env.example')`）；`lib/bootstrap.dart` 校验 `BASE_URL`，
+`NetworkConfig.fromEnv(dotenv.env)` 是唯一消费者：
 
 ```bash
-just run                                               # = flutter run --dart-define-from-file=.env.example
-flutter run --dart-define-from-file=.env.development   # 自己的那份（已被 .gitignore 忽略）
-flutter build apk --dart-define=BASE_URL=https://api.your-domain.com
+just run                # = flutter run（dotenv 自己读 .env.example）
+flutter build apk       # 发版构建，配置同样来自 .env.example
 ```
 
-- **只提交 `.env.example`**：它是默认值与示例（`USE_MOCK=true`，无需后端即可跑通）。
-  真实 `.env*` 不入库，密钥只走 `--dart-define`（它不进 git，但仍可从产物提取，敏感场景要放服务端）。
-- **没有 dotenv、也没有 assets**：不走 `.env` 文件加载，也不进 `pubspec.yaml` 的 `assets` ——
-  少一次启动期 IO，也少一条「配置文件打进 apk 后能被提取」的路径。
+- **只提交 `.env.example`**：它同时声明在 `pubspec.yaml` 的 `assets:` 里，而 **dotenv 只能加载 asset** ——
+  所以换环境不能靠换文件：要连自己的后端就改它（会显示为 dirty，预期行为）。
+- **只能放非密钥配置**：这份文件会入库、并作为 asset 打进产物，拿到包的人都能提取出来 ——
+  本模板不做密钥注入，敏感值放服务端。
+- `.env` / `.env.*` 已被 `.gitignore` 忽略，dotenv 也不会读它们：**新建这类文件并指望运行时加载是无效的**。
 - `BASE_URL` 缺失时 `bootstrap()` 直接抛异常（fail fast），不会静默启动。
 
 ### 有意留白（模板不提供的部分）
@@ -340,5 +341,5 @@ flutter build apk --dart-define=BASE_URL=https://api.your-domain.com
 
 - **release 签名**：`android/app/build.gradle.kts` 的 release 仍使用 debug keystore，没有 `key.properties` / `signingConfigs.release`
 - **minify / 混淆**：未开启 `isMinifyEnabled` / `isShrinkResources`，也没有 `proguard-rules.pro`；构建脚本未加 `--obfuscate --split-debug-info`
-- **build flavor**：未做 dev/staging/prod flavor，环境切换用上面的 `--dart-define-from-file=<file>` 代替
+- **build flavor**：未做 dev/staging/prod flavor，环境切换靠改入库的 `.env.example` 代替
 - **iOS release 签名**：描述文件与证书需在 Xcode 中配置

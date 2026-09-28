@@ -12,18 +12,16 @@
 
 ## 1. 环境与地址
 
-- [ ] `BASE_URL` 换成真实域名：用 `--dart-define=BASE_URL=...` 传，或把它写进你自己的
-      `.env.production`（已被 `.gitignore` 忽略）再用 `--dart-define-from-file=.env.production` 注入。
+- [ ] 把入库的 `.env.example` 里的 `BASE_URL` 换成真实域名——它就是运行时被加载的那份
+      （机制见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)「环境配置与 release 构建」）
 - [ ] 确认 `USE_MOCK=false`——为 `true` 时请求会被 `msw_dio_interceptor` 拦截，
       界面一切正常但数据全是假的
-- [ ] 复核 `.env.example` 里**没有密钥**——它会被提交进 git。
-      密钥只能走 `--dart-define`（不进 git，但仍可从产物提取，敏感场景要放服务端）。
-- [ ] 确认 `.env.production` / `.env.development` 没被 `git add -f` 带进仓库：
-      它们已列入 `.gitignore`，真实地址与密钥都只该留在本地或 CI secret 里。
+- [ ] 复核 `.env.example` 里**没有密钥**——它会入库、并作为 asset 打进产物，拿到包的人都能提取出来
+- [ ] 确认没有 `git add -f` 把 `.env` / `.env.*` 带进仓库：它们已列入 `.gitignore`，
+      且在 dotenv 口径下不会被加载，真实地址与密钥都只该留在本地或 CI secret 里。
 
 ```bash
-flutter build apk --dart-define-from-file=.env.production \
-  --dart-define=BASE_URL=https://api.your-domain.com
+flutter build apk       # 配置来自入库的 .env.example，不需要额外传参
 ```
 ## 2. 版本与标识
 
@@ -92,7 +90,7 @@ flutter build appbundle --obfuscate --split-debug-info=build/symbols
 
 ## 4. 构建变体（按需）
 
-脚手架用 `--dart-define-from-file=<file>` 区分环境，**没有** build flavor。需要 dev/staging/prod
+脚手架靠改入库的 `.env.example` 区分环境，**没有** build flavor。需要 dev/staging/prod
 三个可同时安装的包时，照 [optional-additions.md](./optional-additions.md) 第七节的可复制
 片段加 `productFlavors` + `flavorDimensions` + `applicationIdSuffix`（只有非 prod 的
 flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS scheme 与「`--flavor` 必填」。
@@ -136,7 +134,7 @@ just verify        # format / analyze / 依赖 / 插件规则 / 目录树 / 测�
 - [ ] 真机跑一遍：登录 → 令牌过期（可把 `expiresIn` 调小）→ 自动刷新不弹登录页
 - [ ] 断网启动：文章列表应回退到 Drift 缓存，而不是空白页
 - [ ] 首次冷启动：确认没有「首个请求少带 `Authorization`」导致的多余 401
-- [ ] 关掉 env 里的 mock（`.env.example` / 你自己那份），确认真实接口连通
+- [ ] 关掉 mock：把入库的 `.env.example` 里的 `USE_MOCK` 设为 `false`。改完确认真实接口连通
 - [ ] 权限清单符合实际使用（AndroidManifest / Info.plist 里不要留多余权限）
 - [ ] 隐私政策与合规文案（若上架）已就位
 - [ ] 崩溃/错误上报已接入——`bootstrap.dart` 的 `runZonedGuarded`、

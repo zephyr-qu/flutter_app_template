@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// 网络配置。不可变值对象，由 `NetworkModule.networkConfig()` 注入
-/// （见 backend/network-guidelines.md「配置：只有一个来源」）。
+/// （见 backend/network-guidelines.md「配置：dotenv 只读一次」）。
 @immutable
 class NetworkConfig {
   const new({
@@ -12,20 +12,7 @@ class NetworkConfig {
     this.retries = 3,
   });
 
-  /// 从编译期常量构造（`--dart-define` / `--dart-define-from-file`）。
-  ///
-  /// 注入为空时退回 [NetworkConfig.fromEnv] 的默认值：真实启动路径上 `bootstrap()` 已经拦过
-  /// 缺 `BASE_URL` 的情况，这里的兜底只为让「没注入」的测试环境有确定行为。
-  factory fromEnvironment() {
-    const baseUrl = String.fromEnvironment('BASE_URL');
-    const useMock = String.fromEnvironment('USE_MOCK', defaultValue: 'false');
-    return NetworkConfig.fromEnv({
-      if (baseUrl.isNotEmpty) 'BASE_URL': baseUrl,
-      'USE_MOCK': useMock,
-    });
-  }
-
-  /// 从一组键值构造。纯函数，可直接单测。
+  /// 从环境变量构造。纯函数（不读全局 `dotenv`），可直接单测。
   factory fromEnv(Map<String, String> env) => NetworkConfig(
     baseUrl: env['BASE_URL'] ?? 'https://api.example.com',
     isMock: (env['USE_MOCK'] ?? 'false').toLowerCase() == 'true',

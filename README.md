@@ -105,7 +105,7 @@ lib/
 just deps       # flutter pub get + 插件包 dart pub get
 just codegen    # 生成物不入库，clone 后必跑（详见下）
 
-just run        # = flutter run --dart-define-from-file=.env.example（USE_MOCK=true，无需后端）
+just run        # dotenv 加载 .env.example（默认带 Mock，无需后端）
 
 just verify     # 全部门禁：format / analyze / 依赖 / 插件规则 / 目录树 / 测试
 ```
@@ -146,19 +146,18 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app
 
 ### 环境配置与 release 构建
 
-环境值以**编译期常量**注入（`String.fromEnvironment`），不走 `.env` 文件加载：
+环境值放在**入库的 `.env.example`**，由 `bootstrap()` 用 dotenv 加载；配置只有 `BASE_URL` / `USE_MOCK` 两项：
 
 ```bash
-just run                                               # = flutter run --dart-define-from-file=.env.example
-flutter run --dart-define-from-file=.env.development   # 自己的那份（已被 .gitignore 忽略）
-flutter build apk --dart-define=BASE_URL=https://api.your-domain.com
+just run                # = flutter run（dotenv 自己读 .env.example）
+flutter build apk       # 发版构建，配置同样来自 .env.example
 ```
 
-- **只提交 `.env.example`**：它是默认值与示例（`USE_MOCK=true`，无需后端）。真实 `.env*` 不入库。
-- 密钥只走 `--dart-define`（不进 git，但仍可从产物提取，敏感场景要放服务端）。
+- **只提交 `.env.example`**：它同时声明在 `pubspec.yaml` 的 `assets:` 里，而 **dotenv 只能加载 asset** —— 所以换环境不能靠换文件，要连自己的后端就改它（会显示为 dirty，预期行为）。
+- **不要放密钥**：这份文件会入库、并作为 asset 打进产物，拿到包的人都能提取出来；本模板不做密钥注入，敏感值放服务端。
 - 缺少 `BASE_URL` 时 `bootstrap()` 会直接抛异常（fail fast），不会静默启动。
-- 没有 `dotenv`、也没有 `assets`：不加载文件、不进 `pubspec.yaml` 的 `assets`。
-- `just init` 会从 `.env.example` 复制一份 `.env.development` 供你改，默认不用它。
+- `.env` / `.env.*` 已被 `.gitignore` 忽略，dotenv 也不会读它们：**新建这类文件并指望运行时加载是无效的**。
+- `just init` 不再生成 `.env.development`：那份文件在 dotenv 口径下不会被加载。
 **release 构建有意留白**，属于目标应用的职责，脚手架不做：release 仍用 debug keystore 签名、未开启 minify/混淆、未做 build flavor、iOS 签名需在 Xcode 配置。发版前按 [docs/release-checklist.md](docs/release-checklist.md) 逐项补齐（签名 / 混淆 / 符号表 / 真实 `BASE_URL` / 权限与上报接入点）。
 
 ### 文案（单语言）
@@ -199,7 +198,7 @@ flutter build apk --dart-define=BASE_URL=https://api.your-domain.com
 |------|------|------|
 | 「设置」→ 通知 / 隐私 / 帮助 | 只有入口，`onTap` 为空 | 替换 `onTap`，或整项删掉（连同其下的 `_Divider`） |
 | 首页「最近动态」 | 静态空态占位 | 换成自己的数据源 |
-| `.env.example` | 默认值与示例（`BASE_URL` / `USE_MOCK`），会提交；真实 `.env*` 已被 gitignore | 密钥改走 `--dart-define` |
+| `.env.example` | 默认值与示例（`BASE_URL` / `USE_MOCK`），会提交；真实 `.env*` 已被 gitignore | 要连自己的后端就改它（密钥别写进去，它会被打进产物） |
 | 应用图标 | `pubspec.yaml` 的 `flutter_launcher_icons.image_path` 指向 `assets/icon/icon.png`，**该文件不存在**（跑图标命令会直接失败） | 补上图标文件，或删掉这段配置 |
 | release 构建 | 仍用 debug keystore、未 minify、无 flavor、iOS 未签名 | 见 [docs/release-checklist.md](docs/release-checklist.md) |
 
