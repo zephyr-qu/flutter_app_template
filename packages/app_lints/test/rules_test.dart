@@ -130,6 +130,15 @@ class CrossFeatureImportsRuleTest extends AnalysisRuleTest {
       'void use() => zz();\n',
     );
   }
+
+  void test_other_feature_root_file() async {
+    newFile('$testPackageLibPath/features/b/b.dart', 'void zz() {}\n');
+    final source =
+        "import '../../b/b.dart';\n"
+        'void use() => zz();\n';
+
+    await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
 }
 
 /// 规则 3：`features/*/logic/` 不得 import material。
@@ -142,6 +151,7 @@ class LogicImportsMaterialRuleTest extends AnalysisRuleTest {
   void setUp() {
     newPackage('flutter')
       ..addFile('lib/material.dart', 'void m() {}\n')
+      ..addFile('lib/widgets.dart', 'void w() {}\n')
       ..addFile('lib/foundation.dart', 'void f() {}\n');
     rule = LogicImportsMaterialRule();
     super.setUp();
@@ -153,6 +163,32 @@ class LogicImportsMaterialRuleTest extends AnalysisRuleTest {
         'void use() => m();\n';
 
     await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  void test_logic_imports_widgets() async {
+    final source =
+        "import 'package:flutter/widgets.dart';\n"
+        'void use() => w();\n';
+
+    await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  void test_logic_imports_own_page() async {
+    newFile('$testPackageLibPath/features/a/page/zz.dart', 'void zz() {}\n');
+    final source =
+        "import '../page/zz.dart';\n"
+        'void use() => zz();\n';
+
+    await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  void test_logic_imports_other_feature_data_ok() async {
+    newFile('$testPackageLibPath/features/b/data/zz.dart', 'void zz() {}\n');
+    final source =
+        "import '../../b/data/zz.dart';\n"
+        'void use() => zz();\n';
+
+    await assertNoDiagnostics(source);
   }
 
   void test_logic_exports_material() async {
@@ -205,6 +241,23 @@ $_refStub
 class ZzWidget {
   int build() {
     final ref = ZzRef();
+    return $invocation;
+  }
+}
+''';
+
+    final offset = source.indexOf(invocation);
+    await assertDiagnostics(source, [lint(offset, invocation.length)]);
+  }
+
+  void test_this_ref_read_of_value_in_build() async {
+    final invocation = 'this.ref.read(42)';
+    final source =
+        '''
+$_refStub
+class ZzWidget {
+  final ZzRef ref = ZzRef();
+  int build() {
     return $invocation;
   }
 }

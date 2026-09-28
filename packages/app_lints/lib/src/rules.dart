@@ -78,22 +78,27 @@ class CrossFeatureImportsRule extends _ImportRule {
     final to = featureOf(target);
     if (to == null || to == from) return null;
 
+    // 只有 `data/` 层可跨 feature 共享；层目录缺失（feature 根上的文件）同样
+    // 不是 data，按违规处理，否则引对方的聚合 barrel 会静默放行
     final layer = layerOf(target);
-    if (layer == null || layer == 'data') return null;
+    if (layer == 'data') return null;
 
-    return ['features/$to/$layer/'];
+    return [layer == null ? 'features/$to/' : 'features/$to/$layer/'];
   }
 }
 
-/// 规则 3：`features/*/logic/` 不得 import/export `package:flutter/material.dart`。
+/// 规则 3：`features/*/logic/` 不得 import/export UI。
 ///
-/// logic 层是纯 Dart 状态层；出现 material 通常意味着把 Widget / BuildContext
-/// 塞了进去。只认这一个 URI（`foundation` / `widgets` 不管）。
+/// 拦三样：`package:flutter/material.dart`、`package:flutter/widgets.dart`
+/// （Widget / BuildContext 都在 widgets 里，只挡 material 等于一行 import 就绕过）
+/// 与本 feature 的 `page/` 层文件。`foundation` 放行（`ChangeNotifier` /
+/// `@visibleForTesting` 在 logic 里正当）；跨 feature 的 `page/` 由规则 2 拦，
+/// 两边不重复报。
 class LogicImportsMaterialRule extends _ImportRule {
   static const LintCode code = LintCode(
     'no_material_import_in_logic',
-    'logic 层不得 import/export package:flutter/material.dart —— logic 层是纯 Dart，'
-        '出现 material 通常意味着把 Widget / BuildContext 塞进了状态层',
+    'logic 层不得 import/export {0} —— logic 层是纯 Dart 状态层，'
+        'UI（widgets、page 层文件）只能经 provider + ref 接线',
     severity: DiagnosticSeverity.WARNING,
   );
 
@@ -101,7 +106,8 @@ class LogicImportsMaterialRule extends _ImportRule {
     : super(
         name: 'no_material_import_in_logic',
         description:
-            'Flags material.dart imports or exports in features/*/logic/.',
+            'Flags UI coupling (material/widgets imports, own-feature page '
+            'imports) in features/*/logic/.',
       );
 
   @override
@@ -114,8 +120,16 @@ class LogicImportsMaterialRule extends _ImportRule {
     required String rawUri,
   }) {
     if (!_isFeatureLogic(fromPath)) return null;
-    if (rawUri != 'package:flutter/material.dart') return null;
-    return const [];
+    if (rawUri == 'package:flutter/material.dart' ||
+        rawUri == 'package:flutter/widgets.dart') {
+      return [rawUri];
+    }
+    if (target == null) return null;
+
+    final from = featureOf(fromPath);
+    if (from == null || featureOf(target) != from) return null;
+    if (layerOf(target) != 'page') return null;
+    return ['features/$from/page/'];
   }
 }
 
@@ -241,8 +255,7 @@ class _RefReadVisitor extends SimpleAstVisitor<void> {
 
 /// 是不是「取 provider 值」的 `ref.read`；`ref.read(xxx.notifier)` 放行。
 bool _isRefReadOfValue(MethodInvocation node) {
-  final target = node.target;
-  if (target is! SimpleIdentifier || target.name != 'ref') return false;
+  if (!_isRefTarget(node.target)) return false;
   if (node.methodName.name != 'read') return false;
 
   final arguments = node.argumentList.arguments;
@@ -254,6 +267,15 @@ bool _isRefReadOfValue(MethodInvocation node) {
 
   return !_isNotifierAccess(argument);
 }
+
+/// 目标是 `ref` 本体，或 `this.ref` / `widget.ref` 这类属性访问 —— 换个写法
+/// 不该绕过规则。
+bool _isRefTarget(Expression? target) => switch (target) {
+  SimpleIdentifier(:final name) => name == 'ref',
+  PrefixedIdentifier(:final identifier) => identifier.name == 'ref',
+  PropertyAccess(:final propertyName) => propertyName.name == 'ref',
+  _ => false,
+};
 
 /// `xxx.notifier`——读到的是 notifier 实例本身，不是 provider 的值。
 bool _isNotifierAccess(Expression expression) => switch (expression) {
