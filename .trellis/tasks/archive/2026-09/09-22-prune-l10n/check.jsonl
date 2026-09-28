@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/cross-cutting.md", "reason": "核对裁剪后六道门禁是否仍然成立，尤其是覆盖率手写口径"}
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "依赖声明与工具脚本的约定，确认 pubspec 三处同步删除"}
-{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "禁止模式清单——裁剪不得引入硬编码文案以外的违规"}

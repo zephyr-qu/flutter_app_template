@@ -1,5 +1,0 @@
-{"file": ".trellis/spec/cross-cutting.md", "reason": "门禁清单与口径（覆盖率、边界、目录树校验）——裁剪后必须仍然满足"}
-{"file": ".trellis/spec/frontend/localization.md", "reason": "l10n 的既有约定与生成流程，裁剪时要按相反方向逐条撤掉"}
-{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "含被 check_readme_tree 校验的目录树，裁剪后必须同步更新"}
-{"file": "tool/check_readme_tree.dart", "reason": "目录树一致性门禁的实现，需确认裁剪后的目标集合"}
-{"file": "tool/check_conventions.dart", "reason": "形态约定的检查方式，新脚本应与它保持同构（纯函数 + main）"}

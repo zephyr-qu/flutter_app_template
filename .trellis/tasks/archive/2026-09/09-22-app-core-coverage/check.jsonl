@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/cross-cutting.md", "reason": "核对差集检查落地后，覆盖率一节的说明与实现一致"}
-{"file": ".trellis/spec/backend/network-guidelines.md", "reason": "回归核对：改写成纯包测试后拦截器顺序与重放语义未变"}
-{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "测试分层与「widget 测试里不要用真实 I/O」的约定，确认迁入包的测试没有违反"}
