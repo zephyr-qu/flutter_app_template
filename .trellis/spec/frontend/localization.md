@@ -59,8 +59,18 @@ extension FailureMessage on Failure {
 1. `pubspec.yaml`：加 `flutter_localizations`、`intl`，`flutter:` 下开 `generate: true`
 2. 新增 `l10n.yaml`、`lib/l10n/app_zh.arb`（模板语言）、`app_en.arb`；`flutter gen-l10n`
 3. 页面文案换成 `AppLocalizations.of(context).xxx`
-4. `failure_message.dart` 的 `localizedMessage` 改为接收 `AppLocalizations`
-5. 补 key 对齐测试（两个 ARB 的 key 集合相等）与语言切换测试
-6. `tool/prune.dart --l10n=single` 的**裁剪面清单**就是上面这些位置的完整列表（`.trellis/tasks/archive/2026-09/09-22-prune-l10n/prd.md`），照着逐条反向做
+4. `core/ui/failure_message.dart` 的 `localizedMessage` 改为接收 `AppLocalizations`
+5. `core/config/user_preferences.dart`：加回 `_keyLocale` 与 `locale` 的读写（照 `_keyThemeMode` 的写法，落盘失败抛 `PreferenceWriteException`）
+6. `features/profile/page/profile_page.dart`：加回「设置 → 语言」入口
+7. `test/support/app_test_harness.dart`：给 `wrapPage` 加回 `locale:` 参数
+8. 测试：补 key 对齐（两个 ARB 的 key 集合相等）与语言切换；`test/core/ui/failure_message_test.dart`、`test/core/config/user_preferences_test.dart` 的断言同步加回
+9. 目录树：`README.md` 与 [directory-structure.md](./directory-structure.md) 的树里加回 `lib/l10n/` 段
+
+两个会被抓到的点：
+
+- `depend_on_referenced_packages`（`analysis_options.yaml` 里提升为 error）：加了 `flutter_localizations` / `intl` 就必须真有 import 与使用处，否则报「声明了却没用」；用了没声明也报
+- 第 9 步**没有门禁兜**，目录树靠人同步（见 [../index.md](../index.md) 的完成前自检）
+
+裁剪面可对照 `tool/prune.dart --l10n=single` 的实现与其测试 `test/tool/prune_test.dart` —— 那是可重跑的权威，不是文档。
 
 不做成分支：`tool/prune.dart --l10n=single` 一条可重跑的命令即可。
