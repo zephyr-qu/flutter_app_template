@@ -1,6 +1,7 @@
 #!/bin/sh
-# 门禁：一条命令 `just verify`（5 项，首个失败即停）。
-# 清单见 cross-cutting.md；单项重跑直接手跑对应命令。
+# 门禁：一条命令 `just verify`（清单与先后顺序见根 `justfile`，首个失败即停）。
+# 单项重跑手跑对应 recipe；安装：git config core.hooksPath .githooks；
+# 紧急跳过：git commit --no-verify。
 #
 # 生成物不入库，但 analyze 需要它们在磁盘上：stash --keep-index 可能按 index
 # 清掉「已暂存删除」的生成物，故 stash 前后备份/恢复。

@@ -10,10 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _requiredEnvKeys = ['BASE_URL'];
 
-/// dotenv 加载的文件名：只入库这一份，`pubspec.yaml` 的 `assets:` 里声明的也是它。
-///
-/// 要连自己的后端就直接改这个文件（会显示为 dirty，预期行为）；
-/// 换环境不再靠「换文件」—— dotenv 只能加载声明为 asset 的文件。
+/// dotenv 加载的文件名（`pubspec.yaml` 的 `assets:` 里声明的也是它）。
+/// 要连自己的后端直接改这个文件；机制见 `.trellis/spec/cross-cutting.md`。
 const _envFileName = '.env.example';
 
 Future<void> bootstrap() async {

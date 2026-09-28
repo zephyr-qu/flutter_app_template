@@ -38,7 +38,7 @@ analyze-tool:
 test *args:
     flutter test {{ args }}
 
-# 本地运行：dotenv 会加载入库的 .env.example（bootstrap 校验 BASE_URL）
+# 本地运行：dotenv 读入库的 .env.example
 run *args:
     flutter run {{ args }}
 

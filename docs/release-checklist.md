@@ -112,12 +112,11 @@ just codegen
 - [ ] 门禁全绿：
 
 ```bash
-just verify                               # 全套 5 项，首个失败即停
+just verify                               # 完整门禁（清单见根 justfile），首个失败即停
 just test integration_test/               # 端到端冒烟（真机 / 模拟器，不进 just verify）
 ```
 
-  `just verify` 是格式 + 两步 `dart analyze --fatal-infos` + 插件规则测试 + `flutter test`；
-  调用形式与语义见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)。
+  清单与调用形式见根 `justfile`；语义与「为什么这么设」见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)。
 
 - [ ] 新增 `FailureCode` 已在 `core/ui/failure_message.dart` 的 `localizedMessage` 里补上文案
       （不补会编译失败；机制见 [error-handling.md](../.trellis/spec/backend/error-handling.md)）

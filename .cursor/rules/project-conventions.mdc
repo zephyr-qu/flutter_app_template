@@ -1,5 +1,5 @@
 ---
-description: 项目性质、技术栈、语言政策、目录地图与硬性总纲（所有会话默认生效）
+description: 项目性质、技术栈、语言政策、目录与命名、硬性总纲（所有会话默认生效）
 alwaysApply: true
 ---
 
@@ -23,44 +23,18 @@ Drift / SharedPreferences + **单语言中文**（没有 l10n）。
 ## 硬约束清单
 
 1. **架构边界与形态约定**：改完 `lib/` 必须通过 `packages/app_lints` 分析插件；门禁统一执行 `just verify`。
-2. **静态检查零容忍**：`dart analyze --fatal-infos`（`lib + test` 与 `tool + packages` 显式文件列表）必须干净（含 `depend_on_referenced_packages`）。
+2. **静态检查零容忍**：`just analyze` 必须干净。规则级别、依赖声明检查与文件列表见根 `justfile` 与 `.trellis/spec/cross-cutting.md`，本文件不重复。
 3. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**
    （单语言脚手架，不走 ARB、不引入 `intl`）。
 4. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart`。
    改注解或模型后 `just codegen`；生成物已 gitignore，不入库。
 5. **注释只写三类**：一句提示 / 职责 + spec 指路 / 可照抄的示例。
    设计取舍、踩坑、对照表格写 `.trellis/spec/`；连续注释块上限 10 行（约定）。
-6. **不擅自扩大改动**：脚手架里的「有意留白」（release 签名、minify、build flavor、崩溃上报）
-   不是待办，除非用户明确要求。
+6. **不擅自扩大改动**：脚手架里的「有意留白」不是待办，除非用户明确要求（清单见 `.trellis/spec/cross-cutting.md`「有意留白」）。
 
-## 目录地图（唯一合法布局）
+## 目录与命名（权威见 `.trellis/spec/frontend/directory-structure.md`）
 
-```
-lib/
-├── main.dart                # 入口
-├── bootstrap.dart           # 环境加载 + 异常兜底 + ProviderScope
-├── app/                     # 组合根（可 import 任何东西）
-│   ├── app.dart  providers.dart
-│   ├── routing/             #   AppRouter（含生成物）
-│   └── pages/               #   全局页面：启动页、404
-├── core/                    # 基础设施 + 状态耦合的适配层
-│   ├── base/ config/ data/{database,network,storage}/ logging/ theme/ ui/
-│   └── providers.dart
-└── features/{feature}/
-    ├── logic/               # @riverpod Notifier / AsyncNotifier
-    ├── data/                # api / dao / service / repository（按需）/ models / providers
-    └── page/                # ConsumerWidget / ConsumerStatefulWidget
-```
-
-依赖方向：`app → features → core`，由 `packages/app_lints` 插件强制。
-现有 feature：`home`（首页 + 主框架）、`profile`（个人中心）、
-**`sample`（示例，唯一照抄对象：data 三形态 + logic + page + 对应测试）**。
-
-## 命名（权威见 `.trellis/spec/frontend/directory-structure.md`）
-
-- 目录 / 文件 snake_case；`{feature}_{api,dao,service,repository,providers,notifier,page}.dart`
-- 类名 `{Feature}{Api,Dao,Service,Repository,Notifier,Page}`
-- Drift 表类 `Db` + PascalCase 复数（`DbArticle`），行类与 SQL 表名由 drift 派生
-- `riverpod_generator` 把 `XxxNotifier` 的 provider 命名成 `xxxProvider`
-  （**不是** `xxxNotifierProvider`）—— 没有 lint 兜，写错了要自己发现
+- 依赖方向 `app → features → core`，由 `packages/app_lints` 插件强制；feature 内是 `page/` → `logic/` → `data/`。
+- 唯一照抄对象：`lib/features/sample/`（data 三形态 + logic + page + 对应测试）。
+- 两个**没有 lint 兜**的命名坑：生成器给出的是 `xxxProvider`（**不是** `xxxNotifierProvider`）；Drift 表类是 `Db` + PascalCase 复数（`DbArticle`）。
 

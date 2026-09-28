@@ -2,18 +2,14 @@
 
 ## 开工前先读
 
-| 要做什么                                        | 先读                                                                                               |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| 写页面 / provider / Notifier，或动 `core/` 的状态适配层 | [`.trellis/spec/frontend/state-management.md`](.trellis/spec/frontend/state-management.md)       |
-| 新增或改动 UI、组件、主题                              | [`.trellis/spec/frontend/quality-guidelines.md`](.trellis/spec/frontend/quality-guidelines.md)   |
-| 新建 feature、增删文件、判断某文件该放哪                    | [`.trellis/spec/frontend/directory-structure.md`](.trellis/spec/frontend/directory-structure.md) |
-| 门禁（含有意不设门禁的项）、codegen、集成测试、环境配置             | [`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)                               |
-| 其余规范（数据层 / 网络 / 错误处理 / 日志 / 类型安全…）          | [`.trellis/spec/index.md`](.trellis/spec/index.md)                                               |
+规范入口是 [`.trellis/spec/index.md`](.trellis/spec/index.md)：开头有「开工前必读」路由（按你要动的东西选该读哪份 spec），末尾有「完成前自检」。**本文件不重复这两份清单**，改动前后各去那里对一次。
+
+涉及门禁、codegen、环境配置或架构边界规则时，另读 [`.trellis/spec/cross-cutting.md`](.trellis/spec/cross-cutting.md)。
 
 ## 改完必跑
 
 ```bash
-just verify      # 全部门禁：format / analyze×2 / 插件规则测试 / flutter test
+just verify      # 全部门禁（清单见根 justfile，首个失败即停）
 ```
 
 改动涉及注解（`@freezed` / `@RoutePage` / `@riverpod` / Drift 表）或增删文件后，先 `just codegen` 再验证。

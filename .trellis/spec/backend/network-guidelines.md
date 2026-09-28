@@ -20,9 +20,9 @@
 
 ## 配置：dotenv 只读一次
 
-网络配置**只在 `networkConfigProvider` 一处从 `dotenv.env` 构造**（`lib/core/data/network/dio_client.dart` 的 `NetworkConfig.fromEnv(dotenv.env)`），之后所有消费者拿到的都是同一个不可变 `NetworkConfig`；`bootstrap()` 负责 `dotenv.load(fileName: '.env.example')` 与 `BASE_URL` 存在性校验，并在 `ProviderScope` 装配前 fail fast。
+网络配置**只在 `networkConfigProvider` 一处从 `dotenv.env` 构造**（`lib/core/data/network/dio_client.dart` 的 `NetworkConfig.fromEnv(dotenv.env)`），之后所有消费者拿到的都是同一个不可变 `NetworkConfig`；`bootstrap()` 在 `ProviderScope` 装配前 fail fast。
 
-- env 文件就是入库的 `.env.example`（`pubspec.yaml` 的 `assets:` 里声明的也是它）。dotenv 只能加载声明为 asset 的文件，所以**换环境不能靠换文件** —— 要连自己的后端就改它（会显示为 dirty）。
+- env 怎么加载（哪份文件、为什么换环境不能靠换文件）见 [../cross-cutting.md](../cross-cutting.md)「环境配置与 release 构建」，本文件不重复。
 - 不要在别处读 `dotenv`：`NetworkConfig` 只有这一个来源。
 - 测试用 `dotenv.loadFromString(...)` 造配置，或覆盖 provider：`networkConfigProvider.overrideWithValue(const NetworkConfig(baseUrl: 'http://localhost:8080/api'))`。
 

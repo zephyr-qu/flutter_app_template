@@ -17,7 +17,7 @@
 
 ## 完成前自检
 
-- [ ] `just verify` 全绿（format / analyze×2 / 插件规则测试 / flutter test）
+- [ ] `just verify` 全绿（清单与先后顺序见根 `justfile`）
 - [ ] 涉及注解（`@freezed` / `@RoutePage` / `@riverpod` / Drift 表）或增删文件 → 已跑 `just codegen`
 - [ ] 架构边界没破（`core/` 不引上层、跨 feature 只共享 `data/`、`logic/` 不碰 material）
 - [ ] 新增 `FailureCode` 已补 `localizedMessage()` 的文案，`test/core/ui/failure_message_test.dart` 能覆盖到
