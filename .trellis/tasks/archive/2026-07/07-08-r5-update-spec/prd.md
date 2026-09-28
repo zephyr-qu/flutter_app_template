@@ -23,7 +23,7 @@ Adjust spec files (.trellis/spec/ and AGENTS.md) to reflect the "personal scaffo
 - `.trellis/spec/frontend/quality-guidelines.md`
 - `.trellis/spec/backend/database-guidelines.md`
 - `.trellis/spec/backend/error-handling.md`
-- `.trellis/spec/backend/directory-structure.md`
+- `.trellis/spec/backend/directory-structure.md`（后已并入 `frontend/directory-structure.md`）
 
 ## Acceptance Criteria
 

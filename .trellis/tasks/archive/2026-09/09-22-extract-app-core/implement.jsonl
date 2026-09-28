@@ -1,6 +1,6 @@
 {"file": ".trellis/spec/cross-cutting.md", "reason": "边界扫描根与实际约束，抽包后必须扩展扫描范围否则成为边界真空"}
 {"file": ".trellis/spec/frontend/directory-structure.md", "reason": "含被 check_readme_tree 校验的目录树，抽包后需要重画"}
-{"file": ".trellis/spec/backend/directory-structure.md", "reason": "backend 层的目录约定，决定包内 src/ 的组织方式"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "backend 层的目录约定，决定包内 src/ 的组织方式（该文件后已并入 .trellis/spec/frontend/directory-structure.md）"}
 {"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Drift 数据库与 DAO 的装配约定，决定 database/ 能否整体搬走"}
 {"file": ".trellis/spec/backend/network-guidelines.md", "reason": "拦截器顺序与不可破语义，搬 network/ 时不能改变行为"}
 {"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "依赖声明约定，path 依赖与 dependency_validator 的配合方式"}

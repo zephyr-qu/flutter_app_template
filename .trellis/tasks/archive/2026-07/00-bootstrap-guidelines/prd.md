@@ -33,7 +33,7 @@ the rest conversationally.
 
 | File | What to document |
 | ------ | ------------------ |
-| `.trellis/spec/backend/directory-structure.md` | Where different file types go (routes, services, utils) |
+| `.trellis/spec/backend/directory-structure.md`（后已并入 `frontend/directory-structure.md`） | Where different file types go (routes, services, utils) |
 | `.trellis/spec/backend/database-guidelines.md` | ORM, migrations, query patterns, naming conventions |
 | `.trellis/spec/backend/error-handling.md` | How errors are caught, logged, and returned |
 | `.trellis/spec/backend/logging-guidelines.md` | Log levels, format, what to log |

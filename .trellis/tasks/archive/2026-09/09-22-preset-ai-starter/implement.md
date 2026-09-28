@@ -170,7 +170,7 @@
 | `backend/error-handling.md` | 「错误文案怎么到界面上」改成「`AsyncNotifier.build()` 抛 `Failure` 本身」；ViewModel layer → Notifier layer；Service 例子换 `SampleService`；`lib/core/base/*` → `packages/app_core/lib/base/*`；`token_refresh_test` 路径 |
 | `backend/database-guidelines.md` | **大改**：「状态管理与存储的分工」表（存储不带状态管理）、`AuthStorage` 的接口与失败策略、跨 package **禁** `@DriftAccessor`（drift#3669）、表在共享包 / 查询在 feature、缓存旁路与行↔模型转换换 `Sample*`、FileStorage 已无示例页 |
 | `backend/quality-guidelines.md` | `getIt()` → `ref` / `ProviderContainer`；`@LazySingleton` / `@module` → provider 装配；review 清单同步 |
-| `backend/directory-structure.md` | data flow 的 `ViewModel` → `Notifier`；`{feature}_module.dart` → `{feature}_providers.dart`；删 `service_locator.config.dart` |
+| `backend/directory-structure.md`（后已并入 `frontend/directory-structure.md`） | data flow 的 `ViewModel` → `Notifier`；`{feature}_module.dart` → `{feature}_providers.dart`；删 `service_locator.config.dart` |
 | `backend/logging-guidelines.md` | 「没有 per-Notifier 日志」；`lib/core/logging` → `packages/app_core/lib/logging`；示例与测试路径换口径 |
 | `guides/{index,cross-layer-thinking-guide,comment-guidelines,code-reuse-thinking-guide}.md` | `ViewModel` → `Notifier`、`Article(Service)` → `SampleItem(Service)`、`getCachedArticle` → `getCachedItems`、mock 端点示例换 `/sample-items` |
 | `cross-cutting.md` | codegen 表（`@riverpod` 生成 `.g.dart`、`*.config.dart` 已无、`app_localizations` 标注）；生成器清单（`riverpod_generator` 顶替 `injectable_generator`）；CI 漂移检查去掉 `gen-l10n`；`leak_tracker` 段改成 provider 口径；集成测试的 CI 段改「Android 模拟器，不要 xvfb」；测试范例换 sample |
