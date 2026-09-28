@@ -20,6 +20,7 @@ class AppLintsPlugin extends Plugin {
       ..registerWarningRule(ServiceLocatorInLogicRule())
       ..registerWarningRule(PageInjectionPointRule())
       ..registerWarningRule(AvoidAsyncStateMapRule())
-      ..registerWarningRule(CommentBlockTooLongRule());
+      ..registerWarningRule(CommentBlockTooLongRule())
+      ..registerWarningRule(LogicImportsMaterialRule());
   }
 }

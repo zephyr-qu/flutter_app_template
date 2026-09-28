@@ -2,7 +2,7 @@ import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
 import 'package:app_lints/src/rules.dart';
 import 'package:test_reflective_loader/test_reflective_loader.dart';
 
-/// `app_lints` 六条规则的测试。
+/// `app_lints` 七条规则的测试。
 ///
 /// 用官方 `analyzer_testing` 的 `AnalysisRuleTest`：`testFileName` 决定被测文件落在
 /// 包内哪个路径（规则的判据依赖路径，如 `lib/core/`），`newFile` 造被引用的文件，
@@ -21,6 +21,8 @@ void main() {
     defineReflectiveTests(PageInjectionPointRuleTest);
     defineReflectiveTests(AvoidAsyncStateMapRuleTest);
     defineReflectiveTests(CommentBlockTooLongRuleTest);
+    defineReflectiveTests(LogicImportsMaterialRuleTest);
+    defineReflectiveTests(LogicImportsMaterialOutsideLogicTest);
   });
 }
 
@@ -367,5 +369,98 @@ class CommentBlockTooLongRuleTest extends AnalysisRuleTest {
     final body = List.filled(12, '// 不是注释').join('\n');
 
     await assertNoDiagnostics('const s = """\n$body\n""";\n');
+  }
+}
+
+/// 规则 7：`features/*/logic/` 不得 import/export UI。
+@reflectiveTest
+class LogicImportsMaterialRuleTest extends AnalysisRuleTest {
+  @override
+  String get testFileName => 'features/a/logic/probe.dart';
+
+  @override
+  void setUp() {
+    newPackage('flutter')
+      ..addFile('lib/material.dart', 'void m() {}\n')
+      ..addFile('lib/widgets.dart', 'void w() {}\n')
+      ..addFile('lib/foundation.dart', 'void f() {}\n');
+    rule = LogicImportsMaterialRule();
+    super.setUp();
+  }
+
+  /// 只认 material.dart 的话，改引 widgets.dart 就绕过了 —— 正反例都要钉住。
+  Future<void> _flag(String uri, String call) async {
+    final source = "import '$uri';\nvoid use() => $call();\n";
+
+    await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  Future<void> test_imports_material() =>
+      _flag('package:flutter/material.dart', 'm');
+
+  Future<void> test_imports_widgets() =>
+      _flag('package:flutter/widgets.dart', 'w');
+
+  void test_exports_material() async {
+    final source = "export 'package:flutter/material.dart';\n";
+
+    await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  void test_imports_own_page() async {
+    newFile('$testPackageLibPath/features/a/page/zz.dart', 'void zz() {}\n');
+    final source =
+        "import '../page/zz.dart';\n"
+        'void use() => zz();\n';
+
+    await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  void test_foundation_ok() async {
+    final source =
+        "import 'package:flutter/foundation.dart';\n"
+        'void use() => f();\n';
+
+    await assertNoDiagnostics(source);
+  }
+
+  void test_same_feature_logic_ok() async {
+    newFile('$testPackageLibPath/features/a/logic/zz.dart', 'void zz() {}\n');
+    final source =
+        "import '../logic/zz.dart';\n"
+        'void use() => zz();\n';
+
+    await assertNoDiagnostics(source);
+  }
+
+  void test_other_feature_data_ok() async {
+    newFile('$testPackageLibPath/features/b/data/zz.dart', 'void zz() {}\n');
+    final source =
+        "import '../../b/data/zz.dart';\n"
+        'void use() => zz();\n';
+
+    await assertNoDiagnostics(source);
+  }
+}
+
+/// 规则 7 只管 `features/*/logic/`：页面 import UI 是本分，同一个 import 在页面层不该报。
+@reflectiveTest
+class LogicImportsMaterialOutsideLogicTest extends AnalysisRuleTest {
+  @override
+  String get testFileName => 'features/a/page/probe.dart';
+
+  @override
+  void setUp() {
+    newPackage('flutter')..addFile('lib/material.dart', 'void m() {}\n');
+    rule = LogicImportsMaterialRule();
+    super.setUp();
+  }
+
+  void test_material_in_page_ok() async {
+    final source =
+        "import 'package:flutter/material.dart';\n"
+        'void use() => m();\n';
+
+    await assertNoDiagnostics(source);
   }
 }

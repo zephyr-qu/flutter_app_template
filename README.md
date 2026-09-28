@@ -256,12 +256,13 @@ just test-app-lints                          # 插件包自己的规则测试
 
 ## 🔍 架构边界与代码形态（分析插件）
 
-六条规则由 `packages/app_lints/` 的 **analyzer 插件**实现（`analysis_server_plugin`，声明在根 `analysis_options.yaml` 顶层的 `plugins:`）：
+七条规则由 `packages/app_lints/` 的 **analyzer 插件**实现（`analysis_server_plugin`，声明在根 `analysis_options.yaml` 顶层的 `plugins:`）：
 
 | 规则 | 说明 |
 |------|------|
 | `no_upper_import_in_core` | `core/**` 不能 import/export `features/**` / `app/**` |
 | `cross_feature_only_data` | 跨 feature 只共享 `data/`，不能引用其他 feature 的 `page/` / `logic/` |
+| `no_material_import_in_logic` | `features/*/logic/` 里不能出现 `material.dart` / `widgets.dart`，也不能引本 feature 的 `page/` |
 | `no_service_locator_in_logic` | `features/*/logic/` 里不能出现 `getIt`，强制构造器注入 |
 | `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()` 的页面要同时给出 `final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
 | `avoid_async_state_map` | 三态渲染用 `AsyncView`（`map` 的 `error` 回调签名运行期才校验，写错整页红屏） |

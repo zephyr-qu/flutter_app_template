@@ -122,7 +122,8 @@ Service（`Result` + 错误映射 + 缓存旁路）+ Repository 抽象与 DI 装
 `logic/` 与 `page/` 是 signals ViewModel 与页面的标准写法；`test/features/article/**` 是对应测试。
 ## 禁止模式速查
 
-`packages/app_lints` 插件强制六条：`core/` 不得依赖上层、跨 feature 只共享 `data/`、
+`packages/app_lints` 插件强制七条：`core/` 不得依赖上层、跨 feature 只共享 `data/`、
+`features/*/logic/` 不得 import UI（`material` / `widgets` / 本 feature 的 `page/`）、
 `features/*/logic/` 不得用 `getIt`、取 ViewModel 的页面必须给可选注入点三件套、
 禁 `AsyncState.map`（用 `AsyncView`）、注释块 ≤10 行。判据与放行条件见 `cross-cutting.md`。
 

@@ -223,6 +223,53 @@ class CommentBlockTooLongRule extends AnalysisRule {
   }
 }
 
+/// 规则 7：`features/*/logic/` 不得 import/export UI。
+///
+/// 拦三样：`package:flutter/material.dart`、`package:flutter/widgets.dart`
+/// （Widget / BuildContext 都在 widgets 里，只挡 material 等于一行 import 就绕过），
+/// 以及**本 feature** 的 `page/` 层文件。`foundation` 放行（`ChangeNotifier` /
+/// `@visibleForTesting` 在 logic 里正当）；跨 feature 的 `page/` 由规则 2 拦，两边不重复报。
+///
+/// 与规则 1/2 同类（都是「谁能依赖谁」）：那两条管依赖方向，这条管同一 feature 内的层次。
+class LogicImportsMaterialRule extends _ImportRule {
+  static const LintCode code = LintCode(
+    'no_material_import_in_logic',
+    'logic 层不得 import/export {0} —— logic 层是纯 Dart 状态层，'
+        'UI（widgets、page 层文件）只能留在页面层',
+    severity: DiagnosticSeverity.WARNING,
+  );
+
+  LogicImportsMaterialRule()
+    : super(
+        name: 'no_material_import_in_logic',
+        description:
+            'Flags UI coupling (material/widgets imports, own-feature page '
+            'imports) in features/*/logic/.',
+      );
+
+  @override
+  LintCode get diagnosticCode => code;
+
+  @override
+  List<Object>? check({
+    required String fromPath,
+    required String? target,
+    required String rawUri,
+  }) {
+    if (!_isFeatureLogic(fromPath)) return null;
+    if (rawUri == 'package:flutter/material.dart' ||
+        rawUri == 'package:flutter/widgets.dart') {
+      return [rawUri];
+    }
+    if (target == null) return null;
+
+    final from = featureOf(fromPath);
+    if (from == null || featureOf(target) != from) return null;
+    if (layerOf(target) != 'page') return null;
+    return ['features/$from/page/'];
+  }
+}
+
 abstract class _ImportRule extends AnalysisRule {
   _ImportRule({required super.name, required super.description});
 

@@ -40,7 +40,8 @@ linter:
 
 # ── 架构边界与代码形态（app_lints 插件）──
 # 依赖方向（core 不得依赖上层、跨 feature 只共享 data）、logic 层禁 service locator、
-# 页面必须给 ViewModel 可选注入点、禁 AsyncState.map、注释块上限 —— 这六条由
+# logic 层禁 import UI（material / widgets / 本 feature 的 page）、页面必须给 ViewModel 可选
+# 注入点、禁 AsyncState.map、注释块上限 —— 这七条由
 # `packages/app_lints/` 实现，声明在下面的 `plugins:` 里。判据与豁免细节见
 # .trellis/spec/cross-cutting.md「架构边界与代码形态约定」。
 

@@ -30,6 +30,8 @@
 
 11. **页面取 ViewModel 却不留可选注入点** — 只有 `getIt<XxxViewModel>()` 而没有那三行，页面测试就只能退回 `setUpTestApp()` 装配全局容器。必须有 `final XxxViewModel? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<XxxViewModel>()`；`page_must_expose_view_model_injection_point` 规则拦提交，理由见 [ADR-0001](../../../docs/adr/ADR-0001.md)。
 
+12. **logic 层 import UI** — `features/*/logic/` 里出现 `material.dart` / `widgets.dart` 或本 feature 的 `page/` 文件，说明把 Widget / BuildContext 塞进了状态层。`no_material_import_in_logic` 规则拦提交（`foundation` 放行，`ChangeNotifier` / `@visibleForTesting` 在 ViewModel 里正当），见 [cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」。
+
 ---
 
 ## Required Patterns
@@ -111,7 +113,7 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 
 | 内容 | 见 |
 | --- | --- |
-| 架构边界（`no_upper_import_in_core` / `cross_feature_only_data` / `no_service_locator_in_logic` / `page_must_expose_view_model_injection_point`）与禁止模式 | [../cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」 |
+| 架构边界（`no_upper_import_in_core` / `cross_feature_only_data` / `no_material_import_in_logic` / `no_service_locator_in_logic` / `page_must_expose_view_model_injection_point`）与禁止模式 | [../cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」 |
 | 代码形态约定（`avoid_async_state_map`、`comment_block_too_long`） | [../cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」 |
 | 覆盖率（不设门禁） | [../cross-cutting.md](../cross-cutting.md)「覆盖率」 |
 | 依赖声明（`depend_on_referenced_packages`） | [../cross-cutting.md](../cross-cutting.md)「依赖声明」 |

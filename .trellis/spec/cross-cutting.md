@@ -11,18 +11,19 @@
 
 ## 架构边界与代码形态（`packages/app_lints/` 插件）
 
-这六条规则由**分析插件**实现（`analysis_server_plugin`），不是脚本：
+这七条规则由**分析插件**实现（`analysis_server_plugin`），不是脚本：
 
 | 规则 | 效果 |
 |------|------|
 | `no_upper_import_in_core` | `core/**` 不能 import/export `features/**` 或 `app/**` |
 | `cross_feature_only_data` | 不能引用其他 feature 的 `page/` / `logic/`，跨 feature 只共享 `data/` |
+| `no_material_import_in_logic` | `features/*/logic/` 不得 import/export `material.dart` / `widgets.dart`，也不得引**本 feature** 的 `page/`（logic 是纯 Dart 状态层；`ChangeNotifier` / `@visibleForTesting` 所在的 `foundation` 放行） |
 | `no_service_locator_in_logic` | `features/*/logic/` 里不得出现 `getIt` / `GetIt.I`（构造器注入，理由见 [ADR-0001](../../docs/adr/ADR-0001.md)） |
 | `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()` 取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
 | `avoid_async_state_map` | 不得调用 `AsyncState.map`，三态渲染用 `AsyncView`（理由见 [frontend/state-management.md](frontend/state-management.md)「渲染状态」） |
 | `comment_block_too_long` | 连续注释块最多 10 行，超限就把解释搬进 spec（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)） |
 
-前两条是依赖方向；第三、四条是同一件事的两面：ViewModel 的依赖要能从构造器签名读出来，页面也要给测试留一个只有测试会用的注入口（[ADR-0001](../../docs/adr/ADR-0001.md) 的缓解措施）。这两条**没有任何编译器会提醒**——漏一个页面就少一处，所以用退出码兜住。
+前两条与规则 7 都是「谁能依赖谁」：前两条管依赖方向，规则 7 管同一 feature 内的层次。第三、四条是同一件事的两面：ViewModel 的依赖要能从构造器签名读出来，页面也要给测试留一个只有测试会用的注入口（[ADR-0001](../../docs/adr/ADR-0001.md) 的缓解措施）。这两条**没有任何编译器会提醒**——漏一个页面就少一处，所以用退出码兜住。
 
 后两条的判据必须是 AST：`AsyncState.map` 要看是否**同时带 `data` 与 `error` 两个具名实参**（正则分不清它与 `list.map(...)`，而误报会挡住提交）；注释块要看**字符偏移**（多行字符串里的 `//` 不是注释）。
 
@@ -43,7 +44,7 @@ plugins:
     path: packages/app_lints
 ```
 
-六条都用 `registerWarningRule` 注册 → **默认开**，不需要在 `diagnostics:` 里逐条打开（只有 `registerLintRule` 注册的才默认关）。
+七条都用 `registerWarningRule` 注册 → **默认开**，不需要在 `diagnostics:` 里逐条打开（只有 `registerLintRule` 注册的才默认关）。
 
 - **`dart analyze` 必须显式传文件名**：插件诊断只在显式传文件时输出，单文件、多文件都行，**传目录不行**——目录模式不报错、只是静默少跑规则，正是「有门禁的错觉」的形态。
 - **`flutter analyze` 不加载插件**：同一份 `plugins:` 配置它只报「No issues found」。所以门禁是 `justfile` 里的两步 `dart analyze --fatal-infos`（`lib + test` 与 `tool + packages`），文件列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤）。**CI 与 pre-commit 都不自己拼这两步，统一跑 `just verify`** —— 调用形式抄错不报错、只少跑，所以不留第二份。

@@ -9,7 +9,7 @@
 ## 阅读提示
 
 > **本文是当时（一次架构评审）的快照，不是现行规范。** 其中的 `tool/check_boundaries.dart` /
-> `tool/check_conventions.dart` 两个脚本**已退役**：六条规则改由 `packages/app_lints` 的分析插件
+> `tool/check_conventions.dart` 两个脚本**已退役**：七条规则改由 `packages/app_lints` 的分析插件
 > 实现（现行口径见 `.trellis/spec/cross-cutting.md`「架构边界与代码形态」）。凡本文提到脚本的地方，
 > 都当作历史记录读。
 
@@ -121,7 +121,7 @@ if (disposed) {
 
 ### P4 — 边界检查是正则级，不是语义级
 
-> **已完成迁移**：本节描述的边界脚本已退役，六条规则改由 `packages/app_lints` 的分析插件（AST）实现。下面的分析保留为当时的判断依据与迁移理由。
+> **已完成迁移**：本节描述的边界脚本已退役，七条规则改由 `packages/app_lints` 的分析插件（AST）实现。下面的分析保留为当时的判断依据与迁移理由。
 
 **原始判断**：多行 `import`、`part` / `part of`、条件导入都会漏；`.config.dart` 整文件豁免也是缺口。
 
@@ -215,7 +215,7 @@ await context.router.replaceRoute(
 
 | # | 事项 | 触发条件 |
 |---|------|---------|
-| 1 | **已完成**：把边界检查迁到 `package:analyzer` 的 AST | 已由 `packages/app_lints` 的分析插件承担（六条规则，见 `.trellis/spec/cross-cutting.md`「架构边界与代码形态」） |
+| 1 | **已完成**：把边界检查迁到 `package:analyzer` 的 AST | 已由 `packages/app_lints` 的分析插件承担（七条规则，见 `.trellis/spec/cross-cutting.md`「架构边界与代码形态」） |
 | 2 | ✅ **已完成** —— 边界脚本已加「import 行没被完整解析」的 warning（`isWarning`，不拦退出码） | — |
 | 3 | 给 `ArticleService` 的缓存回退结果加 `fromCache` 标记 | 需要「离线数据」的 UI 提示时 |
 | 4 | 明确 `core/models/` 的准入标准（或改名 `core/entities/`） | 模型数量超过 ~5 个 |
