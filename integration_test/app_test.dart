@@ -11,7 +11,7 @@ void main() {
   // 拆成多个 testWidgets 各自调用 app.main() 会在第二次启动时抛
   // 「Bad state: Leak tracking is already enabled.」。
   testWidgets('启动 → 进入主框架 → 切标签', (tester) async {
-    // await：bootstrap() 要先加载 .env 与 SharedPreferences 才 runApp，
+    // await：bootstrap() 要先读取环境与 SharedPreferences 才 runApp，
     // 不等它会让后面的断言跑在启动完成之前
     await app.main();
     await tester.pumpAndSettle();

@@ -282,14 +282,14 @@ CI 用 `reactivecircus/android-emulator-runner` 在 Android 模拟器上跑（�
 
 ## 环境配置与 release 构建
 
-环境值放在**入库的 `.env.example`**，由 `bootstrap()` 用 dotenv 加载（`await dotenv.load(fileName: '.env.example')`；`lib/bootstrap.dart` 校验 `BASE_URL`，`NetworkConfig.fromEnv(dotenv.env)` 消费）。它同时声明在 `pubspec.yaml` 的 `assets:` 里 —— **dotenv 只能加载 asset**，所以换环境不能靠换文件；真实 `.env` / `.env.*` 已被 `.gitignore` 忽略，密钥走 `--dart-define`。
+环境值放在**入库的 `.env.example`**，由 `bootstrap()` 用 dotenv 加载（`await dotenv.load(fileName: '.env.example')`；`lib/bootstrap.dart` 校验 `BASE_URL`，`NetworkConfig.fromEnv(dotenv.env)` 消费）。它同时声明在 `pubspec.yaml` 的 `assets:` 里 —— **dotenv 只能加载 asset**，所以换环境不能靠换文件；真实 `.env` / `.env.*` 已被 `.gitignore` 忽略，dotenv 也不会读它们 —— 因此这里只能放非密钥配置（本模板不做密钥注入，敏感值放服务端）。
 
 ```bash
 just run                # = flutter run（dotenv 自己读 .env.example）
 flutter build apk       # 发版构建，配置同样来自 .env.example
 ```
 
-- **不要**加 `.env` / `.env.development` 这类文件并指望运行时加载：它们不在 `assets:` 里，dotenv 读不到。密钥只能走 `--dart-define`。
+- **不要**加 `.env` / `.env.development` 这类文件并指望运行时加载：它们不在 `assets:` 里，dotenv 读不到。
 - `flutter test` 的单元 / 组件测试不需要 env —— 用 `networkConfigProvider.overrideWithValue` 注入配置。
 - `BASE_URL` 缺失时 `bootstrap()` 直接抛异常。
 
@@ -299,5 +299,5 @@ flutter build apk       # 发版构建，配置同样来自 .env.example
 
 - **release 签名**：`android/app/build.gradle.kts` 的 release 仍使用 debug keystore，没有 `key.properties` / `signingConfigs.release`
 - **minify / 混淆**：未开启 `isMinifyEnabled` / `isShrinkResources`，也没有 `proguard-rules.pro`；构建脚本未加 `--obfuscate --split-debug-info`
-- **build flavor**：未做 dev/staging/prod flavor，环境切换改 `.env.example`（或用 `--dart-define` 覆盖单个值）代替
+- **build flavor**：未做 dev/staging/prod flavor，环境切换改 `.env.example` 代替
 - **iOS release 签名**：描述文件与证书需在 Xcode 中配置

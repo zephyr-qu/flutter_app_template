@@ -586,23 +586,6 @@ void main() {
       expect(output.join('\n'), contains('已中止'));
       expect(_readFile(root, 'lib/main.dart'), contains('package:$_oldName/'));
     });
-
-    test('缺 .env.development 时从 .env.example 生成', () {
-      File('${root.path}/.env.development').deleteSync();
-      _writeFile(root, '.env.example', 'BASE_URL=http://example.test\n');
-
-      final code = runCli(
-        const ['--yes', '--name=$_newName'],
-        root: root,
-        out: (_) {},
-      );
-
-      expect(code, 0);
-      expect(
-        _readFile(root, '.env.development'),
-        'BASE_URL=http://example.test\n',
-      );
-    });
   });
 
   group('端到端（默认跳过）', () {

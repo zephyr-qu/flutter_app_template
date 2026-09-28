@@ -54,7 +54,7 @@ just run                                # 开发运行（dotenv 读 .env.example
 flutter build apk                       # 发版构建，配置同样来自 .env.example
 ```
 
-配置只有 `BASE_URL` / `USE_MOCK` 两项；密钥别写进 env 文件，走 `--dart-define`。release 有意留白（签名、混淆、flavor、iOS 签名），发版按 [release-checklist.md](docs/release-checklist.md) 补齐。
+配置只有 `BASE_URL` / `USE_MOCK` 两项，运行时读的就是入库的 `.env.example`；密钥别写进它（本模板不做密钥注入，敏感值放服务端）。release 有意留白（签名、混淆、flavor、iOS 签名），发版按 [release-checklist.md](docs/release-checklist.md) 补齐。
 
 ### 用它开新项目
 

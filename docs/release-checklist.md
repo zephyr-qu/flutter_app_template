@@ -1,7 +1,7 @@
 # Release 检查清单
 
 脚手架**有意**不包含发版配置——签名、混淆、flavor 都属于目标应用的职责（见
-[README](../README.md#环境配置与-release-构建)）。但"有意留白"不等于"可以忘"，
+[README](../README.md#环境与构建)）。但"有意留白"不等于"可以忘"，
 这份清单把它变成可勾选的步骤。
 
 > 现状（脚手架原样）：release 用 **debug keystore** 签名、未开 minify/混淆、
@@ -12,22 +12,15 @@
 
 ## 1. 环境与地址
 
-- [ ] `.env.production` 的 `BASE_URL` 换成真实域名（当前是 `https://api.example.com`）
-- [ ] 确认 `USE_MOCK=false`——为 `true` 时请求会被 `msw_dio_interceptor` 拦截，
+- [ ] 把入库的 `.env.example` 里的 `BASE_URL` 换成真实域名 —— 它就是运行时被加载的那份
+      （机制见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)「环境配置与 release 构建」）
+- [ ] 确认 `USE_MOCK=false` —— 为 `true` 时请求会被 `msw_dio_interceptor` 拦截，
       界面一切正常但数据全是假的
-- [ ] 真实地址优先用 `--dart-define` 传，而不是写进 env 文件：
+- [ ] 不要放密钥：`.env.example` 会入库、并作为 asset 打进产物，拿到包的人都能提取出来
 
 ```bash
-flutter build apk --dart-define=env=production \
-  --dart-define=BASE_URL=https://api.your-domain.com
+flutter build apk       # 配置来自入库的 .env.example，不需要额外传参
 ```
-
-- [ ] 复核 `.env` / `.env.development` / `.env.production` 里**没有密钥**。
-      这三个文件会被提交进 git，并作为 asset 打进产物，任何有 apk 的人都能提取出来。
-      密钥只能走 `--dart-define`（不进 git，但仍可从产物提取，敏感场景要放服务端）。
-- [ ] **不要**把 `_activeEnv` 改成 `String.fromEnvironment('env', defaultValue: 'development')`：
-      那样 release 也会加载 `.env.development`，包静默跑在 localhost + mock 上。
-      （`bootstrap.dart` 里有详细注释）
 
 ## 2. 版本与标识
 
@@ -96,7 +89,7 @@ flutter build appbundle --obfuscate --split-debug-info=build/symbols
 
 ## 4. 构建变体（按需）
 
-脚手架用 `--dart-define=env=` 区分环境，**没有** build flavor。需要 dev/staging/prod
+脚手架靠改入库的 `.env.example` 区分环境，**没有** build flavor。需要 dev/staging/prod
 三个可同时安装的包时，照 [optional-additions.md](./optional-additions.md) 第七节的可复制
 片段加 `productFlavors` + `flavorDimensions` + `applicationIdSuffix`（只有非 prod 的
 flavor 加后缀，`namespace` 不动），并按那里的说明处理 iOS scheme 与「`--flavor` 必填」。
@@ -123,13 +116,11 @@ just verify                               # 全套 5 项，首个失败即停
 just test integration_test/               # 端到端冒烟（真机 / 模拟器，不进 just verify）
 ```
 
-  `just verify` 覆盖：格式、`dart analyze --fatal-infos`（lib + test 与 tool 的手写文件，显式传参才
-  会加载 riverpod_lint 与 `packages/app_lints` 插件；依赖声明 lint `depend_on_referenced_packages`
-  在 `analysis_options.yaml` 里提升为 error，不依赖命令的默认值）、插件规则测试（`packages/app_lints`）、
-  `flutter test`。语义见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)。
+  `just verify` 是格式 + 两步 `dart analyze --fatal-infos` + 插件规则测试 + `flutter test`；
+  调用形式与语义见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)。
 
 - [ ] 新增 `FailureCode` 已在 `core/ui/failure_message.dart` 的 `localizedMessage` 里补上文案
-      （不补会编译失败——`switch` 不再穷尽；`test/core/ui/failure_message_test.dart` 会遍历枚举逐个断言）
+      （不补会编译失败；机制见 [error-handling.md](../.trellis/spec/backend/error-handling.md)）
 
 - [ ] 依赖过一遍：`dart pub outdated` 看 `Current / Upgradable / Resolvable / Latest` 四列，
       能升的走 `dart pub upgrade`（改动 `pubspec.lock` 后记得重跑测试与 codegen）；
@@ -143,9 +134,7 @@ just test integration_test/               # 端到端冒烟（真机 / 模拟器
       重进 App 后主题仍是改过的那一个
 - [ ] 断网启动：示例列表应回退到 Drift 缓存，而不是空白页（缓存旁路在
       `features/sample/data/sample_service.dart`）
-- [ ] 关掉 mock 要改**当前环境那一份**文件：release 读 `.env.production`，
-      `--dart-define=env=xxx` 读对应的 `.env.xxx` —— 裸 `.env` 从不被加载，
-      改它没有任何效果（见 `bootstrap.dart` 的 `_envFileName`）。改完确认真实接口连通
+- [ ] 关掉 mock：把入库的 `.env.example` 里的 `USE_MOCK` 设为 `false`。改完确认真实接口连通
 - [ ] 权限清单符合实际使用（AndroidManifest / Info.plist 里不要留多余权限）
 - [ ] 隐私政策与合规文案（若上架）已就位
 - [ ] 崩溃/错误上报已接入——`bootstrap.dart` 的 `PlatformDispatcher.instance.onError` 与

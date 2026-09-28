@@ -39,7 +39,7 @@
 | `flutter_gen`      | 资源类型安全访问器（`Assets.xxx`）    | assets 多到记不住路径、且改动频繁   | 手写 `lib/core/assets.dart` 常量，20 行搞定                                                                                                                                                |
 | `device_info_plus` | 机型、系统版本、`isPhysicalDevice` | **接崩溃上报时**当上下文用        | 只要系统版本的话，`dart:io` 的 `Platform.operatingSystemVersion` 够                                                                                                                           |
 | `google_fonts`     | Google Fonts 的 1000+ 款字体   | 需要**品牌字体**、且不想自己管字体文件时 | 把 ttf 放进 `assets/`，在 `pubspec.yaml` 的 `flutter: fonts:` 里声明——没有网络依赖。⚠️ 明确不要走它的默认模式（渲染时从 `fonts.gstatic.com` 下载）：弱网/无网下字体不生效，冷启动会先渲染系统字体再"跳"一下。另外中文字体（如思源黑体）全字库单个字重常有数 MB，要有子集裁剪的准备 |
-| `flutter_dotenv`   | 从 `.env` 文件读环境变量（需声明为 asset） | 想在运行时读文件，而非编译期注入 | **本项目在用**：`bootstrap()` 用 dotenv 加载入库的 `.env.example`（见 [README](../README.md#环境与构建)）。密钥仍走 `--dart-define` |
+| `flutter_dotenv`   | 从 `.env` 文件读环境变量（需声明为 asset） | 想在运行时读文件，而非编译期注入 | **本项目在用**：`bootstrap()` 用 dotenv 加载入库的 `.env.example`（见 [README](../README.md#环境与构建)） |
 
 > `lottie` 和 `flutter_gen` 是联动的：想用类型安全访问器读 Lottie，`flutter_gen` 会
 > 一起回来（多一个 `build_runner` builder，首次构建会变慢）。加之前想清楚这笔账。
@@ -136,11 +136,11 @@
 
 ## 七、可选脚手架：build flavor（dev / staging / prod 同机共存）
 
-脚手架默认**不做 flavor**：环境靠 `--dart-define-from-file` 切换（见
+脚手架默认**不做 flavor**：环境靠改入库的 `.env.example` 切换（见
 [README](../README.md#环境与构建)），一套代码、一个包，构建时换地址。
 什么时候才值得加 flavor？只有一种场景——**同一台手机上要同时装多个环境**
 （dev 包连测试服、prod 包连线上，互不覆盖、不用卸载）。如果只是「构建时换地址」，
-`--dart-define-from-file` 就够了，别为它引入 flavor 的复杂度。
+改一处 `.env.example` 就够了，别为它引入 flavor 的复杂度。
 
 需要时按下面四步加，Android 部分可以直接复制。
 
@@ -192,15 +192,14 @@ android {
 
 ### 2. flavor 与 env 的关系
 
-env 已改用 `--dart-define-from-file`（不再有 `.env.<环境名>` 自动加载），所以给每个
-flavor 配一份 env、构建时显式选择即可，不需要再改 `bootstrap.dart`：
+env 只有一份、且是入库的 asset（`.env.example`）：**dotenv 只能加载 asset**，所以 flavor
+无法在构建时挑另一份 env 文件。要按 flavor 分环境，得自己加一层（本模板不提供）：
 
-```bash
-flutter build apk --flavor dev --dart-define-from-file=.env.dev
-```
+- 让 `bootstrap()` 按 `String.fromEnvironment('env')` 选不同的 asset 名（各 flavor 一份
+  `.env.*` 并都声明进 `pubspec.yaml` 的 `assets:`），构建时传 `--dart-define=env=dev`
+- 或者去掉 dotenv，整体改成读 `String.fromEnvironment`
 
-env 文件是**构建期读取**的，不必声明成 asset；想少敲参数就一个 flavor 一条 `just` recipe。
-（Flutter 会把 flavor 自动注入成 `FLUTTER_APP_FLAVOR`，但那与本项目的 env 加载无关了。）
+Flutter 会把 flavor 自动注入成 `FLUTTER_APP_FLAVOR`，但那与本项目的 env 加载无关。
 
 ### 3. iOS：一个 flavor 一个 scheme
 

@@ -6,8 +6,9 @@
 .DS_Store
 .atom/
 # 真实 env 不入库，只提交 .env.example（示例 / 默认值）。
-# 运行时用 `--dart-define-from-file=.env.example`（或你自定义的 .env.development）注入；
-# 密钥一律走 --dart-define。
+# 应用运行时加载的就是入库的 .env.example —— 它同时声明在 pubspec 的 `assets:` 里，
+# 而 dotenv 只能加载 asset，所以换后端靠改这个文件，不是换文件。
+# .env / .env.* 被忽略，避免本地草稿或密钥误入库；dotenv 不会读它们。
 .env
 .env.*
 !.env.example
