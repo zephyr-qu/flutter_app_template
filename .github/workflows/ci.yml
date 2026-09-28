@@ -93,7 +93,7 @@ jobs:
           profile: pixel_5
           # 不要传 emulator-options —— 一旦指定会覆盖 action 的全部默认值
           # （默认已含 -no-window / -gpu swiftshader_indirect，headless 需要它们）
-          script: just test integration_test/
+          script: just e2e
 
   # 供应链门禁：拿 pubspec.lock 去 OSV 查**已知漏洞**，命中即失败。
   # 与 `dart pub outdated`（只报告）分工；口径见 cross-cutting.md「供应链门禁」。
