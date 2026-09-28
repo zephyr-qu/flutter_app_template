@@ -3,11 +3,13 @@
 # 清单见 cross-cutting.md；单项重跑直接手跑对应命令。
 #
 # 生成物不入库，但 analyze 需要它们在磁盘上：stash --keep-index 可能按 index
-# 清掉「已暂存删除」的生成物，故 stash 前后备份/恢复（.git/pre-commit-gen-backup）。
+# 清掉「已暂存删除」的生成物，故 stash 前后备份/恢复。
+# 备份目录挂在**真实 git 目录**下：linked worktree 里 `.git` 是文件而不是目录，
+# 写 `.git/xxx` 会失败（mkdir 报错被 `|| return 0` 吞掉 → 备份静默失效）。
 
 echo "🔍 Running pre-commit checks..."
 
-GEN_BACKUP=".git/pre-commit-gen-backup"
+GEN_BACKUP="$(git rev-parse --git-dir)/pre-commit-gen-backup"
 
 backup_generated() {
     rm -rf "$GEN_BACKUP"
