@@ -49,6 +49,8 @@ lib/
 #   sample（金标准示例 —— data 三形态 / logic / page 的照抄对象）
 ```
 
+> 快照（2026-09）：树里的「现有 feature」是当时的状态，`ls lib/features/` 可查当前值；增删 feature 时同步本节。
+
 **不存在** `domain/`、`application/`、`usecase/`、`shared/`、`core/error/`、`core/local/` 这些目录（也不设 UseCase 层）。在别处看到对它们的引用，那处引用是过期的。
 
 与状态管理无关的基础设施（Failure / Result / 日志 / 网络 / 数据库 / 主题 / 无文案 UI 组件）在 `lib/core/` 下（`base/` `logging/` `data/` `theme/` `ui/`）。**单包结构**：app 代码不抽包，`packages/` 只放独立工具包。主题层的两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
@@ -113,7 +115,7 @@ final themeMode = ref.watch(appSettingsProvider).themeMode; // Feature B 响应
 
 ### 6. 数据库：schema 在 core，查询在 feature
 
-Drift 的表结构与 `AppDatabase` 都在 `lib/core/data/database/`（当前只有 `DbArticle` 这一张通用示例表）。表类名统一加 `Db` 前缀（`db_articles` → `DbArticles`），行类 `DbArticle` 与 SQL 表名由 drift 自动派生，**不要写任何注解**。
+Drift 的表结构与 `AppDatabase` 都在 `lib/core/data/database/`（快照 2026-09：当前只有 `DbArticle` 这一张通用示例表，`ls lib/core/data/database/tables/` 可查）。表类名统一加 `Db` 前缀（`db_articles` → `DbArticles`），行类 `DbArticle` 与 SQL 表名由 drift 自动派生，**不要写任何注解**。
 
 但**查询（DAO）属于 feature**：`features/{feature}/data/{feature}_dao.dart`，用 `@DriftAccessor(tables: [...])` 声明要访问的表（表与数据库同包，范例 `SampleDao`）。接真实业务要加自己的表时，把表加进 `AppDatabase` 的 `@DriftDatabase`、DAO 用 `@DriftAccessor` 声明即可。细节与 drift 的 library 约束见 [backend/database-guidelines.md](../backend/database-guidelines.md)。
 

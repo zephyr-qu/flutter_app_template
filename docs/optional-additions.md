@@ -136,100 +136,22 @@
 
 ## 七、可选脚手架：build flavor（dev / staging / prod 同机共存）
 
-脚手架默认**不做 flavor**：环境靠改入库的 `.env.example` 切换（见
-[README](../README.md#环境与构建)），一套代码、一个包，构建时换地址。
-什么时候才值得加 flavor？只有一种场景——**同一台手机上要同时装多个环境**
-（dev 包连测试服、prod 包连线上，互不覆盖、不用卸载）。如果只是「构建时换地址」，
-改一处 `.env.example` 就够了，别为它引入 flavor 的复杂度。
+脚手架默认**不做 flavor**：环境靠改入库的 `.env.example` 切换，一套代码、一个包，构建时换地址。
 
-需要时按下面四步加，Android 部分可以直接复制。
+**什么时候才值得加**：只有一种场景 —— 同一台手机上要同时装多个环境（dev 连测试服、prod 连线上，互不覆盖、不用卸载）。只是「构建时换地址」的话，改一处 `.env.example` 就够了，别为它引入 flavor 的复杂度。
 
-### 1. `android/app/build.gradle.kts`
+**大致怎么做**：Android 在 `android/app/build.gradle.kts` 里加 `flavorDimensions += "env"` 与三个 `productFlavors` 块（`dev` / `staging` 带 `applicationIdSuffix`，`prod` 不带）；iOS 要按 scheme 复制三套，这一步交给 `flutter_flavorizr` 更划算，只先跑通 Android 可以跳过。
 
-```kotlin
-android {
-    // ← 由 tool/init_project.dart 写入；flavor 不改变它
-    namespace = "com.example.my_app"
+**四个判据（不看会返工）**：
 
-    // AGP 8+ 的写法；更老的是 flavorDimensions "env"
-    flavorDimensions += "env"
-    productFlavors {
-        create("dev") {
-            dimension = "env"
-            applicationIdSuffix = ".dev"          // 与 prod 共存的关键
-            versionNameSuffix = "-dev"
-            resValue("string", "app_name", "MyApp Dev")
-        }
-        create("staging") {
-            dimension = "env"
-            applicationIdSuffix = ".staging"
-            versionNameSuffix = "-staging"
-            resValue("string", "app_name", "MyApp Staging")
-        }
-        create("prod") {
-            dimension = "env"                     // 刻意不加后缀：上架的就是它
-            resValue("string", "app_name", "MyApp")
-        }
-    }
+- `applicationIdSuffix` **只能加在非 prod 的 flavor 上** —— prod 必须是商店里那个唯一 id，否则上传报「包名与已有应用不符」。
+- `namespace` **不跟着 flavor 变**：它只决定 R 类 / BuildConfig 的包名，与设备上的安装身份无关。
+- 桌面显示名要 `resValue` + 把 manifest 的 `android:label` 改成 `@string/app_name`（或 `manifestPlaceholders["appName"]`）才生效；脚手架当前写的是字面量，由 `tool/init_project.dart` 写入。
+- 一旦定义了 flavor，构建与运行**都必须带 `--flavor`**（否则报 `You must specify a --flavor option`）；不想每次敲，在 `pubspec.yaml` 的 `flutter:` 下给 `default-flavor`。
 
-    defaultConfig {
-        // ← 仍然留在这里：flavor 只是在它之上加后缀
-        applicationId = "com.example.my_app"
-    }
-}
-```
+**与 `tool/init_project.dart` 的顺序**：先初始化、后加 flavor —— 脚本按 `applicationId = "..."` 的形态改 Android 标识，flavor 会让这个值分散到多个块里。真撞上不会半改：脚本会列出「哪一处没匹配到」并以非零退出码结束，手工补完再跑一次。
 
-三个容易踩的点：
-
-- **`applicationIdSuffix`** **只能加在非 prod 的 flavor 上**。prod 必须是商店里那个唯一
-  的 id，否则上传时会报「包名与已有应用不符」。
-- **`namespace`** **不跟着 flavor 变**：它只决定 R 类 / BuildConfig 的包名，与设备上的
-  安装身份无关。
-- **桌面显示名**：`resValue` 只是定义字符串资源，manifest 还得从字面量
-  `android:label="..."` 改成 `@string/app_name` 才会生效（脚手架当前是字面量，由
-  `tool/init_project.dart` 写入）。不想动 manifest 就改用
-  `manifestPlaceholders["appName"]` + `android:label="${appName}"`。
-
-### 2. flavor 与 env 的关系
-
-env 只有一份、且是入库的 asset（`.env.example`）：**dotenv 只能加载 asset**，所以 flavor
-无法在构建时挑另一份 env 文件。要按 flavor 分环境，得自己加一层（本模板不提供）：
-
-- 让 `bootstrap()` 按 `String.fromEnvironment('env')` 选不同的 asset 名（各 flavor 一份
-  `.env.*` 并都声明进 `pubspec.yaml` 的 `assets:`），构建时传 `--dart-define=env=dev`
-- 或者去掉 dotenv，整体改成读 `String.fromEnvironment`
-
-Flutter 会把 flavor 自动注入成 `FLUTTER_APP_FLAVOR`，但那与本项目的 env 加载无关。
-
-### 3. iOS：一个 flavor 一个 scheme
-
-iOS 上 Flutter 是**按 scheme 名找 flavor** 的，所以要在 Xcode 里
-`Product → Scheme → Manage Schemes` 把 `Runner` 复制成 `dev` / `staging` / `prod`，
-再逐个配置 Bundle Identifier 后缀与 Display Name。手动维护三套 scheme 很啰嗦——
-这一步交给 `flutter_flavorizr` 更划算；只先跑通 Android 的话跳过这步即可。
-
-### 4. 加上之后「必须带 `--flavor`」
-
-一旦定义了 flavor，构建与运行**都必须指定**，否则 Flutter 直接报
-「You must specify a --flavor option」。不想每次敲，就在 `pubspec.yaml` 里给个默认值：
-
-```yaml
-flutter:
-  default-flavor: dev     # 不传 --flavor 时用它
-```
-
-```bash
-flutter run --flavor dev
-flutter build apk --flavor staging
-flutter build appbundle --flavor prod
-flutter build ipa --flavor prod
-flutter test                        # 测试不受 flavor 影响
-```
-
-> ⚠️ 与 `tool/init_project.dart` 的顺序：**先初始化、后加 flavor**。初始化脚本按
-> `applicationId = "..."` 这种形态改 Android 标识，而 flavor 会让这个值分散到多个
-> flavor 块里。真撞上了不会半改——脚本会列出「哪一处没匹配到」并以非零退出码结束，
-> 手工改完那两处再跑一次即可。
+**flavor 分环境要自己加一层**：env 只有一份、且是入库的 asset（dotenv 只能加载 asset），所以 flavor 无法在构建时挑另一份 env 文件。做法与取舍见 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)「环境配置与 release 构建」。
 
 ***
 
