@@ -8,7 +8,7 @@ alwaysApply: true
 个人 Flutter 脚手架（包名 `my_app`），面向中小型 App 的起点，不是生产应用。
 
 本文件只做拦截，**权威规范在 `.trellis/spec/`**。写某层代码前先读对应索引：
-`.trellis/spec/frontend/index.md`、`.trellis/spec/backend/index.md`、`.trellis/spec/cross-cutting.md`。
+`.trellis/spec/index.md`、`.trellis/spec/cross-cutting.md`。
 更完整、可照抄的版本见仓库根的 `AGENTS.md`。
 
 ## 技术栈（已定，不要替换、也不要「顺手升级」选型）

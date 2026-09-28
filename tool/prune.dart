@@ -130,7 +130,7 @@ void main(List<String> args) {
     ..writeln('\n✅ 裁剪完成（--l10n=single）。接下来请手动确认：')
     ..writeln('   1. just verify')
     ..writeln('   2. .trellis/spec/frontend/localization.md 描述的是多语言形态，')
-    ..writeln('      单语言分支上它已过期 —— 删掉或改写，并同步 frontend/index.md 的链接');
+    ..writeln('      单语言分支上它已过期 —— 删掉或改写，并同步 .trellis/spec/index.md 的链接');
 }
 
 class ParsedArgs {
