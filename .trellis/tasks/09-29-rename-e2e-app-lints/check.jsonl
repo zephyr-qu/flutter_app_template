@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "改名脚本的契约（必改点/全有或全无）、门禁清单、E2E 的口径与生成物策略都在这"}
+{"file": ".trellis/spec/guides/rename-checklist.md", "reason": "改名的坑清单（selfPackagePrefix 会静默失效）与两层回归测试的说明"}

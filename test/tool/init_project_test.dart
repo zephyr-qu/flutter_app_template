@@ -642,7 +642,7 @@ void main() {
         expect(pbxproj, contains('PRODUCT_BUNDLE_IDENTIFIER = $_newBundleId;'));
         expect(pbxproj, isNot(contains('com.example.flutterApp')));
 
-        await _pubGet(flutter, temp);
+        await _pubGetAll(flutter, temp);
 
         // `--no-fatal-infos`：仓库本身就有若干既存 info，而改名还会顺带改变
         // import 的字母序（`directives_ordering`）。要抓的是「改名把 import
@@ -706,6 +706,16 @@ String _flutterCommand() {
   return 'flutter';
 }
 
+/// `dart` 可执行文件：同样优先用 `FLUTTER_ROOT`（Flutter SDK 自带 `dart`），否则退回 PATH。
+String _dartCommand() {
+  final root = Platform.environment['FLUTTER_ROOT'];
+  if (root != null) {
+    final path = '$root/bin/dart${Platform.isWindows ? '.bat' : ''}';
+    if (File(path).existsSync()) return path;
+  }
+  return 'dart';
+}
+
 /// 复制仓库到 [target]，跳过产物目录（[isBuildArtifactPath] 是改名脚本的同一份清单）。
 void _copyTree(Directory source, Directory target) {
   for (final entity in source.listSync(recursive: true, followLinks: false)) {
@@ -725,10 +735,13 @@ void _copyTree(Directory source, Directory target) {
   }
 }
 
-/// `flutter pub get`：先试离线（依赖已在 pub cache 里就能过），失败再联网。
-Future<void> _pubGet(String flutter, Directory dir) async {
+/// `pub get`：先试离线（依赖已在 pub cache 里就能过），失败再联网。
+///
+/// [executable] 传 `flutter` 或 `dart` —— 根工程用前者，独立子包用后者，与 `justfile`
+/// 的 `deps` 两步一致（两者的参数形状相同）。
+Future<void> _pubGet(String executable, Directory dir) async {
   final offline = await Process.run(
-    flutter,
+    executable,
     ['pub', 'get', '--offline'],
     workingDirectory: dir.path,
     runInShell: Platform.isWindows,
@@ -736,7 +749,7 @@ Future<void> _pubGet(String flutter, Directory dir) async {
   if (offline.exitCode == 0) return;
 
   final online = await Process.run(
-    flutter,
+    executable,
     ['pub', 'get'],
     workingDirectory: dir.path,
     runInShell: Platform.isWindows,
@@ -744,8 +757,20 @@ Future<void> _pubGet(String flutter, Directory dir) async {
   expect(
     online.exitCode,
     0,
-    reason: 'flutter pub get 失败：\n${online.stdout}\n${online.stderr}',
+    reason: '$executable pub get 失败：\n${online.stdout}\n${online.stderr}',
   );
+}
+
+/// 端到端里的 bootstrap：与根 `justfile` 的 `deps` 两步对齐
+/// （`flutter pub get`，再 `cd packages/app_lints && dart pub get`）。
+///
+/// 子包那一步不能省：`packages/app_lints` 自带 package config，它的
+/// `analyzer_testing` / `test_reflective_loader` 是 **dev_dependencies**，根工程的解析图里
+/// 没有；只跑根这一次，副本里 app_lints 的测试 import 会全断，analyze 报上百条 error ——
+/// 那不是改名改出来的，却会让这条回归测试失去意义。两份定义要同步改，见 rename-checklist。
+Future<void> _pubGetAll(String flutter, Directory root) async {
+  await _pubGet(flutter, root);
+  await _pubGet(_dartCommand(), Directory('${root.path}/packages/app_lints'));
 }
 
 /// 在 [dir] 下的文本文件里找 [needle]，返回 `路径:行号` 列表。
