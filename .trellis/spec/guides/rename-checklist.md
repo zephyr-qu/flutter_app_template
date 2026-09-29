@@ -42,8 +42,10 @@ dart run tool/init_project.dart --yes --name=your_app \
   规则 1/2 靠它把 import 解析成仓库内路径。忘了它，门禁会**静默失效**：所有 import 都被当成
   外部包放行。`tool/init_project.dart` 改名会一起改掉，`test/tool/self_package_prefix_test.dart`
   会在 `flutter test` 时复核两者一致。
-- **`.dart_tool/package_config.json` 不用管**：它由 `flutter pub get` 重新生成，
-  改完名跑一次 `flutter pub get` 即可。
+- **`.dart_tool/package_config.json` 不用管**：它由 `pub get` 重新生成 —— 但要**每个包各跑一次**，
+  根工程 `flutter pub get`、独立子包 `dart pub get`，与 `just deps` 的两步一致。只跑根那一次时，
+  子包自己的 `analyzer_testing` / `test_reflective_loader` 是 **dev_dependencies**（根工程解析图里
+  没有），副本里 app_lints 的测试 import 会全断，analyze 报上百条 error。
 
 ## 之后
 

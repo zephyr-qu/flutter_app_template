@@ -134,7 +134,8 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
 
 回归测试分两层（逐条见 [guides/rename-checklist.md](guides/rename-checklist.md)）：fixture
 跑在每次 `flutter test` 里；端到端那条要 `SCAFFOLD_E2E=1`（CI 的 `analyze` job 带了它），把
-真实仓库复制到临时目录改名后跑 `flutter pub get` + `flutter analyze`，专门兜「改完名 import
+真实仓库复制到临时目录改名后按 `just deps` 的两步 bootstrap（根 `flutter pub get` + 子包
+`dart pub get`）再 `flutter analyze`，专门兜「改完名 import
 全断」。`test/tool/self_package_prefix_test.dart` 是另一条防线：它盯 `pubspec.name` 与
 `selfPackagePrefix` 是否一致，手工改名漏掉一边会被它拦下。
 
