@@ -288,6 +288,11 @@ just e2e        # = flutter test integration_test/（dotenv 自己读 .env.examp
 CI 用 `reactivecircus/android-emulator-runner` 跑 Android 模拟器（脚本就是 `just e2e`）。**不要**用 `xvfb`——
 那是给 Linux 桌面目标用的，本项目没有 `linux/` 平台目录。
 
+Android 依赖走**官方仓库**：`android/build.gradle.kts` 与 `android/settings.gradle.kts` 里的阿里云镜像默认
+不启用，只在 `ALIYUN_MAVEN_MIRROR=1` 或 `-PaliyunMirror` 时插入。原因是实测：runner 上它回过 502，
+而 Gradle 遇到首个仓库报错会把该仓库禁掉、直接判定依赖不可解析 —— `assembleDebug` 失败，`just e2e`
+报 `0 tests passed, 1 failed`，官方仓库排在后面也兜不住。镜像要有效必须排在官方仓库之前，所以只能整体开/关。
+
 ### widget 测试里不要用真实 I/O
 
 `testWidgets` 的 `pumpAndSettle` 走**假时钟**，真实的文件 / 数据库 I/O 不会在它推进的这段时间里完成。后果有两层：
