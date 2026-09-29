@@ -110,6 +110,14 @@ jobs:
   # 用官方 reusable workflow 而不是自己拼 `run: osv-scanner …`：CLI 参数在
   # v1 → v2 变过（子命令化），手写的调用会在某次升级后静默失效或直接报错。
   osv-scan:
+    # reusable workflow 在 job 级声明了 security-events: write，而本仓库默认 token 权限是
+    # read（Settings → Actions → Workflow permissions）。caller 不显式授予时 GitHub 在
+    # 启动阶段就拒收整个 workflow：run 直接 startup_failure、一个 job 都不生成，日志里
+    # 也没有 failed step 可看。所以这里按被调方的声明逐项对齐授予。
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0
     with:
       # 只扫根工程与独立插件包的 lockfile。默认的 `-r ./` 会把 build/、
