@@ -97,7 +97,7 @@ lib/
 
 ### 环境要求
 
-- Flutter SDK >= 3.44.0（开发与 CI 钉 3.47.5，见 `.fvmrc`）
+- Flutter SDK >= 3.47.0（开发与 CI 钉 3.47.5，见 `.fvmrc`）
 - Dart SDK >= 3.13.0
 - [`just`](https://just.systems) >= 1.58.0（门禁与常用命令的入口）
 
