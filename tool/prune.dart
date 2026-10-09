@@ -18,7 +18,7 @@
 //
 // 为什么 l10n 做成参数而不是分支：它横切 `core/ui/failure_message.dart` 与
 // `core/config/user_preferences.dart`，做成分支会在这些文件上与其它分支反复冲突。
-// 详见 .trellis/tasks/09-22-prune-l10n/prd.md。
+// 详见 .trellis/tasks/archive/2026-09/09-22-prune-l10n/prd.md。
 
 import 'dart:convert';
 import 'dart:io';
