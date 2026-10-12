@@ -3,12 +3,16 @@
 ## Goal
 
 `just analyze` 的扫描面由根 `justfile` 里两个硬编码的 root 列表决定（`lib test` 与 `tool packages`）。
-root 列表漏掉哪个目录、或哪个 root 被改名/删掉，门禁都不报错 —— 只会少扫，绿得毫无区别。
+root 列表漏掉哪个目录、或哪个 root 被改名/删掉，门禁都不报错 —— 只会少扫，绿得毫无差别。
 
-本任务做两件事：**补上当前已经漏掉的那个目录**（`integration_test`），并让
-「每个含 Dart 源码的顶层目录，要么在 analyze roots 里、要么在排除名单里」成为一条会拦住提交的断言。
+本任务让「每个含 Dart 源码的顶层目录，要么在 analyze roots 里、要么在排除名单里」成为一条会拦住
+提交的断言，并让「某个 root 产出 0 个文件」也报错。**2026-10-12 收窄**：原 R1（把 `integration_test`
+补进 roots）随 `020235d` 删除该目录而消失，触发点没了，本任务现在是**纯预防**（见文末收窄记录）。
 
 ## 已核实的事实
+
+> **①②③ 已失效（2026-10-12）**：`integration_test/app_test.dart` 随 `020235d` 被删除，这三条随之作废；
+> 保留原文是因为它们正是本任务最初的触发点。
 
 | # | 事实 | 证据（本会话实测） |
 |---|---|---|
@@ -17,12 +21,12 @@ root 列表漏掉哪个目录、或哪个 root 被改名/删掉，门禁都不�
 | ③ | 传目录 ≠ 跑了插件：同一目录两种传法都报 "No issues found" | `dart analyze --fatal-infos integration_test` → 也是 `No issues found!`（目录模式假绿，`cross-cutting.md:49` 已写） |
 | ④ | root 为空**不报错**：CLI 只过滤「已不存在的路径」，不校验 root 是否存在 | `dart run tool/list_dart_files.dart nosuchdir` → 输出空、exit 0（`tool/list_dart_files.dart` 共 41 行） |
 | ⑤ | root 为空之后 analyze **会跑错东西，且失败原因指向别处** | `dart analyze --fatal-infos`（无参数）= 全仓目录模式 → `Analyzing flutter_app_template...`，命中 `pubspec.yaml:21` / `:66` 的 `sort_pub_dependencies`，exit 1；哪天 pubspec 排好序，它就变成 **exit 0 的纯假绿**（插件规则一条不跑） |
-| ⑥ | 顶层含 `.dart` 的目录共 6 个：`lib` 61、`test` 49、`tool` 6、`packages` 4、`.agents` 2、`integration_test` 1 | `git ls-files --cached --others --exclude-standard \| grep '\.dart$' \| awk -F/ '{print $1}' \| sort \| uniq -c` |
+| ⑥ | 顶层含 `.dart` 的目录共 **5** 个：`lib` 61、`test` 49、`tool` 6、`packages` 4、`.agents` 2（2026-10-12 复核，`integration_test` 已删） | `git ls-files --cached --others --exclude-standard \| grep '\.dart$' \| awk -F/ '{print $1}' \| sort \| uniq -c` |
 | ⑦ | `.agents` 下那 2 个文件是 vendored 第三方 skill 的示例（`dart-use-path-package/examples/*.dart`），与 `check_doc_links.dart` 排除 `.agents/skills`、`.pi/skills` 的口径一致 | 同上 + `tool/check_doc_links.dart` 头部「排除项与理由」 |
 | ⑧ | 同源前例：本仓库已有的「防门禁静默失效」防线是 `test/tool/self_package_prefix_test.dart`；「纯函数 + 注入输入 + 单测」的写法见 `tool/check_doc_links.dart` + `test/tool/check_doc_links_test.dart`；测试里起子进程是既有写法 | `test/tool/init_project_test.dart:650`、`:743`（`Process.run`） |
 
-**前置状态**：工作区有 12 处未提交改动（属 `10-11-doc-redundancy` 任务）。本任务不碰它们；
-`just verify` 已在当前工作区跑过全绿（339 测试 + fmt / 两步 analyze / 插件自测 / 文档链接 / 目录树）。
+**前置状态（2026-10-12 复核）**：工作区干净；`just verify` 全绿（339 项测试）。原记录里「工作区有
+12 处未提交改动（属 `10-11-doc-redundancy`）」已随那批改动落地而失效。
 
 ## 决定：断言落成**纯测试**（不新增工具与 recipe）
 
@@ -43,7 +47,7 @@ root 列表漏掉哪个目录、或哪个 root 被改名/删掉，门禁都不�
 
 ## 需求
 
-- **R1** `integration_test` 纳入 analyze 的 app 组（对应事实 ①②）。
+- ~~**R1** `integration_test` 纳入 analyze 的 app 组~~ —— **已失效**：该目录随 `020235d` 删除。
 - **R2** 断言「每个含 Dart 源码的顶层目录，要么被某个 root 覆盖，要么在排除名单里」。
   新增顶层目录（如 `example/`）时，失败信息**点名那个目录**。
 - **R3** 断言「每个声明的 root 各自产出 ≥1 个 `.dart` 文件」（按 root 逐个判，不按组判 ——
@@ -57,7 +61,7 @@ root 列表漏掉哪个目录、或哪个 root 被改名/删掉，门禁都不�
 
 - **唯一真相是 justfile**：测试用正则解析根 `justfile` 里 `app_files :=` / `tool_files :=`
   两行的 `list_dart_files.dart` 参数，得出 roots 集合 —— 不在测试里再抄一份 root 列表。
-  于是「justfile 去掉 `integration_test`」会直接表现为「`integration_test` 未被覆盖」。
+  于是「justfile 漏掉某个顶层目录」会直接表现为「该目录未被覆盖」。
 - **文件清单走 `git ls-files --cached --others --exclude-standard`**，与 `tool/list_dart_files.dart`
   同一命令：测试看到的与门禁看到的必须是同一批文件（`build/`、`.dart_tool/`、生成物自动不在内）。
   测试内起子进程是既有写法（`test/tool/init_project_test.dart:650`）。
@@ -68,7 +72,7 @@ root 列表漏掉哪个目录、或哪个 root 被改名/删掉，门禁都不�
 ## Acceptance Criteria
 
 - [ ] 本地新建 `example/foo.dart` → `just test` 失败，输出**点名 `example`**
-- [ ] 把 justfile 的 roots 改回 `lib test` → 失败并点名 `integration_test`
+- [ ] 把 justfile 的 roots 临时去掉一个仍存在的目录（如 `app_files` 里的 `test`）→ 失败并点名它
 - [ ] 把某个 root 改成不存在的名字（或删掉该目录）→ 失败，并说明「该 root 产出 0 个文件」
 - [ ] 正常状态 `just verify` 全绿（339 项基础上 + 新增用例）
 - [ ] `.agents/` 不在扫描面内，且排除理由在断言处可被 review 直接读到
@@ -83,3 +87,11 @@ root 列表漏掉哪个目录、或哪个 root 被改名/删掉，门禁都不�
 - 不扫 `build/`、`.dart_tool/`、生成物；不动 `.agents/skills` 内容
 - 新增工具、recipe 或独立文档（已否的 A / C 两案）
 - 不清理 `10-11-doc-redundancy` 的未提交改动、不动兄弟分支
+
+## 收窄记录（2026-10-12）
+
+`020235d` 删掉 `integration_test` 之后，本任务的触发点（R1 与事实 ①②③）消失，故收窄为
+**纯预防性断言**：保留 R2–R5，去掉 R1，措辞与 AC 改成不绑定 `integration_test`。
+
+当下**没有失效案例** —— 5 个含 Dart 的顶层目录全部要么被 root 覆盖、要么在被排除的 `.agents`。
+价值在于将来：新增顶层目录（如 `example/`）、或某个 root 被改名/删掉时会拦住提交（事实 ④⑤）。

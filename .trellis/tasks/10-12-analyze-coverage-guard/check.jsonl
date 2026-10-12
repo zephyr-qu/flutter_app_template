@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "核对断言是否真的写进该节、失败形态与测试路径可查（R5）"}
+{"file": ".trellis/spec/directory-structure.md", "reason": "核对排除名单与 canonical 顶层布局不冲突"}
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "核对新增文字符合注释 / spec 的写法口径"}

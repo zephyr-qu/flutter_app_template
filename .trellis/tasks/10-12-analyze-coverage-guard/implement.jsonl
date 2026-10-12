@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "「dart analyze 必须显式传文件名」那节是 R5 的落点，也是门禁清单与「有意不设的项」的权威口径"}
+{"file": ".trellis/spec/directory-structure.md", "reason": "canonical 顶层布局与「某文件该放哪」的裁决 —— R2 的「含 Dart 源码的顶层目录」与排除口径要跟它一致"}
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "spec / 注释该怎么写（引用写章节关键词、成败判据）—— R5 改 spec 时遵守"}

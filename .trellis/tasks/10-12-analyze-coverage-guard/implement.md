@@ -2,10 +2,13 @@
 
 轻量任务。**形状 B**（纯测试），`just verify` recipe 不变。
 
+> **2026-10-12 收窄**：原步骤 1 要往 roots 里加 `integration_test`，该目录已随 `020235d` 删除。
+> 现在只做 R2–R5 的预防性断言，**不改 `justfile`**。
+
 ## 步骤（按序）
 
-1. **`justfile`**：`app_files` 的 root 列表加 `integration_test`
-   （`lib test` → `lib test integration_test`）。事实 ② 已确认该文件当前干净，不会因此冒出待修问题。
+1. **`justfile` 不改** —— 原计划在这里把 `integration_test` 加进 roots，该目录已随 `020235d`
+   删除。本测试只**读** `app_files` / `tool_files` 两行，不写它。
 2. **`test/tool/analyze_coverage_test.dart`**（新文件）：
    - 纯函数 + 假输入的正反例（照 `test/tool/check_doc_links_test.dart` 的写法）：
      - `topLevelDirsWithDart(paths)`：取顶层目录、去重排序、跳过 `.` 开头的隐藏目录
@@ -28,7 +31,7 @@ just test test/tool/analyze_coverage_test.dart   # 先单跑
 just verify                                      # 全量门禁
 # 三条 AC 的反向验证（都要还原现场）：
 #   1) touch example/foo.dart       → 失败并点名 example        ；rm -rf example
-#   2) justfile 去掉 integration_test → 失败并点名 integration_test
+#   2) justfile 的 roots 去掉一个仍存在的目录 → 失败并点名它   ；改完还原
 #   3) root 改成 nosuchdir            → 失败并说明「产出 0 个文件」
 just check-anchors                               # 只报告，确认无新增告警
 ```
@@ -45,7 +48,6 @@ just check-anchors                               # 只报告，确认无新增�
 
 ## 提交前检查
 
-- `git status` 里只有 3 个文件变动：`justfile`、`test/tool/analyze_coverage_test.dart`、
-  `.trellis/spec/cross-cutting.md`（+ 任务目录）
-- 未触碰 `10-11-doc-redundancy` 留下的 12 处未提交改动
+- `git status` 里只有 2 个文件变动：`test/tool/analyze_coverage_test.dart`、
+  `.trellis/spec/cross-cutting.md`（+ 任务目录）—— 收窄后**不再动 `justfile`**
 - 计划完成后由用户决定是否提交（本任务不含提交步骤）
