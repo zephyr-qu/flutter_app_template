@@ -18,8 +18,8 @@
 | `no_upper_import_in_core` | `core/**` 不能 import/export `features/**` 或 `app/**` |
 | `cross_feature_only_data` | 不能引用其他 feature 的 `page/` / `logic/`，跨 feature 只共享 `data/` |
 | `no_material_import_in_logic` | `features/*/logic/` 不得 import/export `material.dart` / `widgets.dart`，也不得引**本 feature** 的 `page/`（logic 是纯 Dart 状态层；`ChangeNotifier` / `@visibleForTesting` 所在的 `foundation` 放行） |
-| `no_service_locator_in_logic` | `features/*/logic/` 里不得出现 `getIt` / `GetIt.I`（构造器注入，理由见 [ADR-0001](../../docs/adr/ADR-0001.md)） |
-| `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()` 取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
+| `no_service_locator_in_logic` | `features/*/logic/` 里不得取 service locator（`getIt<X>()` / `GetIt.I<X>()` / `GetIt.instance<X>()` / `GetIt.I.get<X>()`，构造器注入，理由见 [ADR-0001](../../docs/adr/ADR-0001.md)） |
+| `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()`（含 `GetIt.I<*ViewModel>()` / `GetIt.instance<*ViewModel>()`）取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
 | `avoid_async_state_map` | 不得调用 `AsyncState.map`，三态渲染用 `AsyncView`（理由见 [ui/state-management.md](ui/state-management.md)「渲染状态」） |
 | `comment_block_too_long` | 连续注释块最多 10 行，超限就把解释搬进 spec（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)） |
 
@@ -50,8 +50,9 @@ plugins:
 - **analyze 的扫描面来自 justfile，漏目录不会报错**：roots 由根 `justfile` 的 `app_files` / `tool_files` 两条 `list_dart_files.dart` 调用决定；`git ls-files` 对不存在的路径返回空、退出码 0，所以「少写一个目录」只表现为门禁少看一批文件，与全绿毫无差别。两条断言兜住：每个含 Dart 源码的顶层目录必须被某个 root 覆盖，或在排除名单里（失败信息点名目录）；每个 root 各自必须列得到文件（失败信息说明「该 root 产出 0 个文件」）。新增顶层目录、给 root 改名或删目录时它会拦下 —— 见 [test/tool/analyze_coverage_test.dart](../../test/tool/analyze_coverage_test.dart)。
 - **`flutter analyze` 不加载插件**：同一份 `plugins:` 配置它只报「No issues found」。所以门禁是 `justfile` 里的两步 `dart analyze --fatal-infos`（`lib + test` 与 `tool + packages`），文件列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤）。**CI 与 pre-commit 都不自己拼这两步，统一跑 `just verify`** —— 调用形式抄错不报错、只少跑，所以不留第二份。
 - **读门禁输出要看退出码**：info → 0、warning → 2、error → 3；带 `--fatal-infos` 时 info 也变 1。CI 与 pre-commit 只认退出码，别用终端有没有红字判断。
-- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/generated_paths.dart` 一致，改动时要一起改。
+- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/generated_paths.dart` 一致，改动时要一起改（漂移由 `test/tool/generated_paths_consistency_test.dart` 拦下）。
 - **判据细节**：全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。
+- **规则 3/4 的节点形态**：生产代码的 `getIt` 是**对象**（`lib/di/service_locator.dart` 的 `final GetIt getIt = GetIt.instance;`），对象上的 `getIt<X>()` 走隐式 `call`，解析成 `FunctionExpressionInvocation`；`GetIt.I.get<X>()` 才是 `MethodInvocation`。两条规则都按**接收者名字**判定（`getIt` / `GetIt.I` / `GetIt.instance`）并同时订阅 `addMethodInvocation` 与 `addFunctionExpressionInvocation` —— 只订阅前者会让规则对仓库自己的写法静默失效。插件单测的桩必须镜像这个对象形态，由 `test/tool/lint_wiring_test.dart` 的 W4 拦下。
 - 规则 4 只看 `*ViewModel` 类型：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 也由规则 3 直接禁止取容器，不重复报。
 
 ```dart
@@ -64,6 +65,21 @@ final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
 ### 防「门禁静默失效」
 
 规则 1/2 靠 `packages/app_lints/lib/src/paths.dart` 里硬编码的 `selfPackagePrefix`（`package:my_app/`）把 `package:` URI 解析成仓库相对路径。它与根 `pubspec.yaml` 的 `name` 不同步时，解析静默返回 `null` —— 规则不报错、也不再报违规，**门禁变成空转**。`tool/init_project.dart` 改名会同步替换两者，手工改名漏掉一边由 `test/tool/self_package_prefix_test.dart` 拦下。
+
+「插件没被加载」「规则没被注册」「文档漂移」同样是静默失效：`dart analyze` 照常退出 0。`test/tool/lint_wiring_test.dart` 用四条静态断言兜住（**不** spawn `dart analyze`）：
+
+| 断言 | 抓什么失效 |
+| --- | --- |
+| W1 根 `analysis_options.yaml` 的 `plugins.app_lints.path` 指向的目录存在且含 `lib/main.dart` | 插件路径写错 / 包改名 / 入口搬走 → 插件根本不加载 |
+| W2 `main.dart` 里 `registerWarningRule(<XxxRule>())` 的类名集合 == `rules.dart` 里声明的具体规则类集合 | 漏注册某条规则 / 注册了不存在的类 |
+| W3 `rules.dart` 里 `LintCode('<name>', …)` 的名字集合 == 本文档规则表格里的清单 | 规则改名后文档漂移、spec 漏写新规则 |
+| W4 插件单测的 locator 桩形态 == `lib/di/service_locator.dart` 的实际声明形态，且生产侧必须是「对象」 | 桩退回函数形态 → 规则判据与生产形态脱节，测试全绿但规则对生产代码失效 |
+
+`test/tool/generated_paths_consistency_test.dart` 用两条断言兜住生成物口径的三处副本：把根 `.gitignore` 的生成物段落当**唯一真源**，归一成谓词集合，与 `tool/generated_paths.dart`、`packages/app_lints/lib/src/paths.dart` 各自抽取的谓词集合比对（D2 点名差异项），再用样例路径核对三处判定一致（D4）。口径来源见上「生成物豁免」。
+
+### 已知边界：`dart analyze` 真的会输出诊断吗
+
+W1–W4 覆盖「接线断掉」与「判定退化」，`rules_test.dart` 覆盖「规则逻辑对」，但**没有自动化门禁证明 `dart analyze` 真的会把诊断打出来** —— 插件 API 语义变化、`registerWarningRule` 行为变化都落在这一层。唯一能兜住它的是**活体探针**（把探针文件写进 `lib/`，真跑 `dart analyze` 断言诊断出现），单次热态实测约 +13s，本仓库有意不采用：探针必须写进 `lib/`（崩溃会残留），且要在测试里 spawn `dart analyze`。残留风险的取舍与替代方案记在 `.trellis/tasks/10-12-lint-self-proof/research/lint-plugin-wiring-findings.md`。
 
 ### 禁止模式
 
