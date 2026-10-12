@@ -196,3 +196,121 @@ Extracted an explicit `lib/app/` application layer (composition root) and flatte
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: 10-09 → 10-12 批次补记：.git 事故恢复、删 integration_test、skills 策略落定
+
+**Date**: 2026-10-12
+**Task**: 10-09 → 10-12 批次补记：.git 事故恢复、删 integration_test、skills 策略落定
+**Branch**: `master`
+
+### Summary
+
+本条目为**批次补记** —— 上个 journal 提交（`4150ee6`，2026-09-22）之后的 38 个提交没有逐次记录，这里一次补齐（09-27 → 10-12）。
+
+最重的一段是 **2026-10-12 的 `.git` 事故**：本仓库原为 linked worktree，`.git` 实体所在的主仓目录被删除，17 个未推送提交的历史丢失（**内容零丢失**）。已克隆远端接管 `.git` 并按净效果重建提交，全部已推送。
+
+### Main Changes
+
+本条目覆盖 `4150ee6`（2026-09-22）之后到 10-12 的全部 38 个提交。**只有 10-12 这一天是逐条记录的**；
+更早的 30 个（09-27 → 10-09）当时没记录，下面按主题概览补齐。
+
+#### 10-12（逐条）
+
+- **`.git` 丢失与恢复**（`f575e61` `f5dfcb8`）：原仓库是 linked worktree，`.git` 实体在
+  `F:\App\新建文件夹\flutter_app_template\.git\worktrees\flutter_app_template`，该目录
+  2026-10-12 15:06–15:09 被删除且**未进回收站**。远端 `master` 停在 `ced6626`，17 个本地提交
+  在任何远端 ref 上都不存在（逐个 `ls-remote` 核对过），**提交边界与消息不可恢复**；工作区文件
+  **零丢失**（内容等于 `ace3565` 那棵树）。恢复方式：克隆远端、把 clone 的真 `.git` 目录接管进
+  本目录，再按净效果重建两个提交（内容 + 任务记账）。原 worktree 指针备份在
+  `F:/App/flutter_app_template.gitdir-pointer.bak` —— 若哪天把主仓从备份/卷影副本找回，凭它可接回
+  那 17 个提交的真实历史。教训：**linked worktree 的存活依赖主仓目录；本地提交不推等于没有备份。**
+- **删掉 `integration_test` 端到端冒烟**（`020235d`）：目录、`just e2e`、CI 的 `integration-test` job
+  （Android 模拟器 + KVM）、`integration_test` 依赖声明，以及 README / release-checklist / spec ×4 /
+  `.cursor` 规则里的全部引用。原「集成测试」节里两块**不属于**集成测试的内容拆成独立小节保留
+  （`## Android 依赖仓库镜像`、`## widget 测试里不要用真实 I/O`）。代价已如实记入提交消息：
+  **真机/真引擎启动那一层不再有自动化覆盖**。端到端需要时按 `docs/optional-additions.md` 上 `patrol`。
+- **`.agents/skills` 入库策略定为「随仓库分发的资产」（方案 B）**（`ade6977` `1cde4f0` `c8fc71b`）：
+  方案 A（内容不入库、只留 lock）被否，因为前提不成立 —— `orca` 不在 PATH、仓库里无任何东西读
+  `skills-lock.json`、且 lock 与磁盘已不一致（28 条 vs 27 个目录，`signals_hooks` 那条指向不存在的
+  路径）。README 写清来源三仓库（`dart-lang/skills` 12、`flutter/skills` 10、`rodydavis/signals.dart` 6）
+  与更新方式；`AGENTS.md` 托管块内那句描述跟着改。
+- **10-12 任务的规划与收窄**（`d81ed5f` `3604193`）：`integration_test` 删除后，其触发点消失，
+  收窄为 R2–R5 的**纯预防性断言**（顶层目录覆盖完整性 + root 产出非空）。
+
+#### 09-27 → 10-09（未记录批次的主题概览，30 个提交）
+
+- **单包化**：拍平 `packages/app_core` 回 `lib/core`；生成物不入库、忽略规则收敛；env 走编译期注入
+  —— 后来又回到 dotenv 口径
+- **门禁换代**：`app_lints` 分析插件接管架构边界与代码形态规则（新增 `no_material_import_in_logic`）；
+  门禁收敛为一条 `just verify`；覆盖率**不再**设门禁；`pre-commit` 两处修复（生成物备份改用真实 git
+  目录、stash pop 失败不再静默放行）
+- **文档治理**：spec 层目录按主题改名 `backend/frontend` → `data/ui`；spec 索引收敛为单入口；
+  新增文档链接门禁（`tool/check_doc_links.dart`）与锚点报告工具；删 `BRANCH.md` 与失效的架构评估快照；
+  README 精简 322 → 114 行
+- **分支与任务**：分支收敛为 `master` + `preset/ai-starter` 两条；归档 09-22 / 09-29 各任务；
+  依赖升级（含 6 个 dependabot PR 与 `pub upgrade`）
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3604193` | (see git log) |
+| `c8fc71b` | (see git log) |
+| `1cde4f0` | (see git log) |
+| `ade6977` | (see git log) |
+| `020235d` | (see git log) |
+| `d81ed5f` | (see git log) |
+| `f5dfcb8` | (see git log) |
+| `f575e61` | (see git log) |
+| `ced6626` | (see git log) |
+| `611509c` | (see git log) |
+| `4f81f85` | (see git log) |
+| `be326b9` | (see git log) |
+| `5362e26` | (see git log) |
+| `a85885d` | (see git log) |
+| `6d8e1d8` | (see git log) |
+| `d0cabd3` | (see git log) |
+| `904e8d7` | (see git log) |
+| `bd2728f` | (see git log) |
+| `7eb64c8` | (see git log) |
+| `41443cd` | (see git log) |
+| `9e189b4` | (see git log) |
+| `c33027f` | (see git log) |
+| `04d3e6b` | (see git log) |
+| `9021580` | (see git log) |
+| `023ee49` | (see git log) |
+| `17dc22e` | (see git log) |
+| `25d78b4` | (see git log) |
+| `79e1ab8` | (see git log) |
+| `c57d1e1` | (see git log) |
+| `05749ce` | (see git log) |
+| `4b23e0e` | (see git log) |
+| `d6707e5` | (see git log) |
+| `e41f90f` | (see git log) |
+| `8aa46bf` | (see git log) |
+| `23ca765` | (see git log) |
+| `3cc6aab` | (see git log) |
+| `4410d31` | (see git log) |
+| `a36e4f0` | (see git log) |
+
+### Testing
+
+- [OK] `just verify` 全绿：339 项测试（含 `test-readme-tree` / `test-doc-links`）；本批次每个提交都过了 `pre-commit` 钩子
+- [OK] `just check-anchors`：138 个文件全对上，无新增告警
+- [OK] `dart run tool/check_doc_links.dart`：138 个文件全绿，exit 0
+- [OK] `git fsck` 干净；另有 2 个 dangling commit，是 `pre-commit` 钩子自己的 stash 快照（无害，`git gc` 可清）
+- [!!] **未覆盖**：删掉 `integration_test` 后，真机 / 真引擎上启动那一层不再有任何自动化覆盖（有意接受的代价，已写进 `020235d` 的提交消息）
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- `10-12-analyze-coverage-guard`：唯一活跃任务（planning），已收窄为 R2–R5 的预防性断言，待开工
+- 模板的端到端能力现在是留白：需要时按 `docs/optional-additions.md` 上 `patrol`
+- 若哪天把 `F:\App\新建文件夹` 从备份 / 卷影副本找回，凭 `F:/App/flutter_app_template.gitdir-pointer.bak` 可接回那 17 个提交的真实历史
+- `.agents/skills` 的两处遗留（`computedHash` 对不上、不在任何门禁视野内）见归档任务
+  `.trellis/tasks/archive/2026-10/10-10-skills-vendoring-policy/implement.md`
