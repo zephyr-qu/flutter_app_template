@@ -1,6 +1,5 @@
 # 跨层与门禁
 
-> 不属于单一层、或同时管「门禁」与「发布」的约定。
 > 层次内的规则见 [spec/index.md](index.md)。
 
 ---
@@ -264,7 +263,7 @@ CI 用 `reactivecircus/android-emulator-runner` 在 Android 模拟器上跑（�
 
 ### 测试内容
 
-当前集成测试覆盖（快照 2026-09，实际以 `integration_test/app_test.dart` 为准）：
+当前集成测试覆盖（快照 2026-10，实际以 `integration_test/app_test.dart` 为准）：
 
 - 应用正常启动，经启动页（约 1.8s 动画，2.2s 后跳转）进入 `MainRoute` 主框架
 - 底部导航栏存在、首页文案渲染出来
