@@ -47,6 +47,7 @@ plugins:
 七条都用 `registerWarningRule` 注册 → **默认开**，不需要在 `diagnostics:` 里逐条打开（只有 `registerLintRule` 注册的才默认关）。
 
 - **`dart analyze` 必须显式传文件名**：插件诊断只在显式传文件时输出，单文件、多文件都行，**传目录不行**——目录模式不报错、只是静默少跑规则，正是「有门禁的错觉」的形态。
+- **analyze 的扫描面来自 justfile，漏目录不会报错**：roots 由根 `justfile` 的 `app_files` / `tool_files` 两条 `list_dart_files.dart` 调用决定；`git ls-files` 对不存在的路径返回空、退出码 0，所以「少写一个目录」只表现为门禁少看一批文件，与全绿毫无差别。两条断言兜住：每个含 Dart 源码的顶层目录必须被某个 root 覆盖，或在排除名单里（失败信息点名目录）；每个 root 各自必须列得到文件（失败信息说明「该 root 产出 0 个文件」）。新增顶层目录、给 root 改名或删目录时它会拦下 —— 见 [test/tool/analyze_coverage_test.dart](../../test/tool/analyze_coverage_test.dart)。
 - **`flutter analyze` 不加载插件**：同一份 `plugins:` 配置它只报「No issues found」。所以门禁是 `justfile` 里的两步 `dart analyze --fatal-infos`（`lib + test` 与 `tool + packages`），文件列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤）。**CI 与 pre-commit 都不自己拼这两步，统一跑 `just verify`** —— 调用形式抄错不报错、只少跑，所以不留第二份。
 - **读门禁输出要看退出码**：info → 0、warning → 2、error → 3；带 `--fatal-infos` 时 info 也变 1。CI 与 pre-commit 只认退出码，别用终端有没有红字判断。
 - **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/generated_paths.dart` 一致，改动时要一起改。
