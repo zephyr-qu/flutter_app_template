@@ -121,7 +121,7 @@ Drift 的表结构与 `AppDatabase` 都在 `lib/core/data/database/`（快照 20
 
 ### 数据层的文件角色
 
-层级依赖方向是 `page/ → logic/ → data/ → core/`（由 `packages/app_lints` 插件强制，见 [./cross-cutting.md](./cross-cutting.md)「架构边界与形态约定」）；数据在层间的流向见 [../guides/cross-layer-thinking-guide.md](../guides/cross-layer-thinking-guide.md)。
+层级依赖方向是 `page/ → logic/ → data/ → core/`（由 `packages/app_lints` 插件强制，见 [./cross-cutting.md](./cross-cutting.md)「架构边界与形态约定」）；数据在层间的流向见 [guides/cross-layer-thinking-guide.md](./guides/cross-layer-thinking-guide.md)。
 
 | 文件 | 角色 | 备注 |
 | --- | --- | --- |
