@@ -365,3 +365,52 @@ Phase 2.1 / 2.2 分别由 `trellis-implement` / `trellis-check` 子代理完成�
 
 - 无活跃任务（`task.py list` 为空），`archive/2026-10/` 现有 13 个任务
 - 若要给这道门补「生成物过滤」的独立单测、或把 `.agents/skills/**` 纳入链接门禁，另开任务
+
+
+## Session 7: 清理冗余文件：46 个 Trellis 占位 jsonl + code-workspace
+
+**Date**: 2026-10-12
+**Task**: 清理冗余文件：46 个 Trellis 占位 jsonl + code-workspace
+**Branch**: `master`
+
+### Summary
+
+全库审计后只清掉两类真冗余：23 个归档任务里的 46 个模板占位 jsonl（零信息量）与一个与 `.gitignore` 矛盾、却一直被跟踪的 `my_app.code-workspace`。
+
+已跟踪文件 591 → 544。门禁无影响 —— 这些文件本就不在任何扫描面内，删前删后 `just verify` 都是全绿（354 用例）。
+
+### Main Changes
+
+- **先盘后删**（全库审计，不先斩后奏）：
+  - 「被 `.gitignore` 命中却仍在版本库里」全库只有 2 条 —— `my_app.code-workspace`（真矛盾）与 `.env.example`（`!.env.example` 反向规则的正常结果，误报）
+  - 「内容完全相同」的已跟踪文件 47 组：其中 46 个是 Trellis 模板占位 jsonl；其余是 vendored skills 的内部重复页与 iOS / Android 上游样板
+  - 无 `.bak` / `.orig` / `.tmp` / 零字节文件，也无 `.DS_Store` / `Thumbs.db`
+- **删除 47 个文件**（`b07e4d4`）：
+  - 46 个占位 jsonl：`.trellis/tasks/archive/**/{check,implement}.jsonl`。23 个归档任务**两个文件都是**占位（没有「一个填了、一个没填」的半吊子状态），内容只有模板那两行 `_example` 提示，合计 11.6 KB。只删占位的，**已填内容的 12 个**（6 个任务，含 `10-12`）保留。
+  - `my_app.code-workspace`：`.gitignore:42` 明写忽略它、它却一直在库里，而内容只有 `{"folders":[{"path":"."}],"settings":{}}` —— 比那条规则更没道理。
+- **删前查过两处依赖**：这些 jsonl 不在任何门禁扫描面内（`check_doc_links` / `check_readme_tree` 都排除 `.trellis/tasks/**`），也未登记在 `.trellis/.template-hashes.json`（`tasks/` 零条）→ 既不影响门禁，也不影响 `trellis update`。
+- **有意没动的**：vendored skills 的内部重复页（10-10 方案 B：内容原样入库，手改只会让 `computedHash` 差得更远）、iOS / Android 模板占位（`Contents.json` / Gradle 引用着，删了破构建）、空 `assets/`（`template-pruning.md` 记录的 `TODO(template)` 留白）、`build/` + `.dart_tool/`（是缓存不是冗余）、以及仓库外的 `flutter_app_template.gitdir-pointer.bak`（接回那 17 个丢失提交真实历史的唯一凭据）。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b07e4d4` | (see git log) |
+
+### Testing
+
+- [OK] `just verify` 全绿：**354 用例** —— 删前删后无差别（被删的文件不在任何门禁扫描面内）
+- [OK] `pre-commit` 钩子在提交时又独立跑了一次完整 `just verify`
+- [OK] 与远端同步（`0 / 0`），远端 `master` = `b07e4d4`
+- [OK] 已跟踪文件数 591 → 544；`git status` 干净；`jsonl` 只剩已填内容的 12 个
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 无活跃任务（`task.py list` 为空）
+- 仓库外的 `F:/App/flutter_app_template.gitdir-pointer.bak` **别删** —— 若哪天把主仓从备份 / 卷影副本找回，凭它可接回那 17 个提交的真实历史
+- 这次没清的只剩本地产物 `build/` + `.dart_tool/`（约 192MB 缓存，非冗余；清完要重跑 `just deps` + `just codegen`）
