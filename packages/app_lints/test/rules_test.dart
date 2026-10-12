@@ -29,19 +29,28 @@ void main() {
 /// 一个能编译通过的 service locator 形态，避免用未定义标识符污染断言。
 ///
 /// 两条约束：
-/// - 形状照 get_it 的真实形态：`getIt<T>()` 是**顶层函数**、`GetIt.I` 是带成员的
-///   对象。刻意不写成「`getIt` 是可调用对象」——那样 `getIt<T>()` 会被解析成隐式的
-///   `call` 调用，规则拿到的是**合成**节点，而 `reportAtNode` 对合成节点不产生诊断，
-///   断言会假失败。
+/// - 形状**镜像生产代码**（`lib/di/service_locator.dart`）：`getIt` 是**对象**
+///   （`final GetIt getIt = GetIt.instance;`），`getIt<T>()` 走 `GetIt.call`；
+///   `GetIt.I` / `GetIt.instance` 是访问单例的两种写法。只测顶层函数形态会让规则
+///   对生产代码静默失效 —— 那正是这个桩要防住的退化。
 /// - 桩里**不能**出现真的 locator 取用（如 `GetIt.I.get<T>()`）：桩与用例同在
 ///   被测文件里，桩自己那一次也会被规则报出来。
 const String _locatorStub = '''
 class GetIt {
-  static GetIt I = GetIt();
+  static GetIt instance = GetIt();
+  static GetIt get I => instance;
+  T call<T>() => _zero as T;
   T get<T>() => _zero as T;
   void reset() {}
 }
 
+final Object _zero = 0;
+
+final GetIt getIt = GetIt.instance;
+''';
+
+/// 顶层函数形态：生产代码里不存在，规则仍保留该分支，避免行为随工程漂移。
+const String _locatorFunctionStub = '''
 final Object _zero = 0;
 
 T getIt<T>() => _zero as T;
@@ -195,12 +204,30 @@ class ServiceLocatorInLogicRuleTest extends AnalysisRuleTest {
     await assertDiagnostics(source, [lint(offset, invocation.length)]);
   }
 
-  Future<void> test_getIt_function() => _flag('getIt<FooViewModel>()');
+  Future<void> test_getIt_implicit_call() => _flag('getIt<FooViewModel>()');
 
-  Future<void> test_GetIt_dot_I_member_with_type_argument() =>
+  Future<void> test_GetIt_dot_I_implicit_call() =>
+      _flag('GetIt.I<FooViewModel>()');
+
+  Future<void> test_GetIt_dot_instance_implicit_call() =>
+      _flag('GetIt.instance<FooViewModel>()');
+
+  Future<void> test_GetIt_dot_I_get_method() =>
       _flag('GetIt.I.get<FooViewModel>()');
 
+  Future<void> test_getIt_get_method() => _flag('getIt.get<FooViewModel>()');
+
   Future<void> test_GetIt_dot_I_member_access() => _flag('GetIt.I.reset()');
+
+  void test_top_level_function_form() async {
+    const invocation = 'getIt<FooViewModel>()';
+    final source =
+        '$_locatorFunctionStub$_viewModelStub'
+        'FooViewModel probe() => $invocation;\n';
+    final offset = source.indexOf(invocation);
+
+    await assertDiagnostics(source, [lint(offset, invocation.length)]);
+  }
 
   void test_constructor_injection_ok() async {
     final source =

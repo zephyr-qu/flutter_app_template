@@ -112,7 +112,10 @@ class ServiceLocatorInLogicRule extends AnalysisRule {
     RuleVisitorRegistry registry,
     RuleContext context,
   ) {
-    registry.addMethodInvocation(this, _ServiceLocatorVisitor(this, context));
+    final visitor = _ServiceLocatorVisitor(this, context);
+    registry
+      ..addMethodInvocation(this, visitor)
+      ..addFunctionExpressionInvocation(this, visitor);
   }
 }
 
@@ -340,12 +343,20 @@ class _ServiceLocatorVisitor extends SimpleAstVisitor<void> {
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
+    if (_isLocatorLookup(node)) _check(node);
+  }
+
+  @override
+  void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
+    if (_isLocatorImplicitCall(node)) _check(node);
+  }
+
+  void _check(AstNode node) {
     if (!_context.isInLibDir) return;
 
     final fromPath = currentPath(_context);
     if (fromPath == null || isGeneratedPath(fromPath)) return;
     if (!_isFeatureLogic(fromPath)) return;
-    if (!_isServiceLocatorLookup(node)) return;
 
     _rule.reportAtNode(node);
   }
@@ -390,13 +401,21 @@ class _PageInjectionPointVisitor extends SimpleAstVisitor<void> {
 
 /// 收集「从容器取过的 ViewModel 类型」→ 首次出现的那次调用。
 class _ContainerLookupCollector extends RecursiveAstVisitor<void> {
-  final Map<String, MethodInvocation> firstByType = {};
+  /// key 是 `*ViewModel` 类型名，value 是首次出现的那次调用。
+  final Map<String, AstNode> firstByType = {};
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
     final type = _containerViewModelType(node);
     if (type != null) firstByType.putIfAbsent(type, () => node);
     super.visitMethodInvocation(node);
+  }
+
+  @override
+  void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
+    final type = _containerViewModelTypeFromCall(node);
+    if (type != null) firstByType.putIfAbsent(type, () => node);
+    super.visitFunctionExpressionInvocation(node);
   }
 }
 
@@ -502,29 +521,43 @@ class _StringRangeVisitor extends RecursiveAstVisitor<void> {
   }
 }
 
-/// 是否是一次 service locator 取用 —— 覆盖 get_it 的两种真实形态：
-/// 顶层函数 `getIt<X>()`，以及 `GetIt.I` 上的成员调用 `GetIt.I.get<X>()`。
+/// 接收者是不是本项目的 service locator —— 按**名字**判定，与 `_isNamed` 同一风格：
+/// 认 `getIt`（生产代码里是对象）、`GetIt.I` 与 `GetIt.instance`。
 ///
-/// 换个写法不该绕过规则，所以判据落在「接收者是 `getIt` 或 `GetIt.I`」上，
-/// 而不是某一种调用形态。
-///
-/// 刻意不支持 `GetIt.I<X>()`（把 `I` 当可调用对象并显式给类型实参）：那种写法
-/// 会被解析成隐式的 `call` 调用，节点是**合成**的，而 `reportAtNode` 对合成节点
-/// 不产生诊断 —— 想支持得先拿到非合成的锚点，收益不抵复杂度，get_it 的用法里
-/// 也不存在。`getIt` 同理：本项目里它是顶层函数，不是可调用对象。
-bool _isServiceLocatorLookup(MethodInvocation node) {
+/// 不按静态类型判定：插件通道里规则同时拿到未解析与已解析的 AST，名字在两种上下文
+/// 都成立（见 cross-cutting.md「架构边界与代码形态」）。
+bool _isLocatorReceiver(Expression? expression) =>
+    _isNamed(expression, 'getIt') || _isGetItSingleton(expression);
+
+/// MethodInvocation 形态：显式成员调用 `GetIt.I.get<X>()` / `getIt.get<X>()`，
+/// 以及顶层函数形态 `getIt<X>()`（methodName 为 `getIt`、无接收者）。
+bool _isLocatorLookup(MethodInvocation node) {
   if (node.methodName.name == 'getIt' && node.target == null) return true;
-  return _isNamed(node.target, 'getIt') || _isGetItInstance(node.target);
+  return _isLocatorReceiver(node.target);
 }
+
+/// FunctionExpressionInvocation 形态：对象上的隐式 `call` —— `getIt<X>()` /
+/// `GetIt.I<X>()` / `GetIt.instance<X>()`。生产代码的 `getIt` 是对象，走的正是这条。
+bool _isLocatorImplicitCall(FunctionExpressionInvocation node) =>
+    _isLocatorReceiver(node.function);
 
 /// 从 `getIt<XxxViewModel>()` 里取出 `XxxViewModel`；不是这种形态返回 null。
 ///
 /// 只看显式类型实参、且以 `ViewModel` 结尾的形式（与旧脚本「只看 `*ViewModel`」
 /// 的口径一致）：`getIt<AuthStorage>()` 这类直接取依赖的页面不归本规则管。
 String? _containerViewModelType(MethodInvocation node) {
-  if (!_isServiceLocatorLookup(node)) return null;
+  if (!_isLocatorLookup(node)) return null;
+  return _viewModelTypeFrom(node.typeArguments);
+}
 
-  final typeArguments = node.typeArguments;
+/// 同上，`FunctionExpressionInvocation` 版本（`getIt<T>()` 的对象形态）。
+String? _containerViewModelTypeFromCall(FunctionExpressionInvocation node) {
+  if (!_isLocatorImplicitCall(node)) return null;
+  return _viewModelTypeFrom(node.typeArguments);
+}
+
+/// 类型实参里唯一的 `*ViewModel` 类型名；否则 null。
+String? _viewModelTypeFrom(TypeArgumentList? typeArguments) {
   if (typeArguments == null || typeArguments.arguments.length != 1) return null;
 
   final type = typeArguments.arguments.single;
@@ -546,16 +579,18 @@ bool _isNamed(Expression? expression, String expected) => switch (expression) {
   _ => false,
 };
 
-/// `GetIt.I` —— `GetIt` 是前缀或属性两种形态都算。
-bool _isGetItInstance(Expression? expression) => switch (expression) {
+/// 访问 `GetIt` 的单例：`GetIt.I` 与 `GetIt.instance` 都算，`GetIt` 是前缀或属性两种形态都认。
+bool _isGetItSingleton(Expression? expression) => switch (expression) {
   PrefixedIdentifier(:final prefix, :final identifier) =>
-    prefix.name == 'GetIt' && identifier.name == 'I',
+    prefix.name == 'GetIt' && _isSingletonName(identifier.name),
   PropertyAccess(:final target, :final propertyName) =>
     target is SimpleIdentifier &&
         target.name == 'GetIt' &&
-        propertyName.name == 'I',
+        _isSingletonName(propertyName.name),
   _ => false,
 };
+
+bool _isSingletonName(String name) => name == 'I' || name == 'instance';
 
 bool _isFeatureLogic(String path) =>
     RegExp('(?:^|/)features/[^/]+/logic/').hasMatch(path);
