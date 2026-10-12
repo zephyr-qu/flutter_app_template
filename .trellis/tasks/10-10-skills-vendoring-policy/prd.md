@@ -19,9 +19,13 @@
 | ⑧ | 21 处第三方作者的本机绝对路径，集中在 `signals-hooks` 的 **2 个文件**里 | `git grep -c "file:///Users/" -- .agents` → `CONTEXT.md:1`、`SKILL.md:20` |
 | ⑨ | 该平台**确实会读** `.agents/skills/`（本会话加载的 skill 列表里就有它们） | 会话上下文中的 available skills 指向 `F:\App\flutter_app_template\.agents\skills\...` |
 
-## 待你拍板的分叉
+## 分叉：已选 B（2026-10-12 拍板）
 
-现状的两种自洽定位只能选一个：
+现状的两种自洽定位只能选一个 —— **用户 2026-10-12 拍板选 B**（承认它是随仓库分发的资产）。
+理由：A 的**前提不成立**。本会话实测：`orca` 不在 PATH（`command not found`）；仓库内除本任务的
+笔记外无任何东西读 `skills-lock.json`；且 lock 与磁盘已经不一致 —— 28 条 vs 磁盘 27 个目录，
+其中 `signals_hooks`（下划线）指向 `.agents/skills/signals_hooks/SKILL.md`，该路径**不存在**。
+故 A 目前不可验证（选它等于 fresh clone 后 skills 消失且无从还原）。下面两案原文保留备查。
 
 ### 方案 A：按本仓库自己的原则办（内容不入库，lock 入库）
 
@@ -56,12 +60,12 @@
 
 ## Acceptance Criteria
 
-- [ ] `.agents/skills/**` 的定位在 README 或 AGENTS 里写清楚（入库资产 / 安装产物，二者之一）
-- [ ] 若选 A：`.gitignore` 有对应规则、`skills-lock.json` 仍在、还原命令写进文档且**实测可用**
-- [ ] 若选 B：README 说清 `skills-lock.json` 是什么、来源三个仓库、怎么更新
-- [ ] `signals-hooks` 的 21 处本机路径清零（`git grep -c "file:///Users/" -- .agents` → 无输出）
-- [ ] `just verify` 全绿；`dart run tool/check_doc_links.dart` 全绿
-- [ ] 兄弟工作树未被写入
+- [x] `.agents/skills/**` 的定位在 README 或 AGENTS 里写清楚（入库资产 / 安装产物，二者之一）
+- **未选 A**，故「若选 A：`.gitignore` 有对应规则、`skills-lock.json` 仍在、还原命令实测可用」这条不适用（A 的前提不成立，见上）
+- [x] 若选 B：README 说清 `skills-lock.json` 是什么、来源三个仓库、怎么更新
+- [x] `signals-hooks` 的 21 处本机路径清零（`git grep -c "file:///Users/" -- .agents` → 无输出）
+- [x] `just verify` 全绿；`dart run tool/check_doc_links.dart` 全绿
+- [x] 兄弟工作树未被写入
 
 ## Notes
 
