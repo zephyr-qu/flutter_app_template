@@ -106,6 +106,11 @@ lib/
 - **`TODO(template)`** — 刻意留空的骨架占位（含**尚不存在**的 `assets/icon/icon.png`），清单见
   [template-pruning.md](docs/template-pruning.md)
 - **`docs/optional-additions.md`** — 有意不预装的包，以及每个包的「什么时候才该加」
+- **`.agents/skills/`** — 从 GitHub 装来的第三方 skill **资产**（27 个目录 / 136 个文件，随仓库分发、
+  clone 即用）。来源与每个 skill 的路径见根 [`skills-lock.json`](skills-lock.json)：`dart-lang/skills` 12、
+  `flutter/skills` 10、`rodydavis/signals.dart` 6。**更新**：用装它们的工具重装后，把 `.agents/skills/**`
+  与 lock 一起提交 —— 本仓库不提供安装 / 还原命令，所以它们不能按「生成物不入库」处理（那样 clone 后就没了）；
+  另外 `signals-hooks` 已被本地打过补丁，重装会把它冲掉。
 - **测试** — `mocktail` 模拟外部依赖，含 ViewModel / Widget / 数据库测试；覆盖率**不设门禁**
   （取舍见 [cross-cutting.md](.trellis/spec/cross-cutting.md)「覆盖率」）
 

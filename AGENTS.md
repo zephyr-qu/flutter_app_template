@@ -88,7 +88,7 @@ If a Trellis command is available on your platform (e.g. `/trellis:finish-work`,
 
 If you're using an agent-capable tool, additional project-scoped helpers live in:
 
-- `.agents/skills/` — reusable Trellis skills
+- `.agents/skills/` — vendored third-party agent skills (sources in `skills-lock.json`)
 
 Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
 
