@@ -8,7 +8,7 @@ part 'sample_api.g.dart';
 ///
 /// 路径与 `core/data/network/dio_client.dart` 注册的 Mock 规则逐一对应，
 /// 开发期没有后端也能跑通；规则必须用 `MockRule.regex` 且锚定结尾
-/// （见 backend/network-guidelines.md）。
+/// （见 data/network-guidelines.md）。
 @RestApi()
 abstract class SampleApi {
   factory(Dio dio) = _SampleApi;

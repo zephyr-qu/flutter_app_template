@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 /// 设计 token：**只放 `ColorScheme` 表达不了的东西**（目前是圆角），不含任何 `Color` 字段。
 ///
-/// 边界校验命令与理由见 frontend/component-guidelines.md「Theme Layer」。
+/// 边界校验命令与理由见 ui/component-guidelines.md「Theme Layer」。
 @immutable
 class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   const new({this.radiusSm = 8, this.radiusMd = 16, this.radiusLg = 24});

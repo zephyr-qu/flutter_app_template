@@ -32,7 +32,7 @@ Drift / SharedPreferences + **单语言中文**（没有 l10n）。
    设计取舍、踩坑、对照表格写 `.trellis/spec/`；连续注释块上限 10 行（约定）。
 6. **不擅自扩大改动**：脚手架里的「有意留白」不是待办，除非用户明确要求（清单见 `.trellis/spec/cross-cutting.md`「有意留白」）。
 
-## 目录与命名（权威见 `.trellis/spec/frontend/directory-structure.md`）
+## 目录与命名（权威见 `.trellis/spec/directory-structure.md`）
 
 - 依赖方向 `app → features → core`，由 `packages/app_lints` 插件强制；feature 内是 `page/` → `logic/` → `data/`。
 - 唯一照抄对象：`lib/features/sample/`（data 三形态 + logic + page + 对应测试）。

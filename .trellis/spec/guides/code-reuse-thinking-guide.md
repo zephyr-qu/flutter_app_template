@@ -52,7 +52,7 @@ grep -rn "MockRule" lib/          # 找相似逻辑（关键词选项目里独�
 **该抽的时候**：同一段代码出现 3+ 次、复杂到会出 bug、2+ 个 feature 都需要它（提到 `core/` 的门槛）。**转换 / 判断类例外** —— 第 2 处就抽。
 **不该抽的时候**：只用一次、一行就写完、抽象比重复本身更复杂。
 
-> ⚠️ **不要提前抽取不稳定的基类** —— 宁可重复写两次。见 [../frontend/directory-structure.md](../frontend/directory-structure.md) 的「共享层（core/）严格克制」。
+> ⚠️ **不要提前抽取不稳定的基类** —— 宁可重复写两次。见 [../directory-structure.md](../directory-structure.md) 的「共享层（core/）严格克制」。
 
 ---
 

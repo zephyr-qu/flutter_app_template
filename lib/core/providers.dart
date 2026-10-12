@@ -8,7 +8,7 @@ part 'providers.g.dart';
 
 // 应用级基础设施单例的装配：Riverpod 里「单例」就是 keepAlive provider，
 // 不需要注册表或 `lib/di/`。**不得**在这里读 dotenv：`NetworkConfig` 只有
-// `networkConfigProvider` 一个来源（见 backend/network-guidelines.md）。
+// `networkConfigProvider` 一个来源（见 data/network-guidelines.md）。
 
 /// 用户偏好的底层存储。
 ///

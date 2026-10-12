@@ -9,7 +9,7 @@
 // 就报位置并非零退出（磁盘不变）；重复执行幂等；未实现的轴（如 `--theme`）
 // 报错，不静默忽略。
 // l10n 做成参数而不是分支：它横切多个文件，分支会在这些文件上反复冲突。
-// 裁剪步骤与反向恢复见 frontend/localization.md。
+// 裁剪步骤与反向恢复见 ui/localization.md。
 
 import 'dart:convert';
 import 'dart:io';
@@ -129,7 +129,7 @@ void main(List<String> args) {
   stdout
     ..writeln('\n✅ 裁剪完成（--l10n=single）。接下来请手动确认：')
     ..writeln('   1. just verify')
-    ..writeln('   2. .trellis/spec/frontend/localization.md 描述的是多语言形态，')
+    ..writeln('   2. .trellis/spec/ui/localization.md 描述的是多语言形态，')
     ..writeln('      单语言分支上它已过期 —— 删掉或改写，并同步 .trellis/spec/index.md 的链接');
 }
 
@@ -610,7 +610,7 @@ final List<Replacement> _l10nReplacements = <Replacement>[
   // ── 文档目录树：去掉 l10n/ ──
   // README 已无目录树，只需改 spec
   const Replacement(
-    '.trellis/spec/frontend/directory-structure.md',
+    '.trellis/spec/directory-structure.md',
     'spec 目录树去掉 l10n/',
     '├── l10n/                      # 国际化（见 localization.md）\n'
         '│   ├── app_zh.arb             #   模板语言：中文\n'
@@ -682,8 +682,8 @@ final List<Replacement> _l10nReplacements = <Replacement>[
   const Replacement(
     'lib/features/profile/page/profile_page.dart',
     '去掉注释里对 _languageLabel 的引用',
-    '  /// 与 [_languageLabel] 相反，主题名用当前界面语言书写（见 frontend/localization.md）\n',
-    '  /// 主题名直接写中文（见 frontend/localization.md「文案写在哪」）\n',
+    '  /// 与 [_languageLabel] 相反，主题名用当前界面语言书写（见 ui/localization.md）\n',
+    '  /// 主题名直接写中文（见 ui/localization.md「文案写在哪」）\n',
   ),
   const Replacement(
     'lib/features/profile/page/profile_page.dart',
@@ -759,7 +759,7 @@ final List<Removal> _l10nRemovals = <Removal>[
   const Removal(
     'lib/features/profile/page/profile_page.dart',
     '移除 _languageLabel',
-    '  /// 语言名用它自己的语言书写（见 frontend/localization.md）\n',
+    '  /// 语言名用它自己的语言书写（见 ui/localization.md）\n',
     '      _ => AppLocalizations.of(context).languageSystem,\n    };\n  }\n',
   ),
   const Removal(

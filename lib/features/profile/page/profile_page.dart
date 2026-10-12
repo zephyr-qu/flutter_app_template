@@ -133,7 +133,7 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  /// 主题名直接写中文（见 frontend/localization.md「文案写在哪」）
+  /// 主题名直接写中文（见 ui/localization.md「文案写在哪」）
   String _themeLabel(BuildContext context, ThemeMode mode) {
     return switch (mode) {
       ThemeMode.system => '跟随系统',

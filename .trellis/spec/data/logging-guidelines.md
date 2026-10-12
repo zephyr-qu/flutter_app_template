@@ -1,7 +1,5 @@
 # 日志规范
 
-> 本项目的日志约定。
-
 ---
 
 ## 概览
@@ -53,7 +51,7 @@ class Logging {
 
 ## 日志写在哪里
 
-> 快照（2026-09）：改动相关代码时请同步本节。查全量：`grep -rn "Logging\." lib/`
+> 快照（2026-10）：改动相关代码时请同步本节。查全量：`grep -rn "Logging\." lib/`
 
 | 位置（文件名相对 `lib/`） | 记什么 |
 | --- | --- |
@@ -73,7 +71,7 @@ HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMo
 - 新增敏感字段时同步 `LogRedactor.sensitiveKeys`，并在 `test/core/logging/log_redactor_test.dart` 里补一条
 
 > **Notifier 里没有日志框架，也没有 `dispose()` 生命周期钩子。** Notifier 是 `@riverpod` 生成的普通 Dart 类；状态错误通过 `AsyncValue.error`（携带 `Failure`）流到界面，**不经过 logger**。需要在状态层记日志时直接用 `Logging` 门面，不要另建一套。
-> 清理动作（流订阅、`Listenable`、控制器）登记在 `ref.onDispose`，见 [frontend/state-management.md](../frontend/state-management.md)「生命周期」。
+> 清理动作（流订阅、`Listenable`、控制器）登记在 `ref.onDispose`，见 [ui/state-management.md](../ui/state-management.md)「生命周期」。
 
 ---
 

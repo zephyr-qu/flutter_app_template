@@ -53,7 +53,7 @@ enum FailureCode {
 /// 四类失败：网络（超时 / 连不上 / 证书失败，含 408）/ 认证（401、403）/
 /// 服务端（多数 4xx、5xx）/ 兜底（取消、无法归类）。
 ///
-/// 「产生 → 分派 → 渲染」的完整流程见 backend/error-handling.md。
+/// 「产生 → 分派 → 渲染」的完整流程见 data/error-handling.md。
 sealed class Failure implements Exception {
   const new({required this.code, this.statusCode});
 

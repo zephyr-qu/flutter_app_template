@@ -6,7 +6,7 @@
 
 ## 现状
 
-> 快照（2026-09）：改动相关代码时请同步本节。核对命令见下方每行。
+> 快照（2026-10）：改动相关代码时请同步本节。核对命令见下方每行。
 
 | 项 | 现状 |
 | --- | --- |
@@ -39,7 +39,7 @@ extension FailureMessage on Failure {
 }
 ```
 
-`Failure` **只携带 `code`**、不携带文案：文案始终在展示层（见 [backend/error-handling.md](../backend/error-handling.md)）。
+`Failure` **只携带 `code`**、不携带文案：文案始终在展示层（见 [data/error-handling.md](../data/error-handling.md)）。
 
 ---
 
@@ -64,7 +64,7 @@ extension FailureMessage on Failure {
 6. `features/profile/page/profile_page.dart`：加回「设置 → 语言」入口
 7. `test/support/app_test_harness.dart`：给 `wrapPage` 加回 `locale:` 参数
 8. 测试：补 key 对齐（两个 ARB 的 key 集合相等）与语言切换；`test/core/ui/failure_message_test.dart`、`test/core/config/user_preferences_test.dart` 的断言同步加回
-9. 目录树：`README.md` 与 [directory-structure.md](./directory-structure.md) 的树里加回 `lib/l10n/` 段
+9. 目录树：`README.md` 与 [../directory-structure.md](../directory-structure.md) 的树里加回 `lib/l10n/` 段
 
 两个会被抓到的点：
 

@@ -11,7 +11,7 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 /// 构造全 App 共用的 Dio（拦截器栈 + 可选 Mock）。
 ///
-/// **必须单例**（理由见 backend/network-guidelines.md）。
+/// **必须单例**（理由见 data/network-guidelines.md）。
 ///
 /// **不依赖状态管理与装配层**：`enableDebugLogging` 与 [registerMockRules] 都由
 /// 调用方传入，所以本函数不知道任何业务端点，也不知道 Riverpod 的存在。
@@ -37,7 +37,7 @@ Dio createDio({
   // 顺序承载两条语义：Retry 在解码之前判定（只有最后一次响应会被解码），
   // Mock 在最外层、命中即短路（不发真实请求）。
   // 改之前先跑 test/core/data/network/dio_factory_test.dart，
-  // 理由见 backend/network-guidelines.md。
+  // 理由见 data/network-guidelines.md。
 
   // 兜底解码：部分后端以 text/plain 返回 JSON 字符串，这里手动解析
   dio.interceptors.add(

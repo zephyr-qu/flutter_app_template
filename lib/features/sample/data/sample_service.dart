@@ -12,7 +12,7 @@ import 'package:my_app/features/sample/data/sample_repository.dart';
 ///
 /// 这个类同时是「三种 data 形态」的交接点：Retrofit（[SampleApi]）→ Drift
 /// （[SampleDao]）→ `Result` 包装。错误码保留与「缓存失败不影响请求结果」的
-/// 约定见 backend/database-guidelines.md。
+/// 约定见 data/database-guidelines.md。
 class SampleService implements SampleRepository {
   new(this._api, this._cache);
   final SampleApi _api;

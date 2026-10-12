@@ -1,7 +1,5 @@
 # 网络规范
 
-> 本项目的 HTTP 层怎么接起来。
-
 > **脚手架说明**：网络能力分成两半 —— **与状态管理无关**的那半在 `lib/core/data/network/`（`dio_factory.dart` 的拦截器栈），**装配**那半留在同目录的 `dio_client.dart`。各 feature 只写 Retrofit 接口（`features/{feature}/data/{feature}_api.dart`），不接触 Dio 与 Mock。
 
 ---
@@ -72,7 +70,7 @@ if (config.isMock) {
 
 现有规则都在 `dio_client.dart` 的 `_registerMockRules()` 里。
 
-> 快照（2026-09）：`GET /sample-items`、`GET /sample-items/{id}`。新增接口时照这个形状加。
+> 快照（2026-10）：`GET /sample-items`、`GET /sample-items/{id}`。新增接口时照这个形状加。
 
 ---
 

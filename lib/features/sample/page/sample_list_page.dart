@@ -14,7 +14,7 @@ import 'package:my_app/features/sample/logic/sample_list_notifier.dart';
 /// 三条页面形态在这里定死：
 /// 1. `ConsumerWidget` + `ref.watch(provider)` 拿状态（不再有 hooks / getIt）
 /// 2. 三态渲染一律走 `AsyncView`（不要 `AsyncValue.when`，理由见
-///    frontend/state-management.md「渲染状态」）
+///    ui/state-management.md「渲染状态」）
 /// 3. 刷新 / 重试交给 `ref.refresh` / `ref.invalidate`，页面不持有加载逻辑
 ///
 /// 测试时用 `ProviderScope(overrides:)` 换假仓库，页面不需要注入点构造参数。
@@ -37,7 +37,7 @@ class SampleListPage extends ConsumerWidget {
         ),
         data: (list) {
           // 两个分支都要能下拉刷新：显式给 AlwaysScrollableScrollPhysics，
-          // 空态也要包成可滚动的。见 frontend/state-management.md「页面侧的两个配套要求」。
+          // 空态也要包成可滚动的。见 ui/state-management.md「页面侧的两个配套要求」。
           return RefreshIndicator(
             onRefresh: () => ref.refresh(sampleListProvider.future),
             child: list.isEmpty

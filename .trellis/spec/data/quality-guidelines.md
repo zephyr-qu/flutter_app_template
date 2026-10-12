@@ -1,7 +1,5 @@
 # 质量规范：数据与逻辑层
 
-> 数据层与逻辑层的代码质量标准。
-
 ---
 
 ## 概览
@@ -63,7 +61,7 @@
    SampleApi sampleApi(Ref ref) => SampleApi(ref.watch(dioProvider));
    ```
 
-   （provider 本身就是注册表，见 [frontend/state-management.md](../frontend/state-management.md)「三种 Provider 形态」。）
+   （provider 本身就是注册表，见 [ui/state-management.md](../ui/state-management.md)「三种 Provider 形态」。）
 
 3. **Repository 抽象按需** — 只有真有「多实现需求」（mock / 线上切换）才写 `{Feature}Repository`；简单 feature 直接调 Service。两者都存在时，接口是 `{feature}_repository.dart`、实现是 `{feature}_service.dart`，都放在该 feature 的 `data/` 层（没有 `domain/` 层）。
 

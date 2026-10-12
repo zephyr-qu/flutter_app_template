@@ -246,7 +246,7 @@ void main() {
 
   group('AsyncView — 旧值为 null 视同没有数据', () {
     // 「旧值为 null 视同没有数据」：刷新时旧内容为 null 不当作有内容可展示，
-    // 必须先过判空。语义见 frontend/state-management.md「渲染状态」。
+    // 必须先过判空。语义见 ui/state-management.md「渲染状态」。
     testWidgets('稳定态下 data(null) 照常走 data 分支', (tester) async {
       container.listen(_nullableProvider, (_, _) {});
       await tester.pumpWidget(wrapNullable(container.read(_nullableProvider)));

@@ -58,7 +58,7 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 
 ### 拦截器顺序（`dioProvider`）
 
-顺序图、两条不可破的语义与相关的两个测试见 [backend/network-guidelines.md](../backend/network-guidelines.md)「拦截器顺序」，本文件不再重复。
+顺序图、两条不可破的语义与相关的两个测试见 [data/network-guidelines.md](../data/network-guidelines.md)「拦截器顺序」，本文件不再重复。
 
 ---
 

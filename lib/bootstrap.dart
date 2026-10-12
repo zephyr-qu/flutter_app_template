@@ -22,7 +22,7 @@ Future<void> bootstrap() async {
   FlutterError.onError = FlutterError.presentError;
 
   // 未捕获的异步错误（根 zone）。默认只会打到控制台，这里接进结构化日志。
-  // 不用 `runZonedGuarded`：它与本 handler 覆盖同一批错误（见 frontend/quality-guidelines.md）。
+  // 不用 `runZonedGuarded`：它与本 handler 覆盖同一批错误（见 ui/quality-guidelines.md）。
   PlatformDispatcher.instance.onError = (exception, stackTrace) {
     Logging.error(
       'Unhandled async error',

@@ -15,11 +15,11 @@ part 'dio_client.g.dart';
 /// 网络配置读 `dotenv` 的唯一入口（`bootstrap()._validateEnv` 只做存在性校验）。
 ///
 /// `keepAlive` = 只算一次：`NetworkConfig` 是「配置只有一个来源」的载体
-/// （见 backend/network-guidelines.md「配置：dotenv 只读一次」）。
+/// （见 data/network-guidelines.md「配置：dotenv 只读一次」）。
 @Riverpod(keepAlive: true)
 NetworkConfig networkConfig(Ref ref) => NetworkConfig.fromEnv(dotenv.env);
 
-/// 整个 App 共用一个 Dio（**必须单例**，理由见 backend/network-guidelines.md）。
+/// 整个 App 共用一个 Dio（**必须单例**，理由见 data/network-guidelines.md）。
 ///
 /// 读 `userPreferencesProvider` 而不是 `appSettingsProvider`：后者一变本
 /// provider 就重建，会丢在飞请求；调试开关**重启后生效**。
@@ -37,7 +37,7 @@ Dio dio(Ref ref) => createDio(
 /// `/sample-items` 这类业务路径。
 ///
 /// 必须用 `MockRule.regex` 且锚定 URL 结尾 —— `MockRule(path: ...)` 永远打不中，
-/// 会静默失效并打到真实网络（原因见 backend/network-guidelines.md）。
+/// 会静默失效并打到真实网络（原因见 data/network-guidelines.md）。
 void _registerMockRules() {
   MockRegistry.register(
     MockRule.regex(

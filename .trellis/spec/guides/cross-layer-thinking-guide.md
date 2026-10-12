@@ -1,12 +1,10 @@
 # 跨层思考指南
 
-> **目的**：动手前先想清数据怎么跨层流动。
-
 ---
 
 ## 本项目有哪些层
 
-层边界是 bug 的高发区。本项目的层（权威布局见 [../frontend/directory-structure.md](../frontend/directory-structure.md)）：
+层边界是 bug 的高发区。本项目的层（权威布局见 [../directory-structure.md](../directory-structure.md)）：
 
 ```
 Page → Notifier → Repository (接口) → Service → Api (Retrofit) → Dio
@@ -54,11 +52,11 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 
 ### 错误 3：抽象泄漏
 
-**反例**：让 `SampleItem` 模型知道 drift 的存在（例如给它加 `SampleItem.fromRow(DbArticle)`） → **正例**：模型不碰基础设施；行↔模型互转留在消费方（`SampleService` 的私有方法）。见 [../backend/database-guidelines.md](../backend/database-guidelines.md)「命名约定」。
+**反例**：让 `SampleItem` 模型知道 drift 的存在（例如给它加 `SampleItem.fromRow(DbArticle)`） → **正例**：模型不碰基础设施；行↔模型互转留在消费方（`SampleService` 的私有方法）。见 [../data/database-guidelines.md](../data/database-guidelines.md)「命名约定」。
 
 ### 错误 4：同一个错误在多层各映射一次
 
-**反例**：每个 Service 各自把 `DioException` 转成 `Failure`，于是同一类超时在不同接口下错误码不同 → **正例**：`DioException → Failure` 只在 `handleDioError()` 一处发生（见 [../backend/error-handling.md](../backend/error-handling.md)）
+**反例**：每个 Service 各自把 `DioException` 转成 `Failure`，于是同一类超时在不同接口下错误码不同 → **正例**：`DioException → Failure` 只在 `handleDioError()` 一处发生（见 [../data/error-handling.md](../data/error-handling.md)）
 
 ---
 

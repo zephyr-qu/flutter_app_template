@@ -36,7 +36,7 @@ plugins:
 ### 包的摆法
 
 - 插件是**独立 package**，**不并进 workspace**（`just deps` 分别解析根工程与 `packages/app_lints`）。
-- `packages/` 只放**真正独立的工具包**；app 代码不抽包，`lib/core/` 保持拍平。
+- `lib/core/` 保持拍平（不抽包，见 [directory-structure.md](./directory-structure.md)「概览」）。
 - 包名硬编码在 `packages/app_lints/lib/src/paths.dart`（`selfPackagePrefix`），改包名时 `tool/init_project.dart` 会一起替换。
 
 ### 调用形式：`dart analyze` 必须显式传文件名
@@ -91,14 +91,14 @@ import 'package:my_app/core/base/result.dart';
 这三条**不要**当「缺失的门禁」补上，由 review 兜底：
 
 - 在 `features/*/logic/` 手动建 `ProviderContainer`
-- 连续注释块 ≤10 行（`comment_block_too_long`）——「长解释进 spec」照旧，见 [guides/comment-guidelines.md](guides/comment-guidelines.md)，不用 lint 拦
+- 连续注释块 ≤10 行（`comment_block_too_long`）—— 长解释进 spec，见 [guides/comment-guidelines.md](guides/comment-guidelines.md)，不用 lint 拦
 - `avoid_async_state_map`
 
 ---
 
 ## 目录树一致性（无门禁）
 
-README 与 [frontend/directory-structure.md](frontend/directory-structure.md) 里的 `lib/` 目录树**没有门禁核对**，纯靠人工维护。增删 `lib/` 文件后同步这两处。
+README 与 [directory-structure.md](./directory-structure.md) 里的 `lib/` 目录树**没有门禁核对**，纯靠人工维护。增删 `lib/` 文件后同步这两处。
 
 ---
 
@@ -180,7 +180,7 @@ dart run tool/init_project.dart --yes --name=my_next_app --application-id=com.ex
 | `*.gr.dart` | `auto_route` 的路由类 |
 | `*.config.dart` | `injectable` 的 DI 注册（本项目不使用 injectable，无此生成物） |
 | `*.gen.dart`、路径含 `/gen/` | 资源访问器（当前不存在，本项目不用 `flutter_gen`） |
-| 路径含 `app_localizations` | l10n 生成物（本项目已裁剪 l10n，见 [frontend/localization.md](frontend/localization.md)） |
+| 路径含 `app_localizations` | l10n 生成物（本项目已裁剪 l10n，见 [ui/localization.md](ui/localization.md)） |
 
 ### 重新生成时机
 
@@ -189,7 +189,7 @@ dart run tool/init_project.dart --yes --name=my_next_app --application-id=com.ex
 | 改了注解，或新增模型 / API / DAO / `@RoutePage` / `@riverpod` | `just codegen` |
 | 增删代码文件（含删掉整个 feature） | 同上。删文件后**必须**重跑 |
 | clone 后首次构建 / analyze / test | `just codegen` |
-| 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（本项目已无 l10n，见 [frontend/localization.md](frontend/localization.md)） |
+| 改了 `lib/l10n/*.arb` | `flutter gen-l10n`（本项目已无 l10n，见 [ui/localization.md](ui/localization.md)） |
 | 升级 / 降级任一 codegen 包（`freezed`、`json_serializable`、`drift_dev`、`retrofit_generator`、`auto_route_generator`、`riverpod_generator`、`build_runner`） | `just codegen-reset` |
 | 升级 Flutter / Dart SDK | 同上 |
 | 切分支、rebase / merge 后本地生成物与源不一致 | 重跑 `just codegen`（生成物不手工编辑） |
@@ -201,7 +201,7 @@ dart run tool/init_project.dart --yes --name=my_next_app --application-id=com.ex
 - **本地 `just verify` 不跑 codegen**（假定生成物已在磁盘上）；**pre-commit 有意不跑**。
 - **CI 的 `analyze` job 在 `just verify` 前跑 `just codegen`**：现场生成，无需比对 git diff（生成物不入库，没有可比对象）。codegen 统一排在 analyze 之前。
 - `drift_dev` 生成 schema 需要 `sqlite3` 的动态库（本项目由 `sqlite3` 3.x 的 build hook 提供，`just deps` 会准备）。
-- 这一步**没有** `flutter gen-l10n`（本项目没有 l10n，见 [frontend/localization.md](frontend/localization.md)）。
+- 这一步**没有** `flutter gen-l10n`（本项目没有 l10n，见 [ui/localization.md](ui/localization.md)）。
 
 ### 禁止模式
 
@@ -240,7 +240,7 @@ dart run tool/init_project.dart --yes --name=my_next_app --application-id=com.ex
 - 通过 `withIgnored(createdByTestHelpers: true)` 过滤测试辅助创建的对象
 - `ConsumerWidget` / `ConsumerStatefulWidget` 最终也是 Flutter `Element`，在覆盖范围内
 
-> ⚠️ **`leak_tracker` 看不见 provider 的状态对象**：`ProviderContainer` / `Notifier` / `AsyncValue` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`。**「测试里没报警」不等于「状态没有泄漏」** —— 兜底是 `autoDispose` 与 `ref.onDispose`，见 [frontend/state-management.md](frontend/state-management.md)「生命周期」。
+> ⚠️ **`leak_tracker` 看不见 provider 的状态对象**：`ProviderContainer` / `Notifier` / `AsyncValue` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`。**「测试里没报警」不等于「状态没有泄漏」** —— 兜底是 `autoDispose` 与 `ref.onDispose`，见 [ui/state-management.md](ui/state-management.md)「生命周期」。
 
 ---
 
@@ -276,7 +276,7 @@ CI 用 `reactivecircus/android-emulator-runner` 在 Android 模拟器上跑（�
 - **启动页要显式推进时钟**：`Future.delayed(2200ms)` 是计时器，`pumpAndSettle()` 之后补一次 `pump(Duration(seconds: 3))`。
 - **不需要清理登录态**：本项目没有认证。
 - **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认。引入按需下载字体（`google_fonts` 等）时，测试里设 `GoogleFonts.config.allowRuntimeFetching = false`，生产把字体打进产物。
-- `msw_dio_interceptor` 的 mock 由注入的 `USE_MOCK` 控制（示例 `.env.example` 默认 `true`）。写 mock 规则必须 `MockRule.regex` 且锚定结尾，见 [backend/network-guidelines.md](backend/network-guidelines.md) 的 Mock 一节。
+- `msw_dio_interceptor` 的 mock 由注入的 `USE_MOCK` 控制（示例 `.env.example` 默认 `true`）。写 mock 规则必须 `MockRule.regex` 且锚定结尾，见 [data/network-guidelines.md](data/network-guidelines.md) 的 Mock 一节。
 
 ---
 

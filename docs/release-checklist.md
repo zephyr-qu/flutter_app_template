@@ -119,7 +119,7 @@ just test integration_test/               # 端到端冒烟（真机 / 模拟器
   清单与调用形式见根 `justfile`；语义与「为什么这么设」见 [cross-cutting.md](../.trellis/spec/cross-cutting.md)。
 
 - [ ] 新增 `FailureCode` 已在 `core/ui/failure_message.dart` 的 `localizedMessage` 里补上文案
-      （不补会编译失败；机制见 [error-handling.md](../.trellis/spec/backend/error-handling.md)）
+      （不补会编译失败；机制见 [error-handling.md](../.trellis/spec/data/error-handling.md)）
 
 - [ ] 依赖过一遍：`dart pub outdated` 看 `Current / Upgradable / Resolvable / Latest` 四列，
       能升的走 `dart pub upgrade`（改动 `pubspec.lock` 后记得重跑测试与 codegen）；

@@ -12,7 +12,7 @@ part 'providers.g.dart';
 ///
 /// 初始 location 在这里指到启动页：`routeInfoProvider` 是 memoized 的，**必须在
 /// `config()` 之前设**（`app.dart` 的 build 就会调它）。取舍见
-/// frontend/directory-structure.md「应用层」。
+/// directory-structure.md「应用层」。
 @Riverpod(keepAlive: true)
 AppRouter router(Ref ref) {
   final appRouter = AppRouter();

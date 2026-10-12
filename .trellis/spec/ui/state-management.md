@@ -1,6 +1,6 @@
 # 状态管理
 
-> 状态怎么管。Riverpod 3：provider 是唯一的状态载体。
+> Riverpod 3：provider 是唯一的状态载体。
 
 ---
 
@@ -71,15 +71,21 @@ class AppSettingsNotifier extends _$AppSettingsNotifier {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     if (state.themeMode == mode) return;
+    final previous = state;
     state = state.copyWith(themeMode: mode); // 先改内存：UI 立刻响应
-    await ref.read(userPreferencesProvider).setThemeMode(mode); // 再落盘
+    try {
+      await ref.read(userPreferencesProvider).setThemeMode(mode); // 再落盘
+    } catch (e, st) {
+      state = previous; // 落盘失败回滚内存，保持与持久化一致
+      Logging.warning('保存主题失败，已回滚', exception: e, stackTrace: st);
+    }
   }
 }
 ```
 
 - 状态是**不可变快照**（`@immutable` + `copyWith`），不是一组可写字段：一次 `state = ...` 就是一次通知。
 - 写入走方法、不开 setter —— 这是「状态私有」的落地方式。
-- 写入顺序统一是**先改内存、再落盘**（落盘失败**回滚内存**并记 warning，见 [backend/database-guidelines.md](../backend/database-guidelines.md)）。
+- 写入顺序统一是**先改内存、再落盘**（落盘失败**回滚内存**并记 warning，见 [data/database-guidelines.md](../data/database-guidelines.md)）。
 - 生命周期看需求：要活到 App 结束的（设置）带 `keepAlive`；**页面级**状态用默认的 `autoDispose`。
 
 ### 3. 异步 Notifier —— API 数据
@@ -102,7 +108,7 @@ class SampleListNotifier extends _$SampleListNotifier {
 
 一条不能破的约定：**抛 `Failure` 本身，不要另造包装异常** —— `ErrorText` 靠这个对象翻译错误码。`Failure implements Exception`，`only_throw_errors` 不拦。
 
-`build()` 是**唯一的读取点**：首屏加载就是 build，刷新与重试退回框架原语（见「刷新与重试」）。
+`build()` 是响应式依赖的**唯一读取点**：首屏加载就是 build，刷新与重试退回框架原语（见「刷新与重试」）。方法 / 回调里取一次性值仍用 `ref.read`（口径见 [quality-guidelines.md](./quality-guidelines.md)「必须遵守」5）。
 
 ### Provider 命名由生成器决定
 
@@ -162,7 +168,7 @@ class SampleListNotifier extends _$SampleListNotifier {
 
 ### 与 `AsyncValue.when` 的关系
 
-新代码统一走 `AsyncView`；这条是**约定**，不是门禁（见 [cross-cutting.md](../cross-cutting.md)「架构边界与形态约定」）。`when` 的具名回调签名配错在编译期就是 error，与类型安全无关。
+新代码统一走 `AsyncView`；这条是**约定**，不是门禁（见 [cross-cutting.md](../cross-cutting.md)「架构边界与形态约定」）。`when` 的具名回调签名配错在编译期就是 error。
 
 ---
 
@@ -215,7 +221,7 @@ ref.onDispose(subscription.cancel);
 - 新增流订阅、`Listenable`、控制器时按第 2 条登记。
 - `ref.watch` 建立的依赖由框架在 provider 销毁时退订；需要自己 `ref.onDispose` 收尾的只有第 2 条那类主动 `listen` 的流、`Listenable`、`StreamController`。
 
-> ⚠️ **`leak_tracker` 看不见 provider 状态对象**：`ProviderContainer` / `Notifier` / `AsyncValue` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`，**「测试里没报警」不等于「状态没有泄漏」**（`leak_tracker` 只追 `State` / `Element` / `ChangeNotifier` 这类 Flutter 对象）——见 [cross-cutting.md](../cross-cutting.md)「内存泄漏检测」。
+> ⚠️ `leak_tracker` 看不见 provider 状态对象（`ProviderContainer` / `Notifier` / `AsyncValue` 是纯 Dart 对象，不上报 `FlutterMemoryAllocations`）；状态泄漏兜底靠 `autoDispose` 与 `ref.onDispose`。详见 [cross-cutting.md](../cross-cutting.md)「内存泄漏检测」。
 
 ---
 
@@ -307,15 +313,11 @@ expect(await container.read(sampleListProvider.future), [item]);
 
 | 错误 | 正确做法 |
 | --- | --- |
-| 页面写 `ref.read(xxxProvider)` 取值 | 用 `ref.watch`；门禁 `avoid_ref_read_in_build` 会拦 |
 | 在方法里 `ref.watch` | 方法里用 `ref.read`；需要跟随变化用 `ref.listen` |
 | 在 `Notifier` 外部写 `state` | 写入只能在 Notifier 内，对外只暴露方法 |
-| 异步失败时抛包装异常 | 抛 `Failure` 本身 |
-| 把 `Failure` 的类型信息丢掉、只存字符串 | `AsyncValue.error` 存对象，文案在展示层翻译（[backend/error-handling.md](../backend/error-handling.md)） |
+| 把 `Failure` 的类型信息丢掉、只存字符串 | `AsyncValue.error` 存对象，文案在展示层翻译（[data/error-handling.md](../data/error-handling.md)） |
 | 一个字段一个 Notifier | 一份存储 / 同生命周期 / 页面一起读的偏好做成一个快照（`AppSettings`） |
-| 页面自己维护 loading / request token | 用 `AsyncView` + `ref.refresh` / `ref.invalidate` |
-| 用 `AsyncValue.when` 渲染三态 | 用 `AsyncView` |
 | 空列表直接返回 `EmptyWidget` | 包成可滚动 + `AlwaysScrollableScrollPhysics` |
 | 给「无状态服务」不加 `keepAlive` | 加 `@Riverpod(keepAlive: true)` |
 | `ref.onDispose` 里漏掉流订阅 | 订阅了就要退订（主动 listen 必须在 `ref.onDispose` 里收尾） |
-| 跨页面共享状态放进某个 feature 的 Notifier | 放到 `core/`（见 [directory-structure.md](./directory-structure.md)） |
+| 跨页面共享状态放进某个 feature 的 Notifier | 放到 `core/`（见 [../directory-structure.md](../directory-structure.md)） |

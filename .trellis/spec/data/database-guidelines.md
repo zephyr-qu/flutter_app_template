@@ -1,7 +1,5 @@
 # 数据库规范
 
-> 本项目的数据库与存储约定。
-
 ---
 
 ## 概览
@@ -14,7 +12,8 @@
 | 关系型 | `drift`（原生库由 `sqlite3` 3.x 的 build hook 提供） | `AppDatabase`（`lib/core/data/database/app_database.dart`） | 结构化、可查询的本地缓存 |
 | 文件 | `path_provider` | `FileStorage`（`lib/core/data/storage/file_storage.dart`） | 二进制 / 大文本 |
 
-**不要**把令牌、密码之类的敏感数据放进 `SharedPreferences`；凭证走平台安全存储（`flutter_secure_storage`）。本项目**无认证**。上表三者的实例都由 provider 装配（`lib/core/providers.dart`），业务代码只 `ref.watch`，不自己 new。
+**不要**把令牌、密码之类的敏感数据放进 `SharedPreferences`；凭证走平台安全存储（`flutter_secure_storage`）。
+本项目**无认证**。上表三者的实例都由 provider 装配（`lib/core/providers.dart`），业务代码只 `ref.watch`，不自己 new。
 
 ---
 
@@ -27,7 +26,7 @@
 | `UserPreferences` | `core/config/app_settings.dart` 的 `AppSettingsNotifier` | 存储只读写 prefs；Notifier 持有内存快照并在写入后落盘 |
 
 - 存储对象要能**脱开容器单测**（喂一个 mock 过的 `SharedPreferences`）；页面拿到的是可订阅快照
-- 写入顺序统一**先改内存、再落盘**（落盘失败只记日志）
+- 写入顺序统一**先改内存、再落盘**；其中写状态落盘失败**向上抛**（回滚逻辑见 [../ui/state-management.md](../ui/state-management.md)「三种 Provider 形态」），写缓存落盘失败只记日志
 
 ### 存储的失败策略：读要软，写要硬
 
@@ -37,8 +36,6 @@
 | 解析出错 | 记 warning，并**删掉那份损坏的数据** |
 | 写状态 | **向上抛**（`UserPreferences` 的 setter 在 `setX` 返回 `false` 时抛 `PreferenceWriteException`；`AppSettingsNotifier` 接住并回滚内存） |
 | 写缓存 | 记 warning，不影响本次请求结果（`SampleService` 的 `_ignoreCacheFailure`） |
-
-> 落盘失败的链路：`setX` 返回 `false` → setter 抛 `PreferenceWriteException` → `AppSettingsNotifier` 把内存快照**回滚**到写入前的值并记一条 warning（见 `lib/core/config/app_settings.dart`）。
 
 **Key 命名约定**：`SharedPreferences` 用 `app.{domain}.{key}`（如 `app.theme.mode`）。统一写成 `static const String _keyX = '...'` 常量，不要内联字符串。
 
@@ -98,13 +95,13 @@ SampleDao sampleDao(Ref ref) => SampleDao(ref.watch(databaseProvider));
 
 ### 加表 / 改表
 
-- **加表**：新建 `tables/db_{name}.dart`，类名加 `Db` 前缀（见「命名规范：加表就是加前缀」）→ 在 `app_database.dart` 补一行 `part` → 加进 `@DriftDatabase(tables: [...])` → 升 `schemaVersion` 并补 `MigrationStrategy` → `just codegen`
+- **加表**：新建 `tables/db_{name}.dart`，类名加 `Db` 前缀（见「命名规范：加表就是加前缀」）→ 在 `app_database.dart` 补一行 `part` → 加进 `@DriftDatabase(tables: [...])` → 升 `schemaVersion` 并补 `MigrationStrategy` → 重新生成（`just codegen`，即 `dart run build_runner build`）
 - **改表**：改 `tables/` 下的文件 → 升 `schemaVersion` 并补 `MigrationStrategy` → `just codegen`
 - 测试用内存数据库（`NativeDatabase.memory()`）：DAO 见 `test/features/sample/data/sample_dao_test.dart`，缓存旁路见 `test/features/sample/data/sample_service_test.dart`
 
 ### 命名规范：加表就是加前缀
 
-**加表 = 类名加 `Db` 前缀，就这一步。** 行类名、SQL 表名、表访问器全部由 drift 自动派生，**任何注解都不用写**（既不写 `@DataClassName`，也不写 `tableName`）：
+**加表 = 类名加 `Db` 前缀，就这一步。** 行类名、SQL 表名、表访问器全部由 drift 自动派生，**默认无需写任何注解**（既不写 `@DataClassName`，也不写 `tableName`；个别表需要干净 SQL 名时再单独覆盖，见下）：
 
 | 层级 | 规则 | 例子 |
 | --- | --- | --- |

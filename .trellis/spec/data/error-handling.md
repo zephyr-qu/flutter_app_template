@@ -1,7 +1,5 @@
 # 错误处理
 
-> 本项目的错误处理约定。
-
 ---
 
 ## 概览
@@ -54,12 +52,12 @@ class NetworkFailure extends Failure { ... }   // 四个子类的归类与 code 
 | ------------- | ------------- | --------- |
 | `NetworkFailure` | 请求没能正常往返：超时、连接失败、证书校验失败 | `timeout`, `connection`, `badCertificate` |
 | `AuthFailure` | 401 / 403，无凭证或没有权限 | `unauthorized`, `forbidden` |
-| `ServerFailure` | 服务端返回了失败响应（其余 4xx / 5xx） | `notFound`, `invalidRequest`, `conflict`, `serverError`, `requestFailed` |
+| `ServerFailure` | 服务端返回了失败响应（其余 4xx / 5xx） | `notFound`, `invalidRequest`, `invalidPayload`, `conflict`, `tooManyRequests`, `serverError`, `requestFailed` |
 | `UnknownFailure` | 无法归类的兜底 | `cancelled`, `unexpected`, `unknown` |
 
 **`Failure` 不携带用户可见文案**：它只有 `code`（`FailureCode` 枚举）与可选的 `statusCode`，文案由展示层给出（`core/ui/failure_message.dart` 的 `localizedMessage()`，当前是一张中文常量表）。约束：
 
-- 文案只在展示层；接多语言时只换展示层那一处（见 [frontend/localization.md](../frontend/localization.md)）
+- 文案只在展示层；接多语言时只换展示层那一处（见 [ui/localization.md](../ui/localization.md)）
 - 服务端的 `statusMessage`、`DioException.message` 这类原始文本只进日志（结构上没有存放位置）
 - 新增 `FailureCode` 时补 `localizedMessage` 的 `switch`（穷尽性由编译器保证）。`test/core/ui/failure_message_test.dart` 既有逐条精确文案断言，也遍历 `FailureCode.values` 断言每个 code 的文案非空
 
@@ -154,13 +152,4 @@ class SampleService implements SampleRepository {
 
 状态层不手写三态迁移：`Result` 的失败侧**抛 `Failure` 本身**，剩下的交给 `AsyncValue` + `AsyncView`；完整示例与配套规则见「错误文案怎么到界面上」。
 
----
-
-## 常见错误
-
-- ❌ **Service / Repository 抛异常** — 一律返回 `Result.failure()`
-- ❌ **生产代码里用 `getOrThrow`** — 只给测试；生产用 `when()`
-- ❌ **在 Notifier 里手写 loading/data/error 迁移** — `AsyncNotifier.build()` 从 `Result` 翻译一次就够，渲染交给 `AsyncView`
-- ❌ **把 `Failure` 包成别的异常再抛**
-- ❌ **同一个 `DioException` 在多层各映射一次** — 只在 Service 映射一次
-- ❌ **不处理取消** — `switch` 里必须含 `DioExceptionType.cancel`
+映射只在 Service 层发生一次（`handleDioError`），`switch` 必须含 `DioExceptionType.cancel`；业务层**可能失败**的操作返回 `Result`，不裸抛（自行消化失败的私有方法除外，见 `sample_service.dart`）。

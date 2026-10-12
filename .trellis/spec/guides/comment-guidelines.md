@@ -18,7 +18,7 @@
    ```dart
    /// 示例缓存的读写（只碰行类 `DbArticle`，行↔模型转换在 `SampleService`）。
    ///
-   /// 为什么在 feature 而不是 core，见 backend/database-guidelines.md「分工」。
+   /// 为什么在 feature 而不是 core，见 data/database-guidelines.md「分工」。
    ```
 
 3. **示例可以留** —— 调用方要照着写的形状（JSON 形状、一行用法）留在代码里，其余删掉。
@@ -49,7 +49,7 @@
 
 指路统一写成 `<层>/<文件>.md「<章节>」`（示例见上文「代码注释」第 2 条）：
 
-- **层目录不能省**（`backend/` / `frontend/`）—— 只写 `database-guidelines.md`，读者会以为是 `lib/` 下的文件。
+- **层目录不能省**（`data/` / `ui/`）—— 只写 `database-guidelines.md`，读者会以为是 `lib/` 下的文件。
 - **不写 `.trellis/spec/` 前缀、不加反引号** —— 规范根是已知的，路径不是代码符号。
 - **章节用标题里的关键词，不用 `§3.1` 这类编号** —— 编号会随文档改版漂移，关键词能直接 grep。
 - **「见」和路径不许断行** —— 把 `见` 留在行尾、路径甩到下一行最难看。一行放不下就先把结论与指路拆成两段。
