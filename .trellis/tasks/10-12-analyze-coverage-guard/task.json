@@ -3,7 +3,7 @@
   "name": "analyze-coverage-guard",
   "title": "给 analyze 门禁加覆盖完整性断言",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

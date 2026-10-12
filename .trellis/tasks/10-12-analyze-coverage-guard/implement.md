@@ -51,3 +51,45 @@ just check-anchors                               # 只报告，确认无新增�
 - `git status` 里只有 2 个文件变动：`test/tool/analyze_coverage_test.dart`、
   `.trellis/spec/cross-cutting.md`（+ 任务目录）—— 收窄后**不再动 `justfile`**
 - 计划完成后由用户决定是否提交（本任务不含提交步骤）
+
+## 实施结果（2026-10-12）
+
+**交付**：`test/tool/analyze_coverage_test.dart`（276 行 / 15 个用例）+ `cross-cutting.md` 一条子弹。
+`justfile`、`app_lints`、`analysis_options.yaml`、`.agents/skills` 均未改动。
+
+**实现**（按步骤 2–3）
+
+- 纯函数**三个**（比计划多一个）：
+  - `topLevelDirsWithDart(paths)` —— 去重排序、跳过 `.` 开头目录、根级裸 `.dart` 不产生目录、空输入
+  - `uncoveredDirs(dirs, roots, excluded)` —— 覆盖判定、更深 root 不算覆盖、点名、排除名单容忍尾斜杠
+  - `parseAnalyzeRoots(justfile)` —— 计划只列了两个纯函数；实施时把正则解析也拆成纯函数，好让风险表里
+    「正则写松了 → 静默无 root」这条风险本身也有假输入测试盖住
+- 仓库级断言两条：R2（未覆盖目录必须为空）、R3（每个 root 各自产出 ≥1 个 `.dart`）；roots 解析不到时**显式 fail**
+- 排除名单 `excludedTopLevelDirs = {'.agents'}`，理由写在断言旁边；生成物复用 `tool/generated_paths.dart` 的 `isGeneratedPath`
+- `cross-cutting.md`「`dart analyze` 必须显式传文件名」那条后加一条子弹（**未新开标题**），写清扫描面来源、
+  漏目录的形态、两条断言的失败信息与测试路径
+
+**验证**（implement 与 check 各自独立跑过一遍，结论一致）
+
+| 命令 | 结果 |
+|---|---|
+| `dart analyze --fatal-infos test/tool/analyze_coverage_test.dart` | `No issues found!` |
+| `just test test/tool/analyze_coverage_test.dart` | 15 用例全过 |
+| AC① 造 `example/foo.dart` | 失败并点名 `example` → 已还原 |
+| AC② roots 去掉一个仍存在的目录 | 失败并点名它 → 已还原（`git diff justfile` 为空） |
+| AC③ root 改成 `nosuchdir` | 失败并说明「该 root 产出 0 个文件」（同时触发 R2 点名失覆盖的目录） → 已还原 |
+| `just verify` | **All gates passed**（354 用例 = 339 基线 + 15） |
+| `just check-anchors` | 139 个文件全对上，无新增告警 |
+
+**Phase 2.2（`trellis-check`）**：full-scope 审查后**未发现需要修的问题** —— 逐条核过 R2 / R3 / 纯逻辑与仓库
+现状分离 / R5 写法 / 「不做什么」，并独立复跑了上面全部命令。`get_context.py --mode packages` 报单仓无子包，
+`packages/app_lints` 未触碰。
+
+**实施中的偏差**：除「多一个纯函数」外，首次 `just verify` 报 4 处 `missing_whitespace_between_adjacent_strings`，
+在两段 reason 的字符串拼接处补了 `\n`（而非可见空格）后干净。
+
+**遗留风险（如实记）**
+
+- `_analyzeDartFiles` 的生成物过滤只被真实清单间接覆盖，无独立单测（属「复用口径」，未新增逻辑）
+- R2 不管仓库根下的裸 `.dart` 文件 —— 符合 prd「每个含 Dart 的**顶层目录**」的措辞，代码注释已写明
+- 测试依赖 `git` 可执行文件，与 `tool/list_dart_files.dart` 同前提
