@@ -1,4 +1,4 @@
-# Type Safety
+# 类型安全
 
 > Type safety patterns in this project.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## Overview
+## 概览
 
 This project is written in **Dart 3+** with full **null safety** enabled. Type safety is enforced through:
 
@@ -17,9 +17,9 @@ This project is written in **Dart 3+** with full **null safety** enabled. Type s
 
 ---
 
-## Type Organization
+## 类型组织
 
-### Models (per feature, in `data/models/`)
+### 模型（放在各 feature 的 `data/models/`）
 
 脚手架里的模型**全部**用 `@freezed`（`Article` / `User` / `LoginRequest` / `LoginResponse`）——没有手写的，也没有直接用 `@JsonSerializable` 的：
 
@@ -46,14 +46,14 @@ sealed class Article with _$Article {
 - Constructors use `required` named parameters
 - 生成物 `*.g.dart` / `*.freezed.dart` 与源文件同目录，**不要手改**
 
-### Global types (`core/base/`)
+### 全局类型（`core/base/`）
 
 ```dart
 sealed class Result<T, E> { ... }  // Generic result type
 sealed class Failure { ... }        // Error hierarchy
 ```
 
-### Generated types
+### 生成类型
 
 - `*.g.dart` — JSON serialization、`@injectable`、Retrofit、Drift
 - `*.freezed.dart` — `copyWith` / `==` / `hashCode`
@@ -63,7 +63,7 @@ sealed class Failure { ... }        // Error hierarchy
 
 ---
 
-## Validation
+## 校验
 
 Runtime validation follows **primitive validation at the boundary** pattern:
 
@@ -71,7 +71,7 @@ Runtime validation follows **primitive validation at the boundary** pattern:
 // ViewModel 侧：简单字段校验用 computed getter
 bool get canSubmit => email.value.isNotEmpty && password.value.length >= 6;
 
-// API 侧：Retrofit 定义。凭据只走请求体，不进 query（见 frontend/quality-guidelines.md）
+// API 侧：Retrofit 定义。凭据只走请求体，不进 query（见 ui/quality-guidelines.md）
 @POST('/login')
 Future<LoginResponse> login(@Body() LoginRequest request);
 ```
@@ -82,9 +82,9 @@ Future<LoginResponse> login(@Body() LoginRequest request);
 
 ---
 
-## Common Patterns
+## 常见范式
 
-### Sealed class pattern matching
+### sealed class 模式匹配
 
 ```dart
 result.when(
@@ -99,7 +99,7 @@ result.when(
 final message = failure.localizedMessage(AppLocalizations.of(context));
 ```
 
-### Signal state checking
+### Signal 状态判定
 
 用 `AsyncView` 渲染，**不需要 `!` 强解包**——分支由 sealed class 的穷尽 `switch` 保证，`data` / `error` 回调拿到的都是非空类型：
 
@@ -114,7 +114,7 @@ AsyncView<List<Article>>(
 )
 ```
 
-### Type-related lints actually enabled
+### 实际启用的类型相关 lint
 
 `analysis_options.yaml` 里与类型有关的规则只有这些（写新代码时按此预期，别假设有更多）：
 
@@ -128,7 +128,7 @@ AsyncView<List<Article>>(
 
 ---
 
-## Forbidden Patterns
+## 禁止模式
 
 以下大部分是 **review 约定**，不都是 lint error（想确认强度请对照 `analysis_options.yaml`）：
 
@@ -138,4 +138,4 @@ AsyncView<List<Article>>(
 - ❌ **`print()` for debugging** — Use `Logging.debug()` or `Logging.error()`（`avoid_print` 未启用）
 - ❌ **Manually written `fromJson`/`toJson`** — 交给 `@freezed` 生成
 - ❌ **`!` null assertions without prior null check** — Use pattern matching or early returns
-- ❌ **给 `Failure` 加回 `message`** — 文案在展示层翻译，见 `backend/error-handling.md`
+- ❌ **给 `Failure` 加回 `message`** — 文案在展示层翻译，见 `data/error-handling.md`

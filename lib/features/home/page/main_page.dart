@@ -5,7 +5,7 @@ import 'package:my_app/app/routing/router.dart';
 /// 主框架页面——窄屏（< 800px）底部导航栏、宽屏侧边导航栏。
 ///
 /// 标签用 [AutoTabsRouter] 管理（而非本地 `_currentIndex`），且用默认的
-/// IndexedStack 版本——两条理由见 frontend/directory-structure.md「应用层」。
+/// IndexedStack 版本——两条理由见 directory-structure.md「应用层」。
 @RoutePage()
 class MainPage extends StatelessWidget {
   const new({super.key});
@@ -13,7 +13,7 @@ class MainPage extends StatelessWidget {
   /// 三个标签对应的路由，顺序即索引
   ///
   /// 不是 `const`：`ArticleListRoute` 带路由参数（页面有可选注入点，见
-  /// frontend/state-management.md），构造函数不是 const 的。
+  /// ui/state-management.md），构造函数不是 const 的。
   static final List<PageRouteInfo> _tabs = [
     const HomeRoute(),
     ArticleListRoute(),

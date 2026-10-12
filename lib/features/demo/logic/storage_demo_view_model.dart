@@ -69,7 +69,7 @@ class StorageDemoViewModel {
   // ========== 方法 ==========
 
   /// 读取当前状态：文件内容、占用空间、缓存条数（三个值用 `batch` 一次写入，
-  /// 见 frontend/state-management.md）。
+  /// 见 ui/state-management.md）。
   Future<void> refresh() async {
     final content = await _files.readString(noteFileName);
     final usage = await _files.getUsage(includeTemp: true);
@@ -83,7 +83,7 @@ class StorageDemoViewModel {
   }
 
   // 写入必须走方法、不开 setter：信号私有持有，页面只订阅
-  // （frontend/state-management.md「信号」）
+  // （ui/state-management.md「范式」）
   // ignore: use_setters_to_change_properties
   void updateNote(String value) => _note.value = value;
 

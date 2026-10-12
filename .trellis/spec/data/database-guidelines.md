@@ -1,4 +1,4 @@
-# Database Guidelines
+# 数据库规范
 
 > Database and storage patterns for this project.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## Overview
+## 概览
 
 | Mechanism | Package | Implementation | Use for |
 | ----------- | --------- | ---------------- | --------- |
@@ -19,7 +19,7 @@
 
 ---
 
-## SharedPreferences (Key-Value)
+## SharedPreferences（键值存储）
 
 `SharedPreferences` is resolved once via `@preResolve` in `CoreModule` and **injected** into the classes that need it. Never call `SharedPreferences.getInstance()` yourself.
 
@@ -114,7 +114,7 @@ class AuthStorage {
 
 ---
 
-## Drift (Relational Cache)
+## Drift（关系型缓存）
 
 `AppDatabase` 只负责**连接与 schema**：表定义（`DbArticles`）、`schemaVersion`、迁移。它在 `CoreModule` 里注册为 `@singleton`，首次解析时创建（即启动时打开数据库文件）。
 
@@ -268,14 +268,14 @@ await for (final entry in dir.list(recursive: true, followLinks: false)) {
 
 ---
 
-## Query Patterns
+## 查询范式
 
 - Remote reads go through Retrofit `@GET` / `@POST` definitions in each feature's `*_api.dart`; errors are normalised to `Result<T, Failure>` (see [error-handling.md](./error-handling.md))
 - Local relational reads go through Drift's generated query API on `AppDatabase`
 
 ---
 
-## Naming Conventions
+## 命名约定
 
 | Element | Convention | Example |
 | --------- | ----------- | --------- |
@@ -287,7 +287,7 @@ await for (final entry in dir.list(recursive: true, followLinks: false)) {
 
 ---
 
-## Common Mistakes
+## 常见错误
 
 - ❌ **Calling `SharedPreferences.getInstance()` in multiple places** — inject the pre-resolved instance from `CoreModule`
 - ❌ **Adding an `init()` / `@PostConstruct` to fetch preferences** — the dependency is already injected and resolved

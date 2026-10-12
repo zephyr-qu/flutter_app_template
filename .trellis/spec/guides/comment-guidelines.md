@@ -1,4 +1,4 @@
-# Comment Guidelines
+# 注释规范
 
 > 代码注释只留「一句提示 / 这个类是做什么的 / 一个示例」；为什么这么设计、踩过的坑、完整规则放 `.trellis/spec/`。
 >
@@ -19,7 +19,7 @@
    ```dart
    /// 文章缓存的读写（只碰行类 `DbArticle`，行↔模型转换在 `ArticleService`）。
    ///
-   /// 为什么在 feature 而不是 core，见 backend/database-guidelines.md「分工」。
+   /// 为什么在 feature 而不是 core，见 data/database-guidelines.md「分工」。
    ```
 
 3. **示例可以留** —— 调用方要照着写的形状（JSON 形状、一行用法）留在代码里，其余删掉。
@@ -53,10 +53,11 @@
 指路统一写成 `<层>/<文件>.md「<章节>」`：
 
 ```dart
-/// 为什么在 feature 而不是 core，见 backend/database-guidelines.md「分工」。
+/// 为什么在 feature 而不是 core，见 data/database-guidelines.md「分工」。
 ```
 
-- **层目录不能省**（`backend/` / `frontend/`）。只写 `database-guidelines.md`，读者会以为是 `lib/` 下的文件。
+- **层目录不能省**（`data/` / `ui/`）。只写 `database-guidelines.md`，读者会以为是 `lib/` 下的文件。
+- 根级文件（`directory-structure.md` / `type-safety.md` / `cross-cutting.md`）没有层目录，直接写文件名。
 - **不写 `.trellis/spec/` 前缀** —— 规范根是已知的，前缀只会把注释行撑长。
 - **不加反引号** —— 路径不是代码符号。
 - **章节用标题里的关键词，不用 `§3.1` 这类编号** —— 编号会随文档改版漂移，关键词能直接 grep。
@@ -67,13 +68,15 @@
 
 ## spec 文档的语言
 
-固定章节名用英文，正文用中文：
+标题与章节名用中文，正文用中文：
 
-- **英文**：模板自带的章节名（`Overview` / `Naming Conventions` / `Common Mistakes` / `Testing Requirements` / `Forbidden Patterns` / `Required Patterns`）与文档标题（`# Database Guidelines`）
-- **中文**：项目特有的章节名（`## 核心原则`、`## 分工：schema 在 core，查询在 feature`）与全部正文
-- **保持原文**：代码、标识符、路径、文件名、包名、命令
+- **中文**：文档标题（`# 数据库规范`）与全部 `##` / `###` 章节名；要保留的术语写成「中文（术语）」的形式（`# 本地化（l10n）`）
+- **保持原文**：代码、标识符、路径、文件名、包名、命令，以及 Drift / Dio / Provider / ViewModel / Code Review / l10n / lint / Mock / HTTP 这类术语
+- **不动**：表格表头与代码块内的标签（`// BAD` / `// GOOD`）—— 它们不参与「路径「章节」」引用，改它们只增加改动量、不提升可读性
+- **特例**：`data/*.md` 的部分正文仍是英文段落（key 命名规则、读软写硬、drift `part` 约束、`@DriftAccessor` 报错文本），这是有意保留的信息，别为了「统一成中文」翻一遍
 
-不要为了「统一成英文」把正文翻一遍 —— 中英混排是这套文档的既定风格；也不要新写一个全中文的文件，章节名要对齐既有文档，否则目录看起来是两套体系。
+改章节名时同步改引用（见上一节）—— 引用写的是标题关键词，标题一改它就断了。
+这道检查没有门禁，改完标题手动跑 `just check-anchors` 看一眼（只报告，不拦提交）。
 
 ## 快照式内容要单独标注
 
@@ -102,10 +105,12 @@
 3. 列出**禁止模式**，并说明为什么
 4. 记下**已经踩过的坑**（原始报错文本、当时的现象）
 
-另外两条值得考虑，但不是必须：
+另外几条值得考虑，但不是必须：
 
 - **说明约束的真实强度** —— 有 lint / 脚本挡着的，和只靠 review 自觉的，值得区分开（例：「`avoid_print` 未启用，这条是 review 约定」）
 - **明说「不存在什么」** ——「没有 `domain/` 层」「没有 per-ViewModel 日志」这类反向断言，比正面描述更能挡住幻觉
+- **提到门禁时只写「见 `justfile` 的 `verify`」，不写数量与项名。** 枚举一定会过期：门禁清单曾被逐项抄在
+  8 处，加一道就要全改一遍；spec 里写死的 `tool/` 脚本数也已对不上。指针不会过期，枚举会。
 
 ---
 

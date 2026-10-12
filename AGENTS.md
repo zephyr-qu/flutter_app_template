@@ -63,7 +63,7 @@ flutter analyze
 
 ### Pre-commit Hooks
 
-This scaffold includes a pre-commit hook in `.githooks/pre-commit`（格式、架构边界、目录树一致性、依赖声明、analyze、全部测试等多项检查）。
+This scaffold includes a pre-commit hook in `.githooks/pre-commit`（清单见根 `justfile` 的 `verify`）。
 
 清单以脚本本身为准；每道门禁的语义与阈值见 `.trellis/spec/cross-cutting.md` —— 本文件不再逐项维护，内联的清单一定会过时。
 
@@ -100,9 +100,8 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 
 ## 开工前必读
 
-门禁、codegen、集成测试、环境配置：`.trellis/spec/cross-cutting.md`；数据层与网络：
-`.trellis/spec/backend/index.md`；前端（状态管理 / UI 质量 / 目录与命名）：`.trellis/spec/frontend/index.md`。
-分支策略见 `BRANCH.md`。写之前先读对应索引 —— 别凭印象写。
+门禁、codegen、集成测试、环境配置与各层细则的入口：`.trellis/spec/index.md`（唯一入口，按「要动什么」列了该先读哪份）。
+写之前先读对应索引 —— 别凭印象写。
 
 ## 改完必跑
 
@@ -110,10 +109,10 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 just verify
 ```
 
-它依次跑 format / 两组 `dart analyze --fatal-infos` / 依赖声明 / 插件规则测试 / 目录树一致性 / 全部测试。
+它跑什么以根 `justfile` 的 `verify` 为准（`just --list` 列出全部 recipe）—— 这里不逐项复述，免得新增门禁时漂移；
+每道门的语义与「有意不设门禁」的项都见 [`cross-cutting.md`](.trellis/spec/cross-cutting.md)。
 **生成物不入库**：改了注解（`@freezed` / `@RoutePage` / `@injectable` / Drift 表）或增删文件后，先 `just codegen` 再验证
 （clone 后也必须先 `just codegen`，否则 analyze / test 会因为缺 `part` 而失败）。
-「有意不设门禁」的项见 [`cross-cutting.md`](.trellis/spec/cross-cutting.md)。
 
 ## 照抄对象：`lib/features/article/`
 

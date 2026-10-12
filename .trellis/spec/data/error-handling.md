@@ -1,4 +1,4 @@
-# Error Handling
+# 错误处理
 
 > How errors are handled in this project.
 
@@ -6,15 +6,15 @@
 
 ---
 
-## Overview
+## 概览
 
 This project uses a **typed Result pattern** instead of bare exceptions for all fallible operations. Every operation that can fail returns `Result<T, Failure>` — a sealed class with `Ok(T data)` or `Err(E error)` variants. This ensures **type-safe error handling** at every layer.
 
 ---
 
-## Error Types
+## 错误类型
 
-### Result Type (`lib/core/base/result.dart`)
+### Result 类型（`lib/core/base/result.dart`）
 
 ```dart
 sealed class Result<T, E> {
@@ -40,7 +40,7 @@ sealed class Result<T, E> {
 
 **Always use `Result.when()`** for exhaustive pattern matching. `getOrThrow` is for tests only.
 
-### Failure Hierarchy (`lib/core/base/failure.dart`)
+### Failure 层级（`lib/core/base/failure.dart`）
 
 ```dart
 sealed class Failure implements Exception {
@@ -73,7 +73,7 @@ class UnknownFailure extends Failure { ... }
 
 已逐一映射的状态码：400 → `invalidRequest`、401 → `unauthorized`、403 → `forbidden`、404 → `notFound`、408 → `timeout`、409 → `conflict`、422 → `invalidPayload`、429 → `tooManyRequests`；其余 5xx → `serverError`（带状态码），其余 4xx → `requestFailed`（带状态码，文案里会显示它）。
 
-### Dio Error Handling (`lib/core/base/failure.dart`)
+### Dio 错误处理（`lib/core/base/failure.dart`）
 
 `handleDioError()` converts a `DioException` to the appropriate `Failure` subtype. Services call it directly — there is no alias and no `Failure.fromApiError` factory.
 
@@ -162,9 +162,9 @@ SnackBar 之类的场景直接 `error.localizedMessage(l10n)`。**新代码不�
 
 ---
 
-## Error Handling Patterns
+## 错误处理范式
 
-### Service layer (data boundary)
+### Service 层（数据边界）
 
 ```dart
 @LazySingleton(as: ArticleRepository)
@@ -188,7 +188,7 @@ class ArticleService implements ArticleRepository {
 2. Catch generic `Exception` last as `FailureCode.unknown`（实践中直接调 `runCatching` 即可）
 3. Never re-throw; always return `Result.failure()`
 
-### ViewModel layer (logic boundary)
+### ViewModel 层（逻辑边界）
 
 ViewModels do not hand-roll the tri-state transition — use the `runAsync` helper (`lib/core/base/run_async.dart`), which sets the signal to loading, then data or error, and returns the `Result` unchanged:
 
@@ -208,13 +208,13 @@ There is no separate `currentFailure` signal — the `Failure` **object** is sto
 
 ---
 
-## API Error Responses
+## API 错误响应
 
 Not applicable — this is a Flutter client project. API error mapping is handled in `handleDioError()` based on HTTP status codes.
 
 ---
 
-## Common Mistakes
+## 常见错误
 
 - ❌ **Throwing exceptions from Service/Repository** — always return `Result.failure()`
 - ❌ **Using `getOrThrow` in production code** — only in tests; use `when()` in production

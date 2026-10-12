@@ -1,7 +1,7 @@
-# Cross-Cutting Concerns
+# 跨层与门禁
 
 > 不属于单一层、或同时管「门禁」与「发布」的约定。
-> 层次内的规则见 [backend/](backend/index.md) 与 [frontend/](frontend/index.md)。
+> 唯一入口见 [Spec 索引](index.md)。
 
 **本文件的写法约定**：只写**现行约束** —— 现在时、命令式、一条能执行的规则配一两句为什么。
 历史、被否决的方案、退役的规则不写进 spec：需要禁止的行为直接写成命令式「不要做 X」，不解释来龙去脉。
@@ -20,7 +20,7 @@
 | `no_material_import_in_logic` | `features/*/logic/` 不得 import/export `material.dart` / `widgets.dart`，也不得引**本 feature** 的 `page/`（logic 是纯 Dart 状态层；`ChangeNotifier` / `@visibleForTesting` 所在的 `foundation` 放行） |
 | `no_service_locator_in_logic` | `features/*/logic/` 里不得出现 `getIt` / `GetIt.I`（构造器注入，理由见 [ADR-0001](../../docs/adr/ADR-0001.md)） |
 | `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()` 取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
-| `avoid_async_state_map` | 不得调用 `AsyncState.map`，三态渲染用 `AsyncView`（理由见 [frontend/state-management.md](frontend/state-management.md)「渲染状态」） |
+| `avoid_async_state_map` | 不得调用 `AsyncState.map`，三态渲染用 `AsyncView`（理由见 [ui/state-management.md](ui/state-management.md)「渲染状态」） |
 | `comment_block_too_long` | 连续注释块最多 10 行，超限就把解释搬进 spec（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)） |
 
 前两条与规则 7 都是「谁能依赖谁」：前两条管依赖方向，规则 7 管同一 feature 内的层次。第三、四条是同一件事的两面：ViewModel 的依赖要能从构造器签名读出来，页面也要给测试留一个只有测试会用的注入口（[ADR-0001](../../docs/adr/ADR-0001.md) 的缓解措施）。这两条**没有任何编译器会提醒**——漏一个页面就少一处，所以用退出码兜住。
@@ -48,6 +48,7 @@ plugins:
 
 - **`dart analyze` 必须显式传文件名**：插件诊断只在显式传文件时输出，单文件、多文件都行，**传目录不行**——目录模式不报错、只是静默少跑规则，正是「有门禁的错觉」的形态。
 - **`flutter analyze` 不加载插件**：同一份 `plugins:` 配置它只报「No issues found」。所以门禁是 `justfile` 里的两步 `dart analyze --fatal-infos`（`lib + test` 与 `tool + packages`），文件列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤）。**CI 与 pre-commit 都不自己拼这两步，统一跑 `just verify`** —— 调用形式抄错不报错、只少跑，所以不留第二份。
+- **读门禁输出要看退出码**：info → 0、warning → 2、error → 3；带 `--fatal-infos` 时 info 也变 1。CI 与 pre-commit 只认退出码，别用终端有没有红字判断。
 - **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/generated_paths.dart` 一致，改动时要一起改。
 - **判据细节**：全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。
 - 规则 4 只看 `*ViewModel` 类型：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 也由规则 3 直接禁止取容器，不重复报。
@@ -94,9 +95,79 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 | 文档 | 根 |
 |------|----|
 | `README.md` | `lib` |
-| [frontend/directory-structure.md](frontend/directory-structure.md) | `lib` |
+| [directory-structure.md](directory-structure.md) | `lib` |
 
 `packages/` 下的独立工具包（当前只有 `app_lints`）是工具、不是应用代码，不进任何目录树。
+
+---
+
+## 文档链接一致性（`tool/check_doc_links.dart`）
+
+目录树门禁只管树里的**纯文本路径**；markdown 链接与 dart 注释里的 spec 引用不在它视野里 ——
+目录改名或文件改名会静默留下断链，编辑器和 Git 都不报。这道门禁补上：
+
+```bash
+dart run tool/check_doc_links.dart        # 退出码 0 = 全绿，1 = 有断链
+```
+
+两条规则：
+
+1. **markdown 行内链接**（`[text](target)`）的相对目标必须存在（文件或目录）
+2. **dart 注释里的 spec 引用**（`data/xxx.md`）必须指向真实文件
+
+扫描面：根 `README.md` / `AGENTS.md`、`docs/**/*.md`、`.trellis/spec/**/*.md`、
+`.cursor/rules/*.mdc`、`lib/**/*.dart`、`test/**/*.dart`。
+
+| 排除 | 理由 |
+|------|------|
+| `.trellis/tasks/**` | 任务笔记：活动任务会引用**尚未创建**的目标路径，归档任务是历史 |
+| `.pi/skills/**`、`.agents/skills/**` | vendored 第三方文档，含作者本机的 `file://` 绝对链接 |
+| `packages/**` | 独立包，自带 README 的链接面向 pub 场景 |
+| 生成物 | 复用 `tool/generated_paths.dart`：里面的引用没法手工修 |
+
+围栏代码块与行内代码里的 `](...)` 不是链接（文档里写正则的例子会被误判），带 scheme 的目标
+（`https:` / `mailto:` / `file:`…）与纯锚点一律跳过。规则 B 只认 `(data|ui|guides)/<名>.md`
+与裸 `cross-cutting.md`，且只看 `//` 注释行 —— **宁可少报也不误报**：误报会直接挡住提交。
+
+**锚点与章节关键词不进这道门禁**（`guides/comment-guidelines.md` 要求引用写章节关键词而非编号）：
+校验关键词要解析每份 `.md` 的标题集合，而改章节名是本仓库的常规操作，误报会先卡住改名任务。
+这类引用由 `tool/check_doc_anchors.dart` 承担 —— **只报告，不拦提交**：
+
+```bash
+just check-anchors                              # 改完标题顺手跑一下；退出码恒为 0
+dart run tool/check_doc_anchors.dart --strict    # 有关键词对不上时退出码 1
+```
+
+判据：`路径.md「关键词」` 的引用，目标文件里**任一标题包含**该关键词即通过（引用写的是关键词，
+不是完整标题）；无 `「」` 的引用跳过。扫描面直接调 `check_doc_links.dart` 的 `collectFiles()`，
+不抄第二份。也不做自动修复（`--fix`），只报告 `文件:行号`。
+
+### 已知盲区（全绿 ≠ 无问题）
+
+这条门禁是**文件级**的，下面这些不被覆盖 —— 遇到时靠 review：
+
+- **大小写笔误**：规则 B 只认小写文件名，`data/No-Such.md` 不报（当前 spec 全小写，无实际漏报）
+- **`%20` 等 URL 编码**：链接目标不做解码
+- **引用式链接**（`[x][ref]` + `[ref]: target`）与带标题的 `[x](target "t")`：规则 A 只认行内形式
+- **跨行 code span** 与 4 个以上反引号围栏里嵌 3 个反引号：可能误报
+
+排除项 `.pi/`、`.agents/`、`packages/`、`.trellis/tasks/` 在现有扫描面下本就不可达，
+列出来是**防御性**的：将来把扫描面放宽时别忘了一起看。
+
+---
+
+## 有意不设的项
+
+下面这些「缺失的门禁」是**决定**，不是待办。列在这里，免得每次 review 都被重新提一遍：
+
+| 不设 | 为什么 | 靠什么兜 |
+| --- | --- | --- |
+| 覆盖率阈值 / lcov | 阈值对个人项目没有意义：它不反映可维护性，只会诱导凑数字 | 人工看 `flutter test --coverage` |
+| 「清理未使用依赖」的自动化 | 见「依赖声明」：只拦「声明了却没用」，反向没有门禁 | 改代码的人顺手删 |
+| 文档引用的**锚点与章节关键词**校验 | 见「文档链接一致性」：改章节名是本仓库常规操作，误报会卡住它 | [tool/check_doc_anchors.dart](../../tool/check_doc_anchors.dart)（只报告）+ review |
+| 目录树的**全仓库**核对 | 见「目录树一致性」：门禁只覆盖 `README.md` 与 `directory-structure.md` | 人工同步其余位置 |
+| 导航标签与测试的同步 | 见 [ui/routing.md](ui/routing.md)「主框架标签」 | review |
+| 「不存在的东西」的守卫（事件总线、per-ViewModel 日志、`domain/` 层…） | 没有稳定判据，硬做成门禁只会误报 | [`../../.cursor/rules/project-conventions.mdc`](../../.cursor/rules/project-conventions.mdc)「不存在的东西」清单 + review |
 
 ---
 
@@ -106,7 +177,7 @@ dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出�
 
 - 想临时看数字自己跑 `flutter test --coverage` —— 那是人工参考，不拦提交
 - 因此也不再需要「只统计手写代码」的剔除逻辑：生成物已由 `.gitignore` 排除，不必再为它们写豁免
-- 门禁里也因此**没有自定义脚本**了：`tool/` 只剩目录树一致性那一个（`tool/check_readme_tree.dart`）
+- 没有自定义脚本，也没有阈值：覆盖率不是一个门禁，只是一条人工参考（取舍见「有意不设的项」）
 
 ---
 
@@ -230,9 +301,9 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
 - **本地 `just verify` 不跑 codegen**（假定生成物已在磁盘上，快速开始的 `just codegen` 已执行过）；**pre-commit 有意不跑** —— 完整 codegen 是几十秒量级
 - **CI 的每个 job 都在门禁前跑 `just codegen`**：生成物不入库，checkout 之后现场生成是唯一来源。codegen 统一排在 analyze / test 之前 —— 生成物缺失时 analyze 会报一堆「找不到 `part` / provider」的噪声，先生成能让报错指向真正的原因
 - `drift_dev` 生成 schema 需要 `sqlite3` 的动态库（本项目由 `sqlite3` 3.x 的 build hook 提供，`just deps` 会准备）。这一步若在 CI runner 上失败，报错会指向 `sqlite3` / `hooks_runner`，而不是 build_runner 本身
-- **本项目没有 l10n**，所以这里**没有** `flutter gen-l10n`：那个命令在缺 `l10n.yaml` 时会直接失败（见 [frontend/localization.md](frontend/localization.md)）
+- **本项目没有 l10n**，所以这里**没有** `flutter gen-l10n`：那个命令在缺 `l10n.yaml` 时会直接失败（见 [ui/localization.md](ui/localization.md)）
 
-### 禁止模式
+### codegen 的禁止模式
 
 ```bash
 # ❌ 手改生成物 —— 2.16.0 起 build_runner 默认会修正被改过的输出（旧行为要显式开 --keep-modified-outputs）
@@ -258,7 +329,7 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
   再决定砍 builder 或改构建结构，**最后**才考虑缓存。不要从「加个 cache」起步。
 ---
 
-## Memory Leak Detection (`leak_tracker`)
+## 内存泄漏检测（`leak_tracker`）
 
 开发期自动检测：`bootstrap.dart` 的 `_initLeakTracker()` 在 debug 下监听 `FlutterMemoryAllocations`
 并把未释放对象打到控制台；`test/flutter_test_config.dart` 让所有 `testWidgets` 自动启用 `LeakTesting`
@@ -269,11 +340,11 @@ signals_flutter 的组件在 `dispose` 时会自动取消订阅；泄漏链里�
 
 > ⚠️ **`leak_tracker` 看不见 signals**：`Signal` / `AsyncSignal` / `Computed` 是纯 Dart 对象，不上报
 > `FlutterMemoryAllocations`。「测试里没报警」**不等于**「信号没泄漏」——那条边界见
-> [frontend/state-management.md](frontend/state-management.md) 的 dispose 判据。
+> [ui/state-management.md](ui/state-management.md) 的 dispose 判据。
 
 ---
 
-## Integration Testing
+## 集成测试
 
 `integration_test/app_test.dart` 包含基础的端到端冒烟测试。
 
@@ -320,7 +391,7 @@ Android 依赖走**官方仓库**：`android/build.gradle.kts` 与 `android/sett
 - **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上
   都不存在「渲染时联网拉字体」的问题。若以后引入按需下载字体的方案（如 `google_fonts`），测试里必须关掉运行时下载
   （`GoogleFonts.config.allowRuntimeFetching = false`），否则 `pumpAndSettle` 会卡数分钟且结果不稳定；生产环境更该把字体打进产物。
-- `msw_dio_interceptor` 的 mock 由 `USE_MOCK` 控制（`.env.example` 默认 `true`）。写 mock 规则必踩的坑（必须 `MockRule.regex` 且锚定结尾）见 [backend/network-guidelines.md](backend/network-guidelines.md) 的 Mock 一节
+- `msw_dio_interceptor` 的 mock 由 `USE_MOCK` 控制（`.env.example` 默认 `true`）。写 mock 规则必踩的坑（必须 `MockRule.regex` 且锚定结尾）见 [data/network-guidelines.md](data/network-guidelines.md) 的 Mock 一节
 
 ---
 

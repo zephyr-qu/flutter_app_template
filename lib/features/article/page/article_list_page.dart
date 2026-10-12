@@ -44,7 +44,7 @@ class ArticleListPage extends HookWidget {
             ErrorText(error: error, onRetry: vm.loadArticles),
         data: (list) {
           // 两个分支都要能下拉刷新：显式给 AlwaysScrollableScrollPhysics，
-          // 空态也要包成可滚动的。见 frontend/state-management.md「刷新时保留旧数据」。
+          // 空态也要包成可滚动的。见 ui/state-management.md「刷新时保留旧数据」。
           return RefreshIndicator(
             onRefresh: vm.loadArticles,
             child: list.isEmpty

@@ -4,7 +4,7 @@ import 'package:my_app/app/pages/not_found_page.dart';
 import 'package:my_app/app/pages/splash_page.dart';
 import 'package:my_app/core/data/storage/auth_storage.dart';
 // `logic/` 的三个类型是生成物 `router.gr.dart` 里路由 Args 的字段类型：
-// 页面构造函数带「可选注入点」时（见 frontend/state-management.md），
+// 页面构造函数带「可选注入点」时（见 ui/state-management.md），
 // auto_route 会把它变成路由参数，而 part 文件只能用本库的 import 解析它。
 import 'package:my_app/features/article/logic/article_view_model.dart';
 import 'package:my_app/features/article/page/article_detail_page.dart';

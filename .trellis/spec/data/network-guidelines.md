@@ -1,4 +1,4 @@
-# Network Guidelines
+# 网络规范
 
 > How the HTTP layer is wired in this project.
 
@@ -10,7 +10,7 @@
 
 ---
 
-## Overview
+## 概览
 
 | 文件 | 职责 |
 | --- | --- |
@@ -120,7 +120,7 @@ if (config.isMock) {
 
 ---
 
-## Common Mistakes
+## 常见错误
 
 - ❌ **给某个 API 单独建 `Dio`** —— 拦截器栈各一套，single-flight 与 Mock 都会失效
 - ❌ **在业务代码里自己加 `Authorization` 头** —— 交给 `AuthInterceptor`，否则会出现两套令牌来源

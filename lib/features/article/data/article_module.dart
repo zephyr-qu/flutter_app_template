@@ -9,7 +9,7 @@ abstract class ArticleModule {
   @LazySingleton()
   ArticleApi articleApi(Dio dio) => ArticleApi(dio);
 
-  /// DAO 由 feature 装配（不用 `@DriftDatabase(daos: [...])`，原因见 backend/database-guidelines.md）
+  /// DAO 由 feature 装配（不用 `@DriftDatabase(daos: [...])`，原因见 data/database-guidelines.md）
   @LazySingleton()
   ArticleDao articleDao(AppDatabase db) => ArticleDao(db);
 }

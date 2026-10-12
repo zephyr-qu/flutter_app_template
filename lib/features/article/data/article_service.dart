@@ -11,7 +11,7 @@ import 'package:my_app/features/article/data/models/article.dart';
 
 /// 文章服务：cache-aside —— 网络成功顺手刷新缓存，失败回退到缓存。
 ///
-/// 错误码保留与「缓存失败不影响请求结果」的约定见 backend/database-guidelines.md。
+/// 错误码保留与「缓存失败不影响请求结果」的约定见 data/database-guidelines.md。
 @LazySingleton(as: ArticleRepository)
 class ArticleService implements ArticleRepository {
   new(this._api, this._cache);

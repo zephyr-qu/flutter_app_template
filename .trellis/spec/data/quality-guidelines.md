@@ -1,10 +1,10 @@
-# Quality Guidelines
+# 质量规范：数据与逻辑层
 
 > Code quality standards for the data and logic layers.
 
 ---
 
-## Overview
+## 概览
 
 These guidelines apply to:
 
@@ -16,7 +16,7 @@ These guidelines apply to:
 
 ---
 
-## Forbidden Patterns
+## 禁止模式
 
 ❌ **Never use these patterns**:
 
@@ -57,7 +57,7 @@ These guidelines apply to:
 
 ---
 
-## Required Patterns
+## 必须遵守
 
 ✅ **Always use these patterns**:
 
@@ -92,7 +92,7 @@ These guidelines apply to:
 
 ---
 
-## Testing Requirements
+## 测试要求
 
 - **Unit tests required for**:
   - ViewModel state transitions (loading → data, loading → error)
@@ -103,7 +103,7 @@ These guidelines apply to:
 
 ---
 
-## Code Review Checklist
+## Code Review 清单
 
 When reviewing data-layer code, check:
 

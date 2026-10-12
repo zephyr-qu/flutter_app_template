@@ -16,7 +16,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 内存里缓存一份，所以 [getAccessToken] / [getRefreshToken] 是同步的。
 /// 一个键 = 一处状态，[saveTokens] / [clearAuth] 不必再维护多份副本的一致性。
 ///
-/// 存储划分与读写失败策略（读软写硬）见 backend/database-guidelines.md。
+/// 存储划分与读写失败策略（读软写硬）见 data/database-guidelines.md。
 ///
 /// 实现 [TokenStore]（`AuthInterceptor` / `TokenRefresher` 只认这个接口）；
 /// [currentUser] / [isLoggedInSignal] 供路由守卫重评登录态。

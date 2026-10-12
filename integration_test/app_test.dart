@@ -19,7 +19,7 @@ void main() {
     // （顺带验证 app.locale 的持久化读取路径）
     await prefs.setString('app.locale', 'zh');
 
-    app.main();
+    await app.main();
     await tester.pumpAndSettle();
 
     // 1. 启动后应落在登录页（splash → login）

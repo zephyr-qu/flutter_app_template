@@ -62,7 +62,7 @@ class ProfileSettingsSection extends StatelessWidget {
     );
   }
 
-  /// 主题名直接写中文（单语言，见 frontend/localization.md）
+  /// 主题名直接写中文（单语言，见 ui/localization.md）
   String _themeLabel(ThemeMode mode) {
     return switch (mode) {
       ThemeMode.system => '跟随系统',

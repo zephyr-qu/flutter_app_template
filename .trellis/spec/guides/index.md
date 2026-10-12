@@ -1,10 +1,10 @@
-# Thinking Guides
+# 思考指南
 
 > **Purpose**: Expand your thinking to catch things you might not have considered.
 
 ---
 
-## Why Thinking Guides?
+## 为什么需要思考指南
 
 **Most bugs and tech debt come from "didn't think of that"**, not from lack of skill:
 
@@ -17,19 +17,19 @@ These guides help you **ask the right questions before coding**.
 
 ---
 
-## Available Guides
+## 有哪些指南
 
 | Guide | Purpose | When to Use |
 |-------|---------|-------------|
-| [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | 发现自己在复制粘贴时 |
-| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | 功能跨 Page / ViewModel / Service / DAO 时 |
-| [Comment Guidelines](./comment-guidelines.md) | 代码注释写什么、spec 引用与语言约定、长文放哪 | 写或改任何注释 / spec 时 |
+| [复用思考指南](./code-reuse-thinking-guide.md) | 识别重复、少写重复代码 | 发现自己在复制粘贴时 |
+| [跨层思考指南](./cross-layer-thinking-guide.md) | 把跨层的数据流想清楚 | 功能跨 Page / ViewModel / Service / DAO 时 |
+| [注释规范](./comment-guidelines.md) | 代码注释写什么、spec 引用与语言约定、长文放哪 | 写或改任何注释 / spec 时 |
 
 ---
 
-## Quick Reference: Thinking Triggers
+## 速查：什么时候该触发思考
 
-### When to Think About Cross-Layer Issues
+### 该想跨层问题时
 
 - [ ] 功能跨 3+ 层（Page / ViewModel / Service / DAO）
 - [ ] 数据在两个层之间换了类型（`DioException` → `Failure`、模型 → drift 行类）
@@ -37,9 +37,9 @@ These guides help you **ask the right questions before coding**.
 - [ ] 不确定某段逻辑该放哪一层
 - [ ] 要在 `core/` 和 feature 之间挪东西（先看依赖方向）
 
-→ Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)
+→ 读 [跨层思考指南](./cross-layer-thinking-guide.md)
 
-### When to Think About Code Reuse
+### 该想代码复用时
 
 - [ ] You're writing similar code to something that exists
 - [ ] You see the same pattern repeated 3+ times
@@ -48,9 +48,9 @@ These guides help you **ask the right questions before coding**.
 - [ ] **You're creating a new utility/helper function** ← Search first!
 - [ ] 同一个转换（如 `DioException` → `Failure`）被写到第 2 处
 
-→ Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
+→ 读 [复用思考指南](./code-reuse-thinking-guide.md)
 
-### When Verifying AI Cross-Review Results
+### 核查 AI 交叉复核结论时
 
 - [ ] Reviewer claims "user input can be malicious" → Check the actual data source (internal manifest? user config? external API?)
 - [ ] Reviewer flags "missing validation" → Is the data from a trusted internal source?
@@ -67,20 +67,23 @@ These guides help you **ask the right questions before coding**.
 
 ---
 
-## Pre-Modification Rule (CRITICAL)
+## 改任何值之前先搜（硬性）
 
-> **Before changing ANY value, ALWAYS search first!**
+> **改任何值之前，一律先搜。**
 
 ```bash
-# Search for the value you're about to change
+# 搜你要改的那个值
 grep -r "value_to_change" .
 ```
 
-This single habit prevents most "forgot to update X" bugs.
+> **用 `git grep`，别只用 Grep / ripgrep** —— 它们默认**跳过点号目录**（`.trellis/` `.cursor/`
+> `.github/` `.agents/`），「全仓库扫描」会漏掉 spec、规则与 CI 配置；`git grep` 按 git 索引走。
+
+这个习惯能挡掉绝大多数「忘了改 X」这类 bug。
 
 ---
 
-## How to Use This Directory
+## 怎么用这个目录
 
 1. **Before coding**: Skim the relevant thinking guide
 2. **During coding**: If something feels repetitive or complex, check the guides
@@ -88,11 +91,11 @@ This single habit prevents most "forgot to update X" bugs.
 
 ---
 
-## Contributing
+## 新增指南
 
 Found a new "didn't think of that" moment? Add it to the relevant guide.
 
-改写时注意：guides 只放**通用的思考方法**。具体的项目规则、命令、文件清单属于 `backend/` 或 `frontend/`，不要抄到这里 —— 两个地方写同一件事必然会漂。
+改写时注意：guides 只放**通用的思考方法**。具体的项目规则、命令、文件清单属于 `data/` 或 `ui/`，不要抄到这里 —— 两个地方写同一件事必然会漂。
 
 ---
 

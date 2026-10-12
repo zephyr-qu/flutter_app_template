@@ -1,7 +1,7 @@
 # Release 检查清单
 
 脚手架**有意**不包含发版配置——签名、混淆、flavor 都属于目标应用的职责（见
-[README](../README.md#环境配置与-release-构建)）。但"有意留白"不等于"可以忘"，
+[README](../README.md#环境与构建)）。但"有意留白"不等于"可以忘"，
 这份清单把它变成可勾选的步骤。
 
 > 现状（脚手架原样）：release 用 **debug keystore** 签名、未开 minify/混淆、
@@ -113,11 +113,11 @@ just codegen
 - [ ] 门禁全绿（本地与 CI 是同一条命令）：
 
 ```bash
-just verify        # format / analyze / 依赖 / 插件规则 / 目录树 / 测试
+just verify        # 全部门禁（清单见根 justfile 的 verify 链）
 ```
 
-  逐项对照：`just analyze` 的两组 `dart analyze --fatal-infos`（含 `depend_on_referenced_packages`）、
-  `just deps-check`、`just test-app-lints`、`just check-readme-tree`、`just test`。
+  清单与先后顺序以根 `justfile` 的 `verify` 链为准（`just --list` 列出全部 recipe）；
+  各道门的语义见 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)。
   覆盖率**不设门禁**：要看数字自己跑 `flutter test --coverage`（见
   [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)「覆盖率」）。
 

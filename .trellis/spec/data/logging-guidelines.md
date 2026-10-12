@@ -1,10 +1,10 @@
-# Logging Guidelines
+# 日志规范
 
 > How logging is done in this project.
 
 ---
 
-## Overview
+## 概览
 
 This project uses the **`logger`** package behind a custom `Logging` facade. All logging goes through `Logging.info()`, `Logging.debug()`, `Logging.warning()`, and `Logging.error()` — never call the `logger` package directly, and never use `print()`.
 
@@ -12,7 +12,7 @@ The facade lives at **`lib/core/logging/logging.dart`**.
 
 ---
 
-## Log Levels
+## 日志级别
 
 ### `Logging.info(String message)`
 
@@ -36,7 +36,7 @@ The facade lives at **`lib/core/logging/logging.dart`**.
 
 ---
 
-## Logger Configuration
+## Logger 配置
 
 Configured once inside the facade (`lib/core/logging/logging.dart`):
 
@@ -83,7 +83,7 @@ HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMo
 
 它的 `logPrint` 串了 `lib/core/logging/log_redactor.dart`：请求 / 响应体在落控制台之前逐行过
 `LogRedactor.redact()`，`authorization` / `password` / `accessToken` / `refreshToken` 等字段的值
-换成 `***` —— 上面「What NOT to Log」里的密码与令牌因此不会被调试日志带出去。
+换成 `***` —— 上面「什么不该记」里的密码与令牌因此不会被调试日志带出去。
 
 - 脱敏在**已成型的日志行**上做，是因为 `PrettyDioLogger` 只给了 `logPrint` 一个回调，
   拿不到可替换的 `RequestOptions` / `Response`（理由写在 `log_redactor.dart` 的文件注释里）
@@ -96,7 +96,7 @@ HTTP 请求/响应日志由 `PrettyDioLogger` 单独负责，条件是 `kDebugMo
 
 ---
 
-## What NOT to Log
+## 什么不该记
 
 🚫 **Never log**:
 

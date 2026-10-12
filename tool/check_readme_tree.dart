@@ -27,7 +27,7 @@ import 'generated_paths.dart' show isGeneratedPath;
 /// 要检查的「文档 → 目录树根」对。
 const targets = <(String, String)>[
   ('README.md', 'lib'),
-  ('.trellis/spec/frontend/directory-structure.md', 'lib'),
+  ('.trellis/spec/directory-structure.md', 'lib'),
 ];
 
 /// 树里的占位写法（`{feature}/`、`*.dart`），没有对应的真实路径。

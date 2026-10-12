@@ -1,4 +1,4 @@
-# Localization (l10n)
+# 本地化（l10n）
 
 > 用户可见文案写在哪，以及要加回多语言时怎么做。
 
@@ -6,7 +6,7 @@
 
 ## 现状：单语言中文
 
-脚手架**没有 l10n**：没有 ARB、没有 `l10n.yaml`、没有 `AppLocalizations`、没有 `generate: true`，也没有语言选择器 —— 它已被 `tool/prune.dart` 的 `--l10n=single` 裁掉。
+脚手架**没有 l10n**：没有 ARB、没有 `l10n.yaml`、没有 `AppLocalizations`、没有 `generate: true`，也没有语言选择器 —— 这是**有意**的裁剪。
 
 | 项 | 位置 |
 | --- | --- |
@@ -35,7 +35,7 @@ extension FailureMessage on Failure {
 
 ## 要加回多语言时
 
-把 `tool/prune.dart` 的裁剪面**反过来做**即可 —— 那份 `Replacement` / `Removal` 清单就是「多语言形态」与「单语言形态」的差集，逐条倒过来：
+加回来是手工活 —— 脚手架不提供反向操作，按下面 6 步补：
 
 1. `pubspec.yaml`：加回 `flutter_localizations`（`sdk: flutter`）与 `intl`，以及 `flutter: generate: true`
 2. 新建 `l10n.yaml` 与 `lib/l10n/app_zh.arb`（模板语言：中文）、`lib/l10n/app_en.arb`

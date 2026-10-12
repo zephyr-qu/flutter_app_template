@@ -5,7 +5,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 覆盖 `SignalBuilder` + `asyncSignal` 渲染 loading / data / error 三态。
 ///
 /// 注意：**生产页面走的不是这条路**——页面统一是 `HookWidget` +
-/// `useSignalValue` + `AsyncView`（见 frontend/state-management.md）。
+/// `useSignalValue` + `AsyncView`（见 ui/state-management.md）。
 /// 这里验证的是可选的 SignalBuilder 路线：需要把重建范围收缩到某棵子树时才用它。
 void main() {
   group('asyncSignal + SignalBuilder three-state rendering', () {

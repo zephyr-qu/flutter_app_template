@@ -60,7 +60,7 @@
 | 深链 / 分享链接打开 App | `app_links` | `AppRouter` 的初始路由（`lib/app/routing/router.dart`） |
 | 网络调试 UI（真机上抓包看请求） | `talker_flutter`（`alice` 的后继） | 替换 `dio_client.dart` 里 `PrettyDioLogger` 的挂载位置 |
 | 本地通知 / 推送 | `flutter_local_notifications`、`firebase_messaging` | `ProfilePage` 的 `TODO(template): 接入通知设置页` |
-| 原生启动图 | `flutter_native_splash` | `splash_page.dart` 是 **Flutter 层**启动页；native 层冷启动白屏要靠它 |
+| 原生启动图 | `flutter_native_splash` | `splash_page.dart` 是 **Flutter 层**启动页；native 层冷启动白屏要靠它。现 native 启动图是 Flutter 样板：换 iOS 的 `ios/Runner/Assets.xcassets/LaunchImage.imageset/` 与 Android 的 `android/app/src/main/res/drawable*/launch_background.xml` 即可 |
 | 应用图标 | `flutter_launcher_icons`（已在依赖里） | ⚠️ `pubspec.yaml` 指向 `assets/icon/icon.png`，**该文件目前不存在**，跑之前先补 |
 | 主题模式 UI | 不需要新包 | 已闭环：`UserPreferences.themeMode` + `ProfilePage` 的「外观」弹窗 |
 
@@ -141,7 +141,7 @@
 ## 七、可选脚手架：build flavor（dev / staging / prod 同机共存）
 
 脚手架默认**不做 flavor**：环境靠改入库的 `.env.example` 切换（见
-[README](../README.md#环境配置与-release-构建)），一套代码、一个包，改文件换地址。
+[README](../README.md#环境与构建)），一套代码、一个包，改文件换地址。
 什么时候才值得加 flavor？只有一种场景——**同一台手机上要同时装多个环境**
 （dev 包连测试服、prod 包连线上，互不覆盖、不用卸载）。如果只是「换地址」，
 改一处 `.env.example` 就够了，别为它引入 flavor 的复杂度。
@@ -194,7 +194,6 @@ android {
   `tool/init_project.dart` 写入）。不想动 manifest 就改用
   `manifestPlaceholders["appName"]` + `android:label="${appName}"`。
 
-### 2. 让 flavor 决定加载哪个 `.env`
 ### 2. flavor 与 env 的关系
 
 env 只有一份、且是入库的 asset（`.env.example`）：**dotenv 只能加载 asset**，所以 flavor
@@ -241,5 +240,5 @@ flutter test                        # 测试不受 flavor 影响
 ## 相关文档
 
 - [release-checklist.md](./release-checklist.md) — 从"能跑"到"能发"的检查清单
-- [../README.md](../README.md) — 模板占位清单（哪些是示例骨架、哪些是真接线）
+- [template-pruning.md](./template-pruning.md) — 模板裁剪：删除示例模块 / `TODO(template)` 占位清单
 - [adr/](./adr/) — 已经做过的架构决策与理由

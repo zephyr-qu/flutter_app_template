@@ -23,14 +23,14 @@ class AuthService implements AuthRepository {
         final response = await _api.login(
           LoginRequest(email: email, password: password),
         );
-        // 顺序不能反：先存令牌再存用户（原因见 backend/database-guidelines.md）
+        // 顺序不能反：先存令牌再存用户（原因见 data/database-guidelines.md）
         await _storage.saveTokens(response.tokens);
         await _storage.saveUser(response.user);
         return response.user;
       });
 
   /// 登出：先尽力通知服务端，**无论成功与否都清本地凭证**
-  /// （见 backend/error-handling.md「登出语义」）。
+  /// （见 data/error-handling.md「登出语义」）。
   @override
   Future<Result<void, Failure>> logout() async {
     final remote = await runCatching<void>(() async {

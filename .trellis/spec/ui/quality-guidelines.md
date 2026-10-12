@@ -1,10 +1,10 @@
-# Quality Guidelines
+# 质量规范：界面层
 
 > UI 层（页面 / 组件 / hooks）的代码规范。门禁、测试基建与发布相关的约定见 [../cross-cutting.md](../cross-cutting.md)。
 
 ---
 
-## Forbidden Patterns
+## 禁止模式
 
 ❌ **Never use these patterns**:
 
@@ -34,23 +34,11 @@
 
 ---
 
-## Required Patterns
+## 必须遵守
 
 ✅ **Always use these patterns**:
 
-1. **Three-state rendering in every async page** — 用 `AsyncView`（`core/ui/async_view.dart`）：
-
-   ```dart
-   AsyncView<List<Article>>(
-     state: async,
-     loading: () => const LoadingIndicator(),
-     error: (Object error, StackTrace stackTrace) =>
-         ErrorText(error: error, onRetry: vm.loadArticles),
-     data: (items) => items.isEmpty
-         ? const EmptyWidget(message: '暂无数据')
-         : ListView.builder(...),
-   )
-   ```
+1. **Three-state rendering in every async page** — 用 `AsyncView`（`core/ui/async_view.dart`）渲染 loading / error / data 三态；完整片段（含空列表分支）见 [component-guidelines.md](./component-guidelines.md)「三态渲染」。
 
    **不要用 `AsyncState.map`**：它的 `error` 回调签名在运行期才校验，写错会直接红屏（见 [state-management.md](./state-management.md)）。`lib/` 里的调用会被 `avoid_async_state_map` 拦下来（[cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」）。
 
@@ -76,7 +64,7 @@
 
 ---
 
-## Error Handling Hierarchy
+## 错误处理层级
 
 ```
 FlutterError.onError        → Flutter 框架错误（保持默认 presentError：红屏 + 完整堆栈）
@@ -102,14 +90,14 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 
 ### 拦截器顺序（`NetworkModule.dio()`）
 
-见 [backend/network-guidelines.md](../backend/network-guidelines.md) —— 顺序图、两条不可破的
+见 [data/network-guidelines.md](../data/network-guidelines.md) —— 顺序图、两条不可破的
 语义、以及相关的两个测试都记在那里，本文件不再重复。
 
 ---
 
 ## 门禁、测试与发布
 
-以下内容不属于 UI 层，已移到 [Cross-Cutting Concerns](../cross-cutting.md)，本文件不重复：
+以下内容不属于 UI 层，已移到 [跨层与门禁](../cross-cutting.md)，本文件不重复：
 
 | 内容 | 见 |
 | --- | --- |
@@ -117,13 +105,13 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 | 代码形态约定（`avoid_async_state_map`、`comment_block_too_long`） | [../cross-cutting.md](../cross-cutting.md)「架构边界与代码形态」 |
 | 覆盖率（不设门禁） | [../cross-cutting.md](../cross-cutting.md)「覆盖率」 |
 | 依赖声明（`depend_on_referenced_packages`） | [../cross-cutting.md](../cross-cutting.md)「依赖声明」 |
-| 内存泄漏检测（`leak_tracker`） | [../cross-cutting.md](../cross-cutting.md)「Memory Leak Detection」 |
-| 集成测试（`integration_test/`，含「widget 测试里不要用真实 I/O」） | [../cross-cutting.md](../cross-cutting.md)「Integration Testing」 |
+| 内存泄漏检测（`leak_tracker`） | [../cross-cutting.md](../cross-cutting.md)「内存泄漏检测」 |
+| 集成测试（`integration_test/`，含「widget 测试里不要用真实 I/O」） | [../cross-cutting.md](../cross-cutting.md)「集成测试」 |
 | 环境配置与 release 构建（含「有意留白」） | [../cross-cutting.md](../cross-cutting.md)「环境配置与 release 构建」 |
 
 ---
 
-## Testing Requirements
+## 测试要求
 
 - 测试文件路径跟随源码结构：`test/features/{feature}/{subdir}/` 对应 `lib/features/{feature}/{subdir}/`
 - ViewModel 测试直接构造，无需 DI（`ArticleViewModel(mockRepo)`）

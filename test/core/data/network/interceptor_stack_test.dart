@@ -12,7 +12,7 @@ import '../../../support/scripted_http_adapter.dart';
 
 /// 复刻生产的拦截器装配，好在测试里拿到**与线上完全一致**的栈（Auth + 解码 + Retry）。
 ///
-/// 与 `token_refresh_test.dart` 的分工见 backend/network-guidelines.md「拦截器顺序」。
+/// 与 `token_refresh_test.dart` 的分工见 data/network-guidelines.md「拦截器顺序」。
 class _TestNetworkModule extends NetworkModule;
 
 void main() {

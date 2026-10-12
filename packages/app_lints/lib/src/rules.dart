@@ -169,7 +169,7 @@ class AvoidAsyncStateMapRule extends AnalysisRule {
   static const LintCode code = LintCode(
     'avoid_async_state_map',
     '禁用 AsyncState.map（回调签名运行期才校验），改用 AsyncView —— 见 '
-        'frontend/state-management.md「渲染状态」',
+        'ui/state-management.md「渲染状态」',
     severity: DiagnosticSeverity.WARNING,
   );
 

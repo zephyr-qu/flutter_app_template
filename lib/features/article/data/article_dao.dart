@@ -5,7 +5,7 @@ part 'article_dao.g.dart';
 
 /// 文章缓存的读写（只碰行类 `DbArticle`，行↔模型转换在 `ArticleService`）。
 ///
-/// 为什么在 feature 而不是 core，见 backend/database-guidelines.md「分工」。
+/// 为什么在 feature 而不是 core，见 data/database-guidelines.md「分工」。
 @DriftAccessor(tables: [DbArticles])
 class ArticleDao extends DatabaseAccessor<AppDatabase> with _$ArticleDaoMixin {
   new(super.attachedDatabase);

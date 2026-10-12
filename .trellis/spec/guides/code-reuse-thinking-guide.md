@@ -1,10 +1,10 @@
-# Code Reuse Thinking Guide
+# 复用思考指南
 
 > **Purpose**: Stop and think before creating new code — does it already exist?
 
 ---
 
-## The Problem
+## 问题
 
 **Duplicated code is the #1 source of inconsistency bugs.**
 
@@ -16,9 +16,9 @@ When you copy-paste or rewrite existing logic:
 
 ---
 
-## Before Writing New Code
+## 写新代码之前
 
-### Step 1: Search First
+### 第 1 步：先搜一遍
 
 ```bash
 # 找同名 / 近名的定义
@@ -28,7 +28,7 @@ grep -rn "getCachedArticle" lib/
 grep -rn "MockRule" lib/
 ```
 
-### Step 2: Ask These Questions
+### 第 2 步：问这几个问题
 
 | Question | If Yes... |
 |----------|-----------|
@@ -39,27 +39,27 @@ grep -rn "MockRule" lib/
 
 ---
 
-## Common Duplication Patterns
+## 常见重复形态
 
-### Pattern 1: Copy-Paste Functions
+### 形态 1：复制粘贴的函数
 
 **Bad**: Copying a validation function to another file
 
 **Good**: Extract to shared utilities, import where needed
 
-### Pattern 2: Similar Components
+### 形态 2：相似组件
 
 **Bad**: Creating a new component that's 80% similar to existing
 
 **Good**: Extend existing component with props/variants
 
-### Pattern 3: Repeated Constants
+### 形态 3：重复常量
 
 **Bad**: Defining the same constant in multiple files
 
 **Good**: Single source of truth, import everywhere
 
-### Pattern 4: 同一个转换散落在各个消费者里
+### 形态 4：同一个转换散落在各个消费者里
 
 **Bad**：多个 Service 各自把 `DioException` 映射成 `Failure`，每个都维护一份「哪些状态码算超时」的判断。
 
@@ -69,7 +69,7 @@ grep -rn "MockRule" lib/
 
 ---
 
-## When to Abstract
+## 什么时候该抽
 
 **Abstract when**:
 
@@ -83,11 +83,11 @@ grep -rn "MockRule" lib/
 - Trivial one-liner
 - Abstraction would be more complex than duplication
 
-> ⚠️ **过早抽象是个人项目的头号杀手** —— 宁可重复写两次，也不要提前抽取不稳定的基类。见 [../frontend/directory-structure.md](../frontend/directory-structure.md) 的「共享层（core/）严格克制」。
+> ⚠️ **过早抽象是个人项目的头号杀手** —— 宁可重复写两次，也不要提前抽取不稳定的基类。见 [../directory-structure.md](../directory-structure.md) 的「共享层（core/）严格克制」。
 
 ---
 
-## After Batch Modifications
+## 批量改动之后
 
 When you've made similar changes to multiple files:
 
@@ -117,7 +117,7 @@ switch (code) {
 
 ---
 
-## Checklist Before Commit
+## 提交前清单
 
 - [ ] Searched for existing similar code
 - [ ] No copy-pasted logic that should be shared

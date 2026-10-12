@@ -1,10 +1,10 @@
-# Directory Structure
+# 目录结构
 
 > How code is organized in this project.
 
 ---
 
-## Overview
+## 概览
 
 This project follows **Feature-Sliced Design (FSD) 简化版** — 按业务功能（auth, article, profile）划分目录，每个 feature 内部自包含三层：
 
@@ -54,7 +54,9 @@ lib/
 
 **不存在** `domain/`、`application/`、`shared/`、`core/error/`、`core/local/` 这些目录 —— 它们属于本脚手架迁移走的旧 Clean Architecture 布局。若在别处看到对它们的引用，那处引用是过期的。
 
-主题层（`core/theme/`）的两条归属规则见 [component-guidelines.md](./component-guidelines.md)「Theme Layer」。
+主题层（`core/theme/`）的两条归属规则见 [ui/component-guidelines.md](./ui/component-guidelines.md)「主题层」。
+
+生成物（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart`）与源文件同目录且**不入库** —— 唯一权威见 [cross-cutting.md](./cross-cutting.md)「代码生成与生成物」。
 
 ---
 
@@ -142,7 +144,7 @@ Drift 的表结构必须放 core（`core/data/database/tables/`，用 `part` 与
 用 `@DriftAccessor` 并在这个 feature 的 module 里注册。理由同上——查询写进 core
 就搬不出来了，只会随 feature 数量膨胀。
 
-细节与 drift 的 library 约束见 [backend/database-guidelines.md](../backend/database-guidelines.md)。
+细节与 drift 的 library 约束见 [data/database-guidelines.md](./data/database-guidelines.md)。
 
 ---
 
@@ -165,11 +167,40 @@ features/{feature}/
     └── {feature}_page.dart
 ```
 
+### 数据层的文件角色
+
+文件名与类名规则见下方「命名约定」；这里只说各自**负责什么**：
+
+| 文件 | 角色 | 备注 |
+| ------- | ------ | ------ |
+| `{feature}_api.dart` | Retrofit 接口定义，只描述 HTTP 形状 | 不做错误映射，不碰缓存 |
+| `{feature}_service.dart` | 业务实现：调用 API、映射错误、读写缓存 | 返回 `Result<T, Failure>` |
+| `{feature}_repository.dart` | 抽象接口 | **按需**：有真实多实现需求（mock / 线上切换）才写 |
+| `{feature}_dao.dart` | Drift 查询 | 只碰行类 `DbArticle`，行↔模型转换留在 Service |
+| `{feature}_module.dart` | DI 装配 | 只提供依赖，不含业务逻辑 |
+| `models/` | `@freezed` 数据模型 | 见 [type-safety.md](./type-safety.md) |
+
+完整范例见 `lib/features/article/`（API + DAO + Service + Repository + ViewModel + 页面）与 `lib/features/auth/`。
+
+### 数据流
+
+```
+Page → ViewModel → Repository (接口) → Service (实现) → Api (Retrofit) → Dio
+                                          ↓
+                                     Dao (Drift)  ← 缓存旁路
+```
+
+- 依赖方向是 `page/ → logic/ → data/ → core/`，由 `packages/app_lints` 的插件强制（见 [cross-cutting.md](./cross-cutting.md)「架构边界与代码形态」）
+- `Dto / Model` 只在 `data/` 层转换：Retrofit 拿到 JSON → 模型（`@freezed`），Service 返回 `Result<T, Failure>`
+- **缓存旁路**：Service 同时消费网络与 DAO —— 网络成功就刷新缓存，网络失败就回退到缓存。见 [data/database-guidelines.md](./data/database-guidelines.md) 的「Drift」一节
+
+层图与跨层契约的详解见 [guides/cross-layer-thinking-guide.md](./guides/cross-layer-thinking-guide.md)，本文件只留布局事实。
+
 ---
 
-## Naming Conventions
+## 命名约定
 
-**这张表是命名约定的唯一权威**（`backend/directory-structure.md` 不再各存一份）。
+**这张表是命名约定的唯一权威**。
 
 | 元素 | 规范 | 示例 |
 | --------- | ----------- | ------- |

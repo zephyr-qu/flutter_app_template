@@ -6,7 +6,7 @@ import 'package:my_app/core/theme/app_theme_extension.dart';
 
 /// 主题组装 —— 对外只暴露 [buildLightTheme] / [buildDarkTheme]。
 ///
-/// 三个主题文件的分工、字体与 token 约定见 frontend/component-guidelines.md「Theme Layer」。
+/// 三个主题文件的分工、字体与 token 约定见 ui/component-guidelines.md「主题层」。
 
 /// 构建应用浅色主题。
 ThemeData buildLightTheme() => _buildTheme(Brightness.light);

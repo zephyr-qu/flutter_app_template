@@ -52,7 +52,14 @@ test-app-lints:
 test-readme-tree:
     dart run tool/check_readme_tree.dart
 
-verify: fmt-check analyze test-app-lints test-readme-tree test
+test-doc-links:
+    dart run tool/check_doc_links.dart
+
+# 章节关键词引用：只报告，不拦提交（改了标题后顺手跑一下）
+check-anchors:
+    dart run tool/check_doc_anchors.dart
+
+verify: fmt-check analyze test-app-lints test-readme-tree test-doc-links test
     @echo All gates passed.
 
 codegen *args:
@@ -64,6 +71,3 @@ codegen-reset:
 
 init *args:
     dart run tool/init_project.dart {{ args }}
-
-prune *args:
-    dart run tool/prune.dart {{ args }}

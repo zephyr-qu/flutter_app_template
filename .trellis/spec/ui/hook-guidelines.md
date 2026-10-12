@@ -1,10 +1,10 @@
-# Hook Guidelines
+# Hook 规范
 
 > How hooks (`flutter_hooks`) are used in this project.
 
 ---
 
-## Overview
+## 概览
 
 This project uses **`flutter_hooks`** (for lifecycle management in `HookWidget`) and **`signals_hooks`** (for signals integration with hooks).
 
@@ -16,9 +16,9 @@ The primary hook usage is:
 
 ---
 
-## Page Template
+## 页面模板
 
-All feature pages use the same pattern:
+All feature pages use the same pattern（下面只列与 hook 有关的部分，完整页面骨架见 [component-guidelines.md](./component-guidelines.md)「页面结构」）：
 
 ```dart
 @RoutePage()
@@ -38,21 +38,8 @@ class ArticleListPage extends HookWidget {
       return null;
     }, []);
 
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('文章列表')),
-      body: AsyncView<List<Article>>(
-        state: async,
-        loading: () => const LoadingIndicator(),
-        error: (Object error, StackTrace stackTrace) =>
-            ErrorText(error: error, onRetry: vm.loadArticles),
-        data: (items) => ListView.builder(
-          itemCount: items.length,
-          itemBuilder: (context, index) => Text(items[index].title),
-        ),
-      ),
-    );
+    // 页面骨架（Scaffold + AsyncView 的 loading / error / data 接线）不在这里重复
+    ...
   }
 }
 ```
@@ -67,7 +54,7 @@ class ArticleListPage extends HookWidget {
 
 ---
 
-## App Root (MyApp)
+## 应用根（MyApp）
 
 ```dart
 class MyApp extends HookWidget {
@@ -85,7 +72,7 @@ class MyApp extends HookWidget {
     // 订阅信号：设置里改完语言/主题要立刻生效
     final themeMode = useSignalValue(preferences.themeMode);
 
-    // 主题在 lib/core/theme/ 里组装，这里只接线（见 frontend/component-guidelines.md）
+    // 主题在 lib/core/theme/ 里组装，这里只接线（见 ui/component-guidelines.md）
     final themeLight = useMemoized(buildLightTheme);
     final themeDark = useMemoized(buildDarkTheme);
 
@@ -101,7 +88,7 @@ class MyApp extends HookWidget {
 
 ---
 
-## Data Fetching
+## 取数
 
 Data fetching 由 ViewModel 负责，**不在 hook 里执行**：
 
@@ -128,7 +115,7 @@ useEffect(() {
 
 ---
 
-## Naming Conventions
+## 命名约定
 
 - **HookWidgets** follow the same naming as regular widgets (PascalCase)
 - **Custom hooks** (if needed) follow the `use` prefix convention from `flutter_hooks`
@@ -136,7 +123,7 @@ useEffect(() {
 
 ---
 
-## Common Mistakes
+## 常见错误
 
 - ❌ **Overusing hooks** — ViewModels handle business logic, hooks only handle widget lifecycle
 - ❌ **Missing dependency arrays in `useMemoized`/`useEffect`** — Causes stale closure bugs

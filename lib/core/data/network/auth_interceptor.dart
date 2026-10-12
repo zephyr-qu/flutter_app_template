@@ -9,7 +9,7 @@ import 'package:my_app/core/logging/logging.dart';
 /// 依赖 [TokenStore] 而不是具体的存储实现：令牌存在哪里（安全存储 + 内存缓存）
 /// 以及登录态用哪种状态管理暴露，都不是网络层该知道的事。见 design 6.1。
 ///
-/// 防递归标记、为何不在这里跳转等约定见 backend/error-handling.md「401 与令牌刷新」。
+/// 防递归标记、为何不在这里跳转等约定见 data/error-handling.md「401 与令牌刷新」。
 class AuthInterceptor extends Interceptor {
   new(this._auth, this._refresher, this._dio);
 

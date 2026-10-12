@@ -1,4 +1,4 @@
-# Component Guidelines
+# 组件规范
 
 > How components (widgets) are built in this project.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## Overview
+## 概览
 
 This is a **Flutter project using Material Design 3** (Material You). Widgets follow standard Flutter patterns with a focus on:
 
@@ -18,7 +18,7 @@ This is a **Flutter project using Material Design 3** (Material You). Widgets fo
 
 ---
 
-## Page Structure
+## 页面结构
 
 ### 标准页面（带 ViewModel）
 
@@ -70,7 +70,7 @@ class ArticleDetailPage extends StatelessWidget {
 
 ---
 
-## Props Conventions
+## Props 约定
 
 - **Data**: Pass via `required` named parameters in constructor
 - **Callbacks**: Named params with `VoidCallback?` for optional actions
@@ -93,7 +93,7 @@ class ErrorText extends StatelessWidget {
 
 ---
 
-## Styling Patterns
+## 样式范式
 
 **Never hardcode colors or typography**. Always use `Theme.of(context)`:
 
@@ -114,7 +114,7 @@ Text(
 Text(article.title, style: TextStyle(fontSize: 18, color: Colors.black)),
 ```
 
-## Theme Layer
+## 主题层
 
 主题拆成三个文件（`lib/core/theme/`），**各有唯一职责**：
 
@@ -161,7 +161,7 @@ ThemeData buildDarkTheme();
 
 ---
 
-## Shared Widgets
+## 共享组件
 
 Core shared widgets in `lib/core/ui/`:
 
@@ -175,7 +175,7 @@ Core shared widgets in `lib/core/ui/`:
 
 ---
 
-## Three-State Rendering
+## 三态渲染
 
 所有异步页面遵循统一的渲染模式——**用 `AsyncView`**：
 
@@ -191,7 +191,7 @@ AsyncView<List<Article>>(
       : ListView.builder(...),
 )
 
-// 不推荐：AsyncState.map 的 error 回调签名在运行期才校验（见 frontend/state-management.md）
+// 不推荐：AsyncState.map 的 error 回调签名在运行期才校验（见 ui/state-management.md）
 // 不推荐：手写 is-loading / has-error 分支，三态逻辑会被抄散到每个页面
 ```
 
@@ -200,7 +200,7 @@ AsyncView<List<Article>>(
 
 ---
 
-## Accessibility
+## 无障碍
 
 - Use `Semantics` widget or Material's built-in semantics for custom widgets
 - Ensure touch targets are at least 48x48 dp
@@ -209,7 +209,7 @@ AsyncView<List<Article>>(
 
 ---
 
-## Common Mistakes
+## 常见错误
 
 - ❌ **Hardcoding colors/fonts** — Always use `Theme.of(context)` and `colorScheme`
 - ❌ **Not using `const` constructors** — The linter enforces `prefer_const_constructors`

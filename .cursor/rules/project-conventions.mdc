@@ -14,23 +14,24 @@ alwaysApply: true
 
 | 要动什么 | 先读 |
 | --- | --- |
-| 页面 / ViewModel / 状态适配 | `.trellis/spec/frontend/state-management.md` |
-| UI、组件、主题 | `.trellis/spec/frontend/quality-guidelines.md` |
-| 新建 feature、增删文件 | `.trellis/spec/frontend/directory-structure.md` |
-| 数据层 / 网络 / 数据库 | `.trellis/spec/backend/index.md` |
+| 页面 / ViewModel / 状态适配 | `.trellis/spec/ui/state-management.md` |
+| UI、组件、主题 | `.trellis/spec/ui/quality-guidelines.md` |
+| 新建 feature、增删文件 | `.trellis/spec/directory-structure.md` |
+| 数据层 / 网络 / 数据库 | `.trellis/spec/index.md` |
 | 门禁、codegen、集成测试、环境配置 | `.trellis/spec/cross-cutting.md` |
 
 更完整、可照抄的版本见仓库根 `AGENTS.md`。
 
 ## 硬约束清单
 
-1. **架构边界与形态**：改完 `lib/` 必须通过 `packages/app_lints` 的分析插件（六条规则）；
+1. **架构边界与形态**：改完 `lib/` 必须通过 `packages/app_lints` 的分析插件（七条规则）；
    门禁统一执行 `just verify`。判据与放行条件见 cross-cutting.md「架构边界与代码形态」。
 2. **静态检查零容忍**：`just analyze` 的两步 `dart analyze --fatal-infos` 必须干净，含
    `depend_on_referenced_packages`。**显式传文件名**是加载插件的前提；`flutter analyze`
    不加载插件，不要拿它当门禁。
-3. **环境配置**：编译期注入 —— `--dart-define` / `--dart-define-from-file=.env.example`
-   （`just run` / `just e2e` 已带上）。真实 `.env*` 不入库，`bootstrap()` 缺 `BASE_URL` 直接抛。
+3. **环境配置**：入库的 `.env.example` 是唯一 asset（声明在 `pubspec.yaml` 的 `assets:` 里），
+   `bootstrap()` 用 dotenv 加载它并校验 `BASE_URL`，缺失直接抛。真实 `.env*` 不入库，
+   dotenv 也不会读它们 —— 新建这类文件并指望运行时加载是无效的。
 4. **语言政策**：代码/标识符英文，注释与文档中文；用户可见文案**直接写中文**（单语言脚手架，
    不走 ARB、不引入 `intl`）。新增 `FailureCode` 必须补 `lib/core/ui/failure_message.dart` 的文案。
 5. **生成文件永不手改**：`*.g.dart` / `*.freezed.dart` / `*.gr.dart` / `*.config.dart`。
@@ -53,12 +54,12 @@ lib/
 │   └── page/     # 页面
 └── di/           # service_locator.dart + service_locator.config.dart（生成）
 packages/app_lints/   # 唯一的独立包：本仓库的架构边界与形态规则
-tool/                 # 脚手架运维脚本（init / prune / 目录树一致性）；just verify 调用
+tool/                 # 脚手架运维脚本（init / 文档一致性门禁：目录树 + 文档链接）；just verify 调用
 ```
 
 依赖方向：`app → features → core`，由 `packages/app_lints` 的分析插件强制。
 
-## 命名（权威见 frontend/directory-structure.md「Naming Conventions」）
+## 命名（权威见 directory-structure.md「命名约定」）
 
 - 目录/文件 snake_case；`{feature}_api.dart` / `_service.dart` / `_dao.dart` / `_module.dart` /
   `_repository.dart` / `_view_model.dart` / `_page.dart`

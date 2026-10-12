@@ -1,14 +1,14 @@
-# Cross-Layer Thinking Guide
+# 跨层思考指南
 
 > **Purpose**: Think through data flow across layers before implementing.
 
 ---
 
-## The Problem
+## 问题
 
 **Most bugs happen at layer boundaries**, not within layers.
 
-本项目的层（权威布局见 [../frontend/directory-structure.md](../frontend/directory-structure.md)）：
+本项目的层（权威布局见 [../directory-structure.md](../directory-structure.md)）：
 
 ```
 Page → ViewModel → Repository (接口) → Service → Api (Retrofit) → Dio
@@ -24,9 +24,9 @@ Page → ViewModel → Repository (接口) → Service → Api (Retrofit) → Di
 
 ---
 
-## Before Implementing Cross-Layer Features
+## 实现跨层功能之前
 
-### Step 1: Map the Data Flow
+### 第 1 步：画数据流
 
 画出数据怎么走：
 
@@ -40,7 +40,7 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 - 哪里可能出错？
 - 谁负责校验与转换？
 
-### Step 2: Identify Boundaries
+### 第 2 步：找出边界
 
 | 边界 | 常见问题 |
 | --- | --- |
@@ -49,7 +49,7 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 | core ↔ feature | 依赖方向搞反（`core` 不能 import feature，`no_upper_import_in_core` 会拦） |
 | ViewModel ↔ Page | 状态类型（`AsyncState`）与渲染分支不匹配 |
 
-### Step 3: Define Contracts
+### 第 3 步：定契约
 
 对每个边界明确：
 
@@ -61,35 +61,35 @@ API JSON → 模型(@freezed) → 业务逻辑 → drift 行类 ↔ 模型 → U
 
 ---
 
-## Common Cross-Layer Mistakes
+## 常见跨层错误
 
-### Mistake 1: Implicit Format Assumptions
+### 错误 1：默认格式假设
 
 **Bad**：假定后端一定返回某个字段，不做空值处理
 
 **Good**：在边界处显式转换；模型字段要么 `required`，要么显式可空
 
-### Mistake 2: Scattered Validation
+### 错误 2：校验散落各处
 
 **Bad**：同一件事在 ViewModel 和 Service 各校验一遍
 
 **Good**：入口处校验一次 —— 简单字段校验放 ViewModel 的 computed getter，复杂规则交给后端
 
-### Mistake 3: Leaky Abstractions
+### 错误 3：抽象泄漏
 
 **Bad**：让 `Article` 模型知道 drift 的存在（例如给它加 `Article.fromRow(DbArticle)`）
 
-**Good**：模型不碰基础设施；行↔模型互转留在消费方（`ArticleService` 的私有方法）。理由见 [../backend/database-guidelines.md](../backend/database-guidelines.md)「命名规范」一节
+**Good**：模型不碰基础设施；行↔模型互转留在消费方（`ArticleService` 的私有方法）。理由见 [../data/database-guidelines.md](../data/database-guidelines.md)「命名规范」一节
 
-### Mistake 4: 同一个错误在多层各映射一次
+### 错误 4：同一个错误在多层各映射一次
 
 **Bad**：每个 Service 各自把 `DioException` 转成 `Failure`，于是同一类超时在不同接口下错误码不同
 
-**Good**：`DioException → Failure` 只在 `handleDioError()` 一处发生（见 [../backend/error-handling.md](../backend/error-handling.md)）
+**Good**：`DioException → Failure` 只在 `handleDioError()` 一处发生（见 [../data/error-handling.md](../data/error-handling.md)）
 
 ---
 
-## Checklist for Cross-Layer Features
+## 跨层功能清单
 
 Before implementation:
 
@@ -108,7 +108,7 @@ After implementation:
 
 ---
 
-## When to Create Flow Documentation
+## 什么时候写流程图文档
 
 Create detailed flow docs when:
 

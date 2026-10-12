@@ -4,7 +4,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 把 [AsyncState] 渲染成 Widget 的类型安全入口。
 ///
 /// 取代 `AsyncState.map`（它的回调签名运行期才校验，写错整页红屏）；
-/// 用法与原因见 frontend/state-management.md「渲染状态」。
+/// 用法与原因见 ui/state-management.md「渲染状态」。
 class AsyncView<T> extends StatelessWidget {
   /// [data] / [loading] / [error] 覆盖三种稳定状态；[refreshing] /
   /// [reloading] 用于「后台更新但屏幕上还留着旧内容」，不传就退回

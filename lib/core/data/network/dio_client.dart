@@ -11,7 +11,7 @@ import 'package:my_app/core/data/storage/auth_storage.dart';
 ///
 /// 拦截器栈本身在 [createDio] 里（那层与状态管理 / DI 无关）；
 /// 本层只做三件 signals / DI 专属的事：
-/// 1. 取 dotenv 里的环境值（唯一入库的 `.env.example`，见 backend/network-guidelines.md）
+/// 1. 取 dotenv 里的环境值（唯一入库的 `.env.example`，见 data/network-guidelines.md）
 /// 2. 从 `UserPreferences` 取 `enableDebugLogging`
 /// 3. 注册本应用专属的 Mock 规则
 @module
@@ -20,7 +20,7 @@ abstract class NetworkModule {
   @lazySingleton
   NetworkConfig networkConfig() => NetworkConfig.fromEnv(dotenv.env);
 
-  /// 整个 App 共用一个 Dio（必须单例，理由见 backend/network-guidelines.md）。
+  /// 整个 App 共用一个 Dio（必须单例，理由见 data/network-guidelines.md）。
   @lazySingleton
   Dio dio(
     UserPreferences preferences,
@@ -41,7 +41,7 @@ abstract class NetworkModule {
 /// 通用 Dio 装配不该知道 `/articles` / `/login` 这类业务路径。
 ///
 /// 必须用 `MockRule.regex` 且锚定 URL 结尾 —— `MockRule(path: ...)` 永远打不中，
-/// 会静默失效并打到真实网络（原因见 backend/network-guidelines.md）。
+/// 会静默失效并打到真实网络（原因见 data/network-guidelines.md）。
 void _registerMockRules() {
   MockRegistry.register(
     MockRule.regex(

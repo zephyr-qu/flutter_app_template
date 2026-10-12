@@ -7,7 +7,7 @@ import 'package:my_app/core/models/token_set.dart';
 /// 用刷新令牌换取新的访问令牌。
 ///
 /// single-flight：并发调用共享同一个 Future，只发一次真实请求。
-/// 为什么必须如此见 backend/error-handling.md。
+/// 为什么必须如此见 data/error-handling.md。
 ///
 /// 依赖 [TokenStore] 而非具体存储实现，理由见 auth_interceptor.dart。
 class TokenRefresher {

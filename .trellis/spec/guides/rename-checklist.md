@@ -1,4 +1,4 @@
-# Rename Checklist
+# 改名清单
 
 > How to rename this scaffold when starting a new project.
 
@@ -63,13 +63,13 @@ dart run tool/init_project.dart --yes --name=your_app \
 
 ## 附加配置
 
-### CI Pipeline / 门禁
+### CI 流水线 / 门禁
 
-清单以 `.github/workflows/ci.yml` 与 `.githooks/pre-commit` 为准 —— 两处都只是 `just verify`
-（format、两组 `dart analyze --fatal-infos`、依赖检查、插件规则测试、目录树一致性、测试）。
+清单以根 `justfile` 的 `verify` 为准 —— `.github/workflows/ci.yml` 与 `.githooks/pre-commit`
+两处都只是 `just verify`，本文件不复述具体项。
 改名不影响这些步骤，但**插件包里的包名前缀**是例外，见上面的坑。
 
-### Environment Validation
+### 环境校验
 
 `lib/bootstrap.dart` 在启动时校验 `_requiredEnvKeys`（当前是 `BASE_URL`），缺失或为空
 直接抛异常（fail fast），任何构建模式都一样。

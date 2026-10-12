@@ -1,10 +1,10 @@
-# State Management
+# 状态管理
 
 > How state is managed in this project.
 
 ---
 
-## Overview
+## 概览
 
 Uses **`signals_flutter`** for reactive state. Signals provide fine-grained reactivity without widget tree rebuilds.
 
@@ -28,7 +28,7 @@ Three boundaries worth knowing:
 
 ---
 
-## State Categories
+## 状态分类
 
 | Category | Where | Pattern |
 | ---------- | ------- | --------- |
@@ -40,7 +40,7 @@ Three boundaries worth knowing:
 
 ---
 
-## Pattern: ViewModel + Signals
+## 范式：ViewModel + Signals
 
 ```dart
 @injectable

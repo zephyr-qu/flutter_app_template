@@ -68,7 +68,7 @@ class AuthViewModel {
   }
 
   // 写入必须走方法、不开 setter：信号私有持有，页面只订阅
-  // （frontend/state-management.md「信号」）
+  // （ui/state-management.md「范式」）
   // ignore: use_setters_to_change_properties
   void updateEmail(String value) => _email.value = value;
 

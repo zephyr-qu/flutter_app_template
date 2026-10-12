@@ -1,6 +1,6 @@
 /// 统一结果类型：所有可能失败的操作都返回它，而不是裸抛异常。
 ///
-/// 用法见 backend/error-handling.md。
+/// 用法见 data/error-handling.md。
 sealed class Result<T, E> {
   const new();
 
