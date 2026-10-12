@@ -1,0 +1,31 @@
+{
+  "id": "spec-drift-vs-preset-ai-starter",
+  "name": "spec-drift-vs-preset-ai-starter",
+  "title": "对比兄弟分支 spec 重构，产出可移植清单报告",
+  "description": "对比 master 与 preset/ai-starter 工作树的文档差异，产出报告（不改本地文档）",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "zs",
+  "assignee": "zs",
+  "createdAt": "2026-10-10",
+  "completedAt": "2026-10-10",
+  "branch": null,
+  "base_branch": "master",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "10-10-spec-single-entry",
+    "10-10-spec-link-gate",
+    "10-10-spec-naming-convergence",
+    "10-10-spec-report-leftovers"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
