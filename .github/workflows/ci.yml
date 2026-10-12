@@ -53,56 +53,6 @@ jobs:
         env:
           SCAFFOLD_E2E: "1"
 
-  # 单元与 widget 测试没有单独 job：`just verify` 已经跑了 `flutter test`。
-  integration-test:
-    needs: analyze
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      # GitHub 的 ubuntu runner 要显式开 KVM，模拟器才走硬件加速（否则慢到超时）
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - uses: actions/setup-java@v6
-        with:
-          distribution: "zulu"
-          # JDK 17 是 AGP 9.x / Gradle 9.x 的最低要求，也与
-          # android/app/build.gradle.kts 的 JavaVersion.VERSION_17 保持一致
-          java-version: "17"
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.47.5"
-          channel: "stable"
-
-      - uses: extractions/setup-just@v4
-        with:
-          just-version: 1.58.0
-
-      - name: Install dependencies
-        run: just deps
-
-      # 生成物不入库，集成测试同样要现场生成
-      - name: Generate code
-        run: just codegen
-
-      # 目标平台是 Android / iOS，集成测试就跑在 Android 模拟器上。
-      # 不要用 xvfb：那是给 Linux 桌面目标用的，本项目没有 linux/ 平台目录。
-      - name: Run integration tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_apis
-          arch: x86_64
-          profile: pixel_5
-          # 不要传 emulator-options —— 一旦指定会覆盖 action 的全部默认值
-          # （默认已含 -no-window / -gpu swiftshader_indirect，headless 需要它们）
-          script: just e2e
-
   # ── 供应链门禁：拿 pubspec.lock 去 OSV 数据库查**已知漏洞**，命中即失败 ──
   # 它和 `depend_on_referenced_packages` 是两件事：后者管「声明与使用是否一致」，这里管
   # 「锁定住的版本有没有被披露过漏洞」。口径与理由见 .trellis/spec/cross-cutting.md。

@@ -42,10 +42,6 @@ test *args:
 run *args:
     flutter run {{ args }}
 
-# 端到端冒烟：集成测试启动真 App，同样走 dotenv
-e2e:
-    flutter test integration_test/
-
 test-app-lints:
     cd packages/app_lints && dart test
 

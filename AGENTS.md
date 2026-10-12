@@ -100,7 +100,7 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 
 ## 开工前必读
 
-门禁、codegen、集成测试、环境配置与各层细则的入口：`.trellis/spec/index.md`（唯一入口，按「要动什么」列了该先读哪份）。
+门禁、codegen、环境配置与各层细则的入口：`.trellis/spec/index.md`（唯一入口，按「要动什么」列了该先读哪份）。
 写之前先读对应索引 —— 别凭印象写。
 
 ## 改完必跑

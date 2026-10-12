@@ -16,8 +16,8 @@ class MockAuthRepository extends Mock implements AuthRepository;
 /// 全在这几十行里。断言本身不多，价值在「装配错了就红」——少注册一个
 /// `getIt`、路由指向已删的页面、主题信号没被订阅，都会在这里暴露。
 ///
-/// 集成测试也跑这条链路，但 `flutter test --coverage` 不含 `integration_test/`，
-/// 所以这里必须也有一条，否则 `lib/app/app.dart` 会一直是测试盲区。
+/// `flutter test --coverage` 只统计 `test/` 下的文件，所以这里是 `lib/app/app.dart`
+/// 唯一的测试入口 —— 少了它，组合根整层都是测试盲区。
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 

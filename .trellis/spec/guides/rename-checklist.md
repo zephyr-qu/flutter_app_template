@@ -19,7 +19,7 @@ dart run tool/init_project.dart --yes --name=your_app \
 | # | 位置 | 改什么 |
 | --- | ------ | ------- |
 | 1 | `pubspec.yaml` | `name:`（同时决定所有 import 路径）、`description:` |
-| 2 | `lib/` `test/` `integration_test/` `tool/` `packages/` | `package:<旧名>/` → `package:<新名>/`（生成物不入库，不必管它们） |
+| 2 | `lib/` `test/` `tool/` `packages/` | `package:<旧名>/` → `package:<新名>/`（生成物不入库，不必管它们） |
 | 3 | `lib/app/app.dart`、`lib/bootstrap.dart` 及引用它们的测试 | 根组件类名 `MyApp` → 新类名（整词替换） |
 | 4 | `android/app/build.gradle.kts` | `namespace` 与 `applicationId`（`applicationIdSuffix` 是 flavor 的事，见下） |
 | 5 | `android/app/src/main/AndroidManifest.xml` | `android:label`（用户看到的桌面名） |

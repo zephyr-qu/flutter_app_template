@@ -16,7 +16,7 @@
 - [ ] 新建 feature、增删文件、判断某文件该放哪（**canonical 布局**）→ [directory-structure.md](./directory-structure.md)
 - [ ] 动路由 / 导航（路由表、冷启动入口、登录守卫、底部导航标签）→ [ui/routing.md](./ui/routing.md)
 - [ ] 动数据层（API / Service / DAO / Repository / 模型 / 网络 / 错误 / 日志）→ [data/database-guidelines.md](./data/database-guidelines.md)、[data/network-guidelines.md](./data/network-guidelines.md)、[data/error-handling.md](./data/error-handling.md)
-- [ ] 动门禁、codegen、集成测试、环境配置，或判断某写法算不算违规 → [cross-cutting.md](./cross-cutting.md)
+- [ ] 动门禁、codegen、环境配置，或判断某写法算不算违规 → [cross-cutting.md](./cross-cutting.md)
 - [ ] 动手前先把思路铺开（跨层 / 重复 / 注释）→ [guides/index.md](./guides/index.md)
 - [ ] 改名 / 从脚手架初始化新项目 → [guides/rename-checklist.md](./guides/rename-checklist.md)
 
@@ -63,7 +63,7 @@
 
 | Guide | 内容 |
 | ------- | ------------- |
-| [跨层与门禁](./cross-cutting.md) | 架构边界与代码形态（`packages/app_lints` 插件，七条规则）、目录树一致性（`tool/check_readme_tree.dart`）、文档链接一致性（`tool/check_doc_links.dart`）、覆盖率（不设门禁）、依赖声明（`depend_on_referenced_packages`）、供应链门禁（`dart pub outdated` / OSV）、改名脚本（`tool/init_project.dart`）、代码生成与生成物（生成物不入库、重新生成时机、CI 现场生成）、build_runner 升级与缓存评估、`leak_tracker`、集成测试、环境配置与 release 构建 |
+| [跨层与门禁](./cross-cutting.md) | 架构边界与代码形态（`packages/app_lints` 插件，七条规则）、目录树一致性（`tool/check_readme_tree.dart`）、文档链接一致性（`tool/check_doc_links.dart`）、覆盖率（不设门禁）、依赖声明（`depend_on_referenced_packages`）、供应链门禁（`dart pub outdated` / OSV）、改名脚本（`tool/init_project.dart`）、代码生成与生成物（生成物不入库、重新生成时机、CI 现场生成）、build_runner 升级与缓存评估、`leak_tracker`、环境配置与 release 构建 |
 
 ## 思考指南
 

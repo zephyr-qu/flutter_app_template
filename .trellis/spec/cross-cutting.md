@@ -344,27 +344,14 @@ signals_flutter 的组件在 `dispose` 时会自动取消订阅；泄漏链里�
 
 ---
 
-## 集成测试
+## Android 依赖仓库镜像
 
-`integration_test/app_test.dart` 包含基础的端到端冒烟测试。
+`android/build.gradle.kts` 与 `android/settings.gradle.kts` 里的阿里云镜像**默认不启用**，
+只在 `ALIYUN_MAVEN_MIRROR=1` 或 `-PaliyunMirror` 时插入。原因是实测：runner 上它回过 502，
+而 Gradle 遇到首个仓库报错会把该仓库禁掉、直接判定依赖不可解析 —— 构建失败。
+镜像要有效必须排在官方仓库之前，所以只能整体开/关。
 
-### 本地运行
-
-```bash
-just e2e        # = flutter test integration_test/（dotenv 自己读 .env.example）
-```
-
-### CI 运行
-
-CI 用 `reactivecircus/android-emulator-runner` 跑 Android 模拟器（脚本就是 `just e2e`）。**不要**用 `xvfb`——
-那是给 Linux 桌面目标用的，本项目没有 `linux/` 平台目录。
-
-Android 依赖走**官方仓库**：`android/build.gradle.kts` 与 `android/settings.gradle.kts` 里的阿里云镜像默认
-不启用，只在 `ALIYUN_MAVEN_MIRROR=1` 或 `-PaliyunMirror` 时插入。原因是实测：runner 上它回过 502，
-而 Gradle 遇到首个仓库报错会把该仓库禁掉、直接判定依赖不可解析 —— `assembleDebug` 失败，`just e2e`
-报 `0 tests passed, 1 failed`，官方仓库排在后面也兜不住。镜像要有效必须排在官方仓库之前，所以只能整体开/关。
-
-### widget 测试里不要用真实 I/O
+## widget 测试里不要用真实 I/O
 
 `testWidgets` 的 `pumpAndSettle` 走**假时钟**，真实的文件 / 数据库 I/O 不会在它推进的这段时间里完成。后果有两层：
 
@@ -375,19 +362,6 @@ Android 依赖走**官方仓库**：`android/build.gradle.kts` 与 `android/sett
 
 另外 `ListView` 只布局可视区内的子节点，视口外的内容 finder 找不到——测长页面时要么放大视口（`tester.view.physicalSize`），要么先滚动。
 
-### 测试内容
-
-当前集成测试覆盖（实际以 `integration_test/app_test.dart` 为准）：
-
-- 应用正常启动并显示登录页面
-- 输入邮箱和密码后登录按钮启用
-- 空字段时登录按钮禁用
-- 点击登录（走 `USE_MOCK` 的 mock）后进入 `MainRoute` 主框架，底部导航栏存在
-
-约束与注意事项：
-
-- **`bootstrap()` 不可重入**：DI 注册与 leak_tracker 启动都只能执行一次。因此整个冒烟流程只在**一个** `testWidgets` 中调用一次 `app.main()`；拆成多个 `testWidgets` 各自启动会在第二次抛「Bad state: Leak tracking is already enabled.」
-- **测试需清理登录态**：`SharedPreferences` 在设备上跨运行保留，测试开头要 `prefs.clear()`，否则上一次运行残留的登录态会让启动直接进主框架
 - **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上
   都不存在「渲染时联网拉字体」的问题。若以后引入按需下载字体的方案（如 `google_fonts`），测试里必须关掉运行时下载
   （`GoogleFonts.config.allowRuntimeFetching = false`），否则 `pumpAndSettle` 会卡数分钟且结果不稳定；生产环境更该把字体打进产物。

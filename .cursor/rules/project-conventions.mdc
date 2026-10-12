@@ -18,7 +18,7 @@ alwaysApply: true
 | UI、组件、主题 | `.trellis/spec/ui/quality-guidelines.md` |
 | 新建 feature、增删文件 | `.trellis/spec/directory-structure.md` |
 | 数据层 / 网络 / 数据库 | `.trellis/spec/index.md` |
-| 门禁、codegen、集成测试、环境配置 | `.trellis/spec/cross-cutting.md` |
+| 门禁、codegen、环境配置 | `.trellis/spec/cross-cutting.md` |
 
 更完整、可照抄的版本见仓库根 `AGENTS.md`。
 

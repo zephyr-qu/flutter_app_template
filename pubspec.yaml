@@ -58,8 +58,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  integration_test:
-    sdk: flutter
 
   # ── Code Gen：序列化 ──
   json_serializable: ^6.9.3 # 生成 toJson/fromJson

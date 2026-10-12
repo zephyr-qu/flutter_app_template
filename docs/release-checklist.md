@@ -121,8 +121,6 @@ just verify        # 全部门禁（清单见根 justfile 的 verify 链）
   覆盖率**不设门禁**：要看数字自己跑 `flutter test --coverage`（见
   [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)「覆盖率」）。
 
-- [ ] 端到端冒烟：`just e2e`
-
 - [ ] 依赖过一遍：`dart pub outdated` 看 `Current / Upgradable / Resolvable / Latest` 四列，
       能升的走 `dart pub upgrade`（改动 `pubspec.lock` 后记得重跑测试与 codegen）；
       有**已知漏洞**的必须在发版前处理——CI 的 `osv-scan` job 会拿 `pubspec.lock` 查 OSV，

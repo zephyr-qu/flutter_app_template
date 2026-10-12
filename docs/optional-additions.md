@@ -98,7 +98,7 @@
 
 | 工具 | 用途 | 备注 |
 |---|---|---|
-| `patrol` | 端到端测试 | 比 `integration_test/` 强：能操作系统弹窗、原生权限框 |
+| `patrol` | 端到端测试 | 本模板不预装端到端测试；要端到端就上它 —— 能操作系统弹窗与原生权限框，`integration_test` 做不到 |
 | `alchemist` / 内建 `matchesGoldenFile` | 视觉回归测试 | 改主题、改多语言时的护栏 |
 | `dio_cache_interceptor` | HTTP 缓存拦截器 | 比 `ArticleService` 手写的缓存旁路完整（ETag / max-age / 过期策略）；需求简单就别上 |
 | `custom_lint` | 自定义 lint 规则 | ⚠️ **IDE-only 的第二套机制**：本项目的边界与形态约定用官方 `analysis_server_plugin`（`packages/app_lints/`）+ `dart analyze` 落地，`custom_lint` 是另一条路，别混进来 |

@@ -106,7 +106,7 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 | 覆盖率（不设门禁） | [../cross-cutting.md](../cross-cutting.md)「覆盖率」 |
 | 依赖声明（`depend_on_referenced_packages`） | [../cross-cutting.md](../cross-cutting.md)「依赖声明」 |
 | 内存泄漏检测（`leak_tracker`） | [../cross-cutting.md](../cross-cutting.md)「内存泄漏检测」 |
-| 集成测试（`integration_test/`，含「widget 测试里不要用真实 I/O」） | [../cross-cutting.md](../cross-cutting.md)「集成测试」 |
+| widget 测试的假时钟与 I/O | [../cross-cutting.md](../cross-cutting.md)「widget 测试里不要用真实 I/O」 |
 | 环境配置与 release 构建（含「有意留白」） | [../cross-cutting.md](../cross-cutting.md)「环境配置与 release 构建」 |
 
 ---
@@ -116,5 +116,4 @@ PlatformDispatcher.onError  → 未捕获的异步错误（根 zone，兜底）�
 - 测试文件路径跟随源码结构：`test/features/{feature}/{subdir}/` 对应 `lib/features/{feature}/{subdir}/`
 - ViewModel 测试直接构造，无需 DI（`ArticleViewModel(mockRepo)`）
 - 需要 DI 的 widget 测试：`setUp`/`tearDown` 中注册/清理 mock
-- Integration tests: `integration_test/` 目录（跑法与注意事项见 [../cross-cutting.md](../cross-cutting.md)）
 - 新增 widget 测试时确保 `flutter_test_config.dart` 中的 `LeakTesting` 配置合适

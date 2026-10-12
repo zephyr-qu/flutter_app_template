@@ -39,7 +39,7 @@ just run        # dotenv 加载 .env.example（默认带 Mock，无需后端）
 |------|------|
 | `just` / `just verify` | 完整门禁，首个失败即停（`pre-commit` 与 CI 跑的就是它） |
 | `just deps` / `just codegen [参数]` / `just codegen-reset` | 解析依赖 / 增量生成 / 清缓存后全量生成 |
-| `just run` / `just e2e` / `just test [文件]` | 本地运行（读 `.env.example`）/ 端到端冒烟 / 全部或指定的测试 |
+| `just run` / `just test [文件]` | 本地运行（读 `.env.example`）/ 全部或指定的测试 |
 | `just init` | 从脚手架创建新项目 |
 | `just fmt` / `just fmt-check` / `just fix` | 格式化 / 只检查 / `dart fix --apply` |
 
