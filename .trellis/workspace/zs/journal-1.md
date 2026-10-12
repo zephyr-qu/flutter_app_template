@@ -314,3 +314,54 @@ Extracted an explicit `lib/app/` application layer (composition root) and flatte
 - 若哪天把 `F:\App\新建文件夹` 从备份 / 卷影副本找回，凭 `F:/App/flutter_app_template.gitdir-pointer.bak` 可接回那 17 个提交的真实历史
 - `.agents/skills` 的两处遗留（`computedHash` 对不上、不在任何门禁视野内）见归档任务
   `.trellis/tasks/archive/2026-10/10-10-skills-vendoring-policy/implement.md`
+
+
+## Session 6: 给 analyze 门禁加覆盖完整性断言（10-12）
+
+**Date**: 2026-10-12
+**Task**: 给 analyze 门禁加覆盖完整性断言（10-12）
+**Branch**: `master`
+
+### Summary
+
+10-12「analyze 覆盖完整性断言」从收窄一路做完：新增 `test/tool/analyze_coverage_test.dart`（276 行 / 15 用例），两条仓库级断言挂到既有的 `test` 步上（不加工具、不加 recipe），并在 `cross-cutting.md` 补了对应说明。
+
+Phase 2.1 / 2.2 分别由 `trellis-implement` / `trellis-check` 子代理完成，check 未发现需修的问题。任务已归档，活跃任务清零。
+
+### Main Changes
+
+- **收窄**（`3604193`，本会话早段）：`integration_test` 被删后，原 R1 与事实 ①②③ 作废，任务改为 R2–R5 的**纯预防性断言** —— 详见 `archive/2026-10/10-12-analyze-coverage-guard/prd.md` 的「收窄记录」。
+- **实现**（`db6b53e`）：新增 `test/tool/analyze_coverage_test.dart`（276 行 / 15 用例）。
+  - 三个纯函数：`topLevelDirsWithDart` / `uncoveredDirs` / `parseAnalyzeRoots` —— **比计划多一个**：把正则解析也拆成纯函数，好让「正则写松了 → 静默无 root」这条风险自身也有假输入测试盖住。
+  - **R2** 每个含 Dart 源码的顶层目录必须被某个 root 覆盖或在排除名单里（失败**点名目录**）；**R3** 每个 root **各自**必须列得到 ≥1 个 `.dart`（失败说明「该 root 产出 0 个文件」）。
+  - 唯一真相是 justfile（测试内不抄第二份 root 列表）；文件清单走 `git ls-files --cached --others --exclude-standard`，与 `tool/list_dart_files.dart` 同一命令；roots 解析不到时**显式 fail**，不退化成空集合。
+  - 挂到既有的 `test` 步上：`justfile` 的 `verify` 链**未改动**，不加工具、不加 recipe。
+  - `.trellis/spec/cross-cutting.md` 的「`dart analyze` 必须显式传文件名」那条后补一条子弹（**未新开标题**）：扫描面来自 justfile、漏目录不报错的形态、两条断言的失败信息与测试路径。
+- **Phase 2.2**（`trellis-check`，full-scope）：逐条核过 R2 / R3 / 纯逻辑与仓库现状分离 / R5 写法 / prd 的「不做什么」，**未发现需要修的问题**，并独立复跑了全部命令。
+- **归档**（`4da2b27`）：任务移入 `.trellis/tasks/archive/2026-10/`。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `db6b53e` | (see git log) |
+| `2dd358d` | (see git log) |
+| `4da2b27` | (see git log) |
+
+### Testing
+
+- [OK] `just verify` 全绿：**354 用例**（339 基线 + 15 新增）；两个内容提交各自过了一次 `pre-commit` 钩子
+- [OK] `just check-anchors`：139 个文件，无新增告警
+- [OK] `dart analyze --fatal-infos test/tool/analyze_coverage_test.dart` → `No issues found!`
+- [OK] 三条反向验证（**均已还原现场**：`git diff justfile` 为空、`example/` 已删）：造 `example/foo.dart` → 点名 `example`；roots 去掉一个仍存在的目录 → 点名它；root 改成 `nosuchdir` → 报「该 root 产出 0 个文件」
+- [!!] **已记边界**（见 `implement.md` 的遗留风险）：R2 不管仓库根下的裸 `.dart` 文件（符合 prd「顶层**目录**」的措辞）；`_analyzeDartFiles` 的生成物过滤无独立单测；测试依赖 `git` 可执行文件
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 无活跃任务（`task.py list` 为空），`archive/2026-10/` 现有 13 个任务
+- 若要给这道门补「生成物过滤」的独立单测、或把 `.agents/skills/**` 纳入链接门禁，另开任务
