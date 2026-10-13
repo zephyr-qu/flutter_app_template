@@ -1,29 +1,8 @@
 # 思考指南
 
-> **Purpose**: Expand your thinking to catch things you might not have considered.
-
----
-
-## 为什么需要思考指南
-
-**Most bugs and tech debt come from "didn't think of that"**, not from lack of skill:
-
-- Didn't think about what happens at layer boundaries → cross-layer bugs
-- Didn't think about code patterns repeating → duplicated code everywhere
-- Didn't think about edge cases → runtime errors
-- Didn't think about future maintainers → unreadable comments → 读者直接跳过
-
-These guides help you **ask the right questions before coding**.
-
----
-
-## 有哪些指南
-
-| Guide | Purpose | When to Use |
-|-------|---------|-------------|
-| [复用思考指南](./code-reuse-thinking-guide.md) | 识别重复、少写重复代码 | 发现自己在复制粘贴时 |
-| [跨层思考指南](./cross-layer-thinking-guide.md) | 把跨层的数据流想清楚 | 功能跨 Page / ViewModel / Service / DAO 时 |
-| [注释规范](./comment-guidelines.md) | 代码注释写什么、spec 引用与语言约定、长文放哪 | 写或改任何注释 / spec 时 |
+> 为什么会有这份：多数 bug 与技术债来自「没想到」，而不是「不会写」—— 没想到层边界会发生
+> 什么、没想到同一个模式会重复、没想到边界情况、没想到后来的读者会直接跳过注释。
+> 这份指南让你**在动手前先问对问题**。
 
 ---
 
@@ -41,29 +20,29 @@ These guides help you **ask the right questions before coding**.
 
 ### 该想代码复用时
 
-- [ ] You're writing similar code to something that exists
-- [ ] You see the same pattern repeated 3+ times
-- [ ] You're adding a new field to multiple places
-- [ ] **You're modifying any constant or config**
-- [ ] **You're creating a new utility/helper function** ← Search first!
+- [ ] 写的东西与已有代码相似
+- [ ] 同一个模式重复出现 3 次以上
+- [ ] 要给多个地方加同一个字段
+- [ ] **正在改任何常量或配置**
+- [ ] **正在新建工具 / 辅助函数** ← 先搜有没有现成的
 - [ ] 同一个转换（如 `DioException` → `Failure`）被写到第 2 处
 
 → 读 [复用思考指南](./code-reuse-thinking-guide.md)
 
 ### 核查 AI 交叉复核结论时
 
-- [ ] Reviewer claims "user input can be malicious" → Check the actual data source (internal manifest? user config? external API?)
-- [ ] Reviewer flags "missing validation" → Is the data from a trusted internal source?
-- [ ] Reviewer says "behavior change" → Read the code comments — is it intentional design?
-- [ ] Reviewer identifies a "bug" in test → Mentally delete the feature being tested — does the test still pass? If yes → tautological test
+- [ ] 复核者称「用户输入可能是恶意的」→ 先看真实数据源（内置清单？用户配置？外部 API？）
+- [ ] 复核者指出「缺少校验」→ 这份数据来自可信的内部来源吗？
+- [ ] 复核者称「行为变了」→ 读代码注释：这是不是有意的设计？
+- [ ] 复核者在测试里找到「bug」→ 心里删掉被测功能，测试还过吗？还过 → 同义反复的测试
 
-**Common AI reviewer false-positive patterns**:
+**AI 复核的常见误报模式**：
 
-1. **Trust boundary confusion**: Treating internal data (bundled JSON manifests) as untrusted external input
-2. **Ignoring design comments**: Flagging intentional behavior documented in code comments as bugs
-3. **Variable misreading**: Not tracing a variable to its actual definition (e.g., Map keyed by path vs name)
+1. **可信边界误判**：把内部数据（打包进产物的 JSON 清单）当成不可信的外部输入
+2. **无视设计注释**：把代码注释里写明的有意行为当成 bug
+3. **变量看错**：没把变量追到真正的定义（例如 Map 的 key 是路径还是名字）
 
-**Verification rule**: Every CRITICAL/WARNING finding must be verified against the actual code before prioritizing. Budget ~35% false-positive rate for AI reviews.
+**确认规则**：每条 CRITICAL / WARNING 结论都要对着真实代码核一遍再谈优先级 —— 给 AI 复核留约 35% 的误报预算。
 
 ---
 
@@ -85,18 +64,12 @@ grep -r "value_to_change" .
 
 ## 怎么用这个目录
 
-1. **Before coding**: Skim the relevant thinking guide
-2. **During coding**: If something feels repetitive or complex, check the guides
-3. **After bugs**: Add new insights to the relevant guide (learn from mistakes)
-
----
+1. **动手前**：先扫一眼相关的那份思考指南
+2. **写的过程中**：觉得重复或复杂，回来查
+3. **踩坑之后**：把新洞见补进对应的指南
 
 ## 新增指南
 
-Found a new "didn't think of that" moment? Add it to the relevant guide.
+又一次「没想到」？把它补进对应的指南。
 
-改写时注意：guides 只放**通用的思考方法**。具体的项目规则、命令、文件清单属于 `data/` 或 `ui/`，不要抄到这里 —— 两个地方写同一件事必然会漂。
-
----
-
-**Core Principle**: 30 minutes of thinking saves 3 hours of debugging.
+改写时注意：guides 只放**通用的思考方法**。具体的项目规则、命令、文件清单属于 `data/` 或 `ui/`，不要抄到这里 —— 两个地方写同一件事必然会漂。指南清单在 [spec 索引](../index.md)，这里不维护第二份。

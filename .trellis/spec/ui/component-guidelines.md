@@ -169,7 +169,6 @@ Core shared widgets in `lib/core/ui/`:
 | -------- | --------- | ------- |
 | `AsyncView<T>` | 把 `AsyncState<T>` 渲染成 Widget，**类型安全**（取代 `AsyncState.map`） | `state`, `data`, `loading`, `error`, `refreshing?`, `reloading?` |
 | `LoadingIndicator` | 居中转圈（`CircularProgressIndicator`，零依赖） | `size` |
-| `ScreenLoadingIndicator` | 全屏加载态（转圈 + 一行 `l10n.loading`） | — |
 | `ErrorText` | Error with retry | `error`, `onRetry?`, `icon?` |
 | `EmptyWidget` | Empty state placeholder | `message`, `icon?`, `actionLabel?`, `onAction?` |
 

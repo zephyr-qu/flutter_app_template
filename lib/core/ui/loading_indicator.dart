@@ -22,39 +22,3 @@ class LoadingIndicator extends StatelessWidget {
     );
   }
 }
-
-/// 全屏加载态（转圈 + 一行文案）
-class ScreenLoadingIndicator extends StatelessWidget {
-  const new({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '加载中...',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -266,9 +266,11 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
 - 用官方的 reusable workflow（`google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0`）
   而不是自己拼 `run: osv-scanner …`：CLI 在 v1 → v2 之间子命令化过，手写的调用会在某次
   升级后静默失效或直接报错。版本号是**固定 tag**，升级时同时改这一处即可。
-- `scan-args` 只给 `--lockfile=./pubspec.lock`（默认是 `-r ./`，会连 `build/`、`.dart_tool/`
-  一起扫）；`upload-sarif: false` 让结果只落在 job 日志里，私有仓库 / 未开 Code Scanning
-  的仓库不会因为这一步变红。
+- `scan-args` 只给两个 lockfile（根 `pubspec.lock` 与 `packages/app_lints/pubspec.lock`；默认是
+  `-r ./`，会连 `build/`、`.dart_tool/` 一起扫）；`upload-sarif: false` 让结果只落在 job 日志里，
+  私有仓库 / 未开 Code Scanning 的仓库不会因为这一步变红。
+- **独立工具包的 `pubspec.lock` 也入库**（`packages/app_lints/pubspec.lock`）：它不是应用，按 pub 惯例
+  本可以不提交；这里提交是为了让本地与 CI 用同一份 analyzer 版本，并让上面的 OSV 扫描覆盖它的传递依赖。
 
 > 与 [release-checklist.md](../../docs/release-checklist.md) 的分工：清单管「发版前必须
 > 人工确认的事」，这里管「每次 push / PR 自动挡住的事」。

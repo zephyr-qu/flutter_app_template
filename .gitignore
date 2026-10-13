@@ -13,6 +13,7 @@
 .env.*
 !.env.example
 .codebuddy/
+.commandcode/
 .build/
 .buildlog/
 .history
