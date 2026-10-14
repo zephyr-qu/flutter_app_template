@@ -414,3 +414,39 @@ Phase 2.1 / 2.2 分别由 `trellis-implement` / `trellis-check` 子代理完成�
 - 无活跃任务（`task.py list` 为空）
 - 仓库外的 `F:/App/flutter_app_template.gitdir-pointer.bak` **别删** —— 若哪天把主仓从备份 / 卷影副本找回，凭它可接回那 17 个提交的真实历史
 - 这次没清的只剩本地产物 `build/` + `.dart_tool/`（约 192MB 缓存，非冗余；清完要重跑 `just deps` + `just codegen`）
+
+
+## Session 8: 门禁自证任务收口 + 仓库冗余清理
+
+**Date**: 2026-10-14
+**Task**: 门禁自证任务收口 + 仓库冗余清理
+**Branch**: `master`
+
+### Summary
+
+收口 10-12-lint-self-proof：规则 3/4 认得 getIt<X>()（FunctionExpressionInvocation 形态），单测桩改回生产对象形态；补插件接线四条静态断言与生成物口径守卫；spec 记入节点形态、新断言与「已知边界」。归档前用真实 dart analyze 探针复核 AC1/AC2 均报出。另做一轮仓库冗余清理：删死组件 ScreenLoadingIndicator、只测 signals 包的测试、.commandcode/，guides/index.md 去重并改中文，修 cross-cutting.md 的 scan-args 口径漂移；just verify 全绿（381 passed / 1 skipped）。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a3857af` | (see git log) |
+| `ac67ef4` | (see git log) |
+| `9cd5259` | (see git log) |
+| `7db08b5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

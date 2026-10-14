@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
-- **Last Active**: 2026-10-12
+- **Total Sessions**: 8
+- **Last Active**: 2026-10-14
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~411 | Active |
+| `journal-1.md` | ~452 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-10-14 | 门禁自证任务收口 + 仓库冗余清理 | `a3857af`, `ac67ef4`, `9cd5259`, `7db08b5` | `master` |
 | 7 | 2026-10-12 | 清理冗余文件：46 个 Trellis 占位 jsonl + code-workspace | `b07e4d4` | `master` |
 | 6 | 2026-10-12 | 给 analyze 门禁加覆盖完整性断言（10-12） | `db6b53e`, `2dd358d`, `4da2b27` | `master` |
 | 5 | 2026-10-12 | 10-09 → 10-12 批次补记：.git 事故恢复、删 integration_test、skills 策略落定 | `3604193`, `c8fc71b`, `1cde4f0`, `ade6977`, `020235d`, `d81ed5f`, `f5dfcb8`, `f575e61`, `ced6626`, `611509c`, `4f81f85`, `be326b9`, `5362e26`, `a85885d`, `6d8e1d8`, `d0cabd3`, `904e8d7`, `bd2728f`, `7eb64c8`, `41443cd`, `9e189b4`, `c33027f`, `04d3e6b`, `9021580`, `023ee49`, `17dc22e`, `25d78b4`, `79e1ab8`, `c57d1e1`, `05749ce`, `4b23e0e`, `d6707e5`, `e41f90f`, `8aa46bf`, `23ca765`, `3cc6aab`, `4410d31`, `a36e4f0` | `master` |
