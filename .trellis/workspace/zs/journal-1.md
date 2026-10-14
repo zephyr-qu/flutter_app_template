@@ -519,3 +519,38 @@ Phase 2.1 / 2.2 分别由 `trellis-implement` / `trellis-check` 子代理完成�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: docs 局部冗余收敛：段落级去重 + 删 ADR-0002
+
+**Date**: 2026-10-14
+**Task**: docs 局部冗余收敛：段落级去重 + 删 ADR-0002
+**Branch**: `master`
+
+### Summary
+
+release-checklist §6/§7 的复述改指路（门禁口径回归 cross-cutting）、图标缺失收敛到 template-pruning 占位表、删 ADR-0002 并把日期+来源并进 state-management。净 −67 行（+12/−79，5 文件），just verify 全绿。子代理分派在本机不可用（spawn pi ENOENT，Windows Node 解析不了无扩展名 pi 脚本），改 inline 实施，本次没有独立复核。踩坑一次：指路时锚点取错行，覆盖了 optional-additions 的「原生启动图」，已 undo 重做。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9dcce59` | (see git log) |
+| `f7fbe52` | (see git log) |
+| `5777ee4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
