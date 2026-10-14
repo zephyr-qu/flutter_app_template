@@ -242,6 +242,12 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
 > 这条规则管「声明与使用一致」；`packages/app_lints` 的规则 1/2 管的是「谁能依赖谁」。
 > 两者互补，都不能替代对方。
 
+另一类「声明」是 vendored skill：`.agents/skills/**` 是随仓库分发的第三方资产，来源与路径
+记在 `skills-lock.json`（README 承诺「来源与每个 skill 的路径见 lock」）。它与 pub 依赖一样
+只在一个方向有门禁 —— `test/tool/skills_lock_consistency_test.dart` 三条断言：lock 的每个
+skill 都有磁盘目录、磁盘每个目录都登记在 lock 里、`skillPath` 用上游相对路径
+`skills/<name>/SKILL.md`。手工打补丁 / 改名后遗留的重复条目就靠第三条拦下。
+
 ---
 
 ## 供应链门禁（`dart pub outdated` / OSV）

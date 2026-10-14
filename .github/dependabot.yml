@@ -9,6 +9,16 @@ updates:
       include: "scope"
     open-pull-requests-limit: 5
 
+  # 独立工具包：它的 lock 入库、也被 OSV 扫描，所以升级 PR 同样要跟上
+  - package-ecosystem: "pub"
+    directory: "/packages/app_lints"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

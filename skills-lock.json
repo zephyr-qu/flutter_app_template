@@ -162,12 +162,6 @@
       "sourceType": "github",
       "skillPath": "skills/signals-migration-6-to-7/SKILL.md",
       "computedHash": "193e9ca2f44f4d80d0c5708fb081379b12afdd09193bbe742ea456b9f98a0e56"
-    },
-    "signals_hooks": {
-      "source": "rodydavis/signals.dart",
-      "sourceType": "github",
-      "skillPath": ".agents/skills/signals_hooks/SKILL.md",
-      "computedHash": "f110452cee1f2436d98042ed7bda9c53b8d71b372564f2321ec16d6db29298b9"
     }
   }
 }

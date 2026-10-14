@@ -54,6 +54,11 @@ just run        # dotenv 加载 .env.example（默认带 Mock，无需后端）
 **dotenv 只能加载 asset**，所以新建 `.env*` 指望运行时加载是无效的，密钥也别写进 `.env.example`
 （它会入库、并作为 asset 打进产物，本模板不做密钥注入，敏感值放服务端）。
 
+> **换成自己的后端时注意三个平台默认值**：Android 9+ 默认阻断明文 `http://`（本项目没开
+> `usesCleartextTraffic`），iOS 的 ATS 同样默认阻断；Android 模拟器里的 `localhost` 指模拟器
+> 自身，连本机后端要用 `10.0.2.2`。要让明文通过得在目标应用里自己配（属发版配置，见
+> [release-checklist.md](docs/release-checklist.md)）。
+
 release **有意留白**（仍用 debug keystore 签名、未 minify、无 flavor、iOS 未签名），
 发版前按 [release-checklist.md](docs/release-checklist.md) 逐项补齐。
 
@@ -108,9 +113,10 @@ lib/
 - **`docs/optional-additions.md`** — 有意不预装的包，以及每个包的「什么时候才该加」
 - **`.agents/skills/`** — 从 GitHub 装来的第三方 skill **资产**（27 个目录 / 136 个文件，随仓库分发、
   clone 即用）。来源与每个 skill 的路径见根 [`skills-lock.json`](skills-lock.json)：`dart-lang/skills` 12、
-  `flutter/skills` 10、`rodydavis/signals.dart` 6。**更新**：用装它们的工具重装后，把 `.agents/skills/**`
+  `flutter/skills` 10、`rodydavis/signals.dart` 5。**更新**：用装它们的工具重装后，把 `.agents/skills/**`
   与 lock 一起提交 —— 本仓库不提供安装 / 还原命令，所以它们不能按「生成物不入库」处理（那样 clone 后就没了）；
-  另外 `signals-hooks` 已被本地打过补丁，重装会把它冲掉。
+  另外 `signals-hooks` 已被本地打过补丁，重装会把它冲掉。lock 与磁盘两边漂移（lock 指向
+  不存在的目录、或磁盘多了没登记的目录）由 `test/tool/skills_lock_consistency_test.dart` 拦下。
 - **测试** — `mocktail` 模拟外部依赖，含 ViewModel / Widget / 数据库测试；覆盖率**不设门禁**
   （取舍见 [cross-cutting.md](.trellis/spec/cross-cutting.md)「覆盖率」）
 
