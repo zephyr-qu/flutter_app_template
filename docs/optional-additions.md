@@ -61,7 +61,7 @@
 | 网络调试 UI（真机上抓包看请求） | `talker_flutter`（`alice` 的后继） | 替换 `dio_client.dart` 里 `PrettyDioLogger` 的挂载位置 |
 | 本地通知 / 推送 | `flutter_local_notifications`、`firebase_messaging` | `ProfilePage` 的 `TODO(template): 接入通知设置页` |
 | 原生启动图 | `flutter_native_splash` | `splash_page.dart` 是 **Flutter 层**启动页；native 层冷启动白屏要靠它。现 native 启动图是 Flutter 样板：换 iOS 的 `ios/Runner/Assets.xcassets/LaunchImage.imageset/` 与 Android 的 `android/app/src/main/res/drawable*/launch_background.xml` 即可 |
-| 应用图标 | `flutter_launcher_icons`（已在依赖里） | ⚠️ `pubspec.yaml` 指向 `assets/icon/icon.png`，**该文件目前不存在**，跑之前先补 |
+| 应用图标 | `flutter_launcher_icons`（已在依赖里） | ⚠️ `pubspec.yaml` 指向的 `assets/icon/icon.png` **目前不存在**，跑之前先补——清单见 [template-pruning.md](./template-pruning.md) 的占位表 |
 | 主题模式 UI | 不需要新包 | 已闭环：`UserPreferences.themeMode` + `ProfilePage` 的「外观」弹窗 |
 
 ---
