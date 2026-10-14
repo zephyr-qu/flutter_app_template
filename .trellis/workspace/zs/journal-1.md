@@ -486,3 +486,36 @@ Phase 2.1 / 2.2 分别由 `trellis-implement` / `trellis-check` 子代理完成�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: 删掉文档类门禁与生成物口径断言
+
+**Date**: 2026-10-14
+**Task**: 删掉文档类门禁与生成物口径断言
+**Branch**: `master`
+
+### Summary
+
+按用户决定删掉四类非必要门禁：工具 tool/check_readme_tree.dart、check_doc_links.dart、check_doc_anchors.dart、generated_paths.dart 与对应 4 个测试（−1803 行），justfile 去掉 test-readme-tree / test-doc-links / check-anchors 三个 recipe，verify 从 6 步回到 4 步（fmt-check analyze test-app-lints test），与兄弟分支 preset/ai-starter 逐字相同；断言数 396 → 347。文档落点清干净：cross-cutting.md 两节 + 一致性断言段 + 「有意不设」表两行 + 生成物口径「三处同步」改「两处」，spec/index.md、comment-guidelines.md、.cursor/rules 各一处。三处判断：①插件里的生成物豁免（paths.dart 的 isGeneratedPath）保留 —— 删了会让七条规则对生成物报违规、analyze 直接红，spec 改成「.gitignore ↔ 插件两处同步」；②analyze_coverage_test 里对已删 generated_paths 的依赖去掉（git 的 --exclude-standard 本就不列生成物，那层过滤是防御性重复）；③spec/index.md 的「增删 lib 文件 → 同步目录树」清单项保留为人工约定，只去掉门禁半句。按用户要求未在「有意不设的项」登记这些决定。实测 verify 各步：fmt-check 7s、analyze-app 42s、analyze-tool 30s、test-app-lints 10s、test 34s（合计约 123s）；合并 analyze 两步实测 85s vs 分步 72s，没有收益，故保持两步。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b8b90f6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
