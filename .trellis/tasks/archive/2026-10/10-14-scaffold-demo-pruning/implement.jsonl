@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "门禁链、codegen 与生成物策略、tool/ 脚本的约定与退出码口径"}
+{"file": ".trellis/spec/ui/routing.md", "reason": "剪枝要改 router.dart 的 AutoRoute 表与底部导航标签；这份讲路由表/守卫/AutoTabsRouter 及测试同步要求"}
+{"file": ".trellis/spec/directory-structure.md", "reason": "canonical 布局：判断哪些文件属于示例模块、哪些属 core，避免错删"}
+{"file": ".trellis/spec/data/database-guidelines.md", "reason": "删 DbArticles 表与 app_database.dart 的 part/@DriftDatabase 声明时的约定"}
+{"file": ".trellis/spec/guides/rename-checklist.md", "reason": "init_project.dart 的既有契约（plan-then-write、--key=value、非零退出）是本次工具的形态参照"}

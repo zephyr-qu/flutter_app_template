@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "核对门禁是否真的全绿、生成物是否重生成、覆盖率与供应链口径"}
+{"file": ".trellis/spec/index.md", "reason": "完成前自检清单：codegen 时机、架构边界、文档同步项"}
+{"file": ".trellis/spec/ui/quality-guidelines.md", "reason": "剪枝改动了 main_page.dart / profile_settings.dart，按 UI 层禁止模式与质量要求核对"}
+{"file": ".trellis/spec/data/quality-guidelines.md", "reason": "剪枝删除了数据层文件，按数据/逻辑层的 review 清单核对残留"}
