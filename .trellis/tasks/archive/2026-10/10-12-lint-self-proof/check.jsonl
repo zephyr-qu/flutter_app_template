@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "检查新断言是否与既有门禁重叠或口径冲突（尤其「有意不设的项」与「已知盲区」两节要不要同步），以及生成物口径三处同步这条约定的现行写法。"}
+{"file": ".trellis/spec/index.md", "reason": "「完成前自检」清单：verify 全绿、codegen 时机、新增 FailureCode、目录树同步。用来判断本任务是否触发了别的收口项。"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "新增两个测试文件前先确认没有现成的解析/比对助手可复用（analyze_coverage_test / self_package_prefix_test 已有文本抽取与差集报错的先例）。"}
+{"file": ".trellis/tasks/10-12-lint-self-proof/research/lint-plugin-wiring-findings.md", "reason": "核对实现是否真的修掉了 F1（四种形态都要报），以及确认在没有自动化门禁的前提下，改动范围没有超出「已知边界」的声明。"}

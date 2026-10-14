@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "「架构边界与代码形态」：七条规则的清单、启用点与调用形式、生成物豁免口径，以及「防门禁静默失效」的既有做法。本任务要在这里补两道新断言的位置与语义、并修正规则 3/4 的判定口径描述。"}
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "要改 rules.dart 里与生产代码相反的注释、并在代码里留 spec 引用；注释写什么、引用写章节关键词而非编号的规矩在这里。"}
+{"file": ".trellis/tasks/10-12-lint-self-proof/research/lint-plugin-wiring-findings.md", "reason": "F1 的实测证据（四种 getIt 形态的判定结果、getIt<X>() 的解析后 AST 形态、addFunctionExpressionInvocation 订阅点、生成物口径三处清单）。规则 3/4 的修复依据全在这份文件里。"}
