@@ -450,3 +450,39 @@ Phase 2.1 / 2.2 分别由 `trellis-implement` / `trellis-check` 子代理完成�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: 规则 4 判据 AST 化 + 重试收窄 + CI 平台构建门禁
+
+**Date**: 2026-10-14
+**Task**: 规则 4 判据 AST 化 + 重试收窄 + CI 平台构建门禁
+**Branch**: `master`
+
+### Summary
+
+四批收口上一轮审计的 P1/P2 与三条零散项：①规则 4 的「三件套」判据从整文件字符串包含改成 AST（字段 / this.viewModel 字段形参 / ?? 兜底），并按 cross-cutting.md 的原文收窄到页面路径（features/*/page/、lib/app/pages/）—— 用真实 dart analyze 探针证明「三件套只写在注释里」现在会被报出、data 路径不报、4 个真实页面零诊断；实现期发现 ?? 的节点在 V1/V2 两套 AST 视图里不同（V1=BinaryExpression，V2=IfNull 且没有 FunctionExpressionInvocation），判据必须留在 V1。②RetryInterceptor 接上 retryEvaluator 只重试 GET/HEAD（写请求超时不再重发），清单自带 408/429/5xx，并补齐 spec 里漏掉的一半口径（传输层错误）。③README 补 Android cleartext / iOS ATS / 模拟器 10.0.2.2；skills-lock 删掉重复且路径约定不符的 signals_hooks（27 条 = 磁盘 27 个目录）+ 新增三条 lock↔磁盘一致性断言；dependabot 覆盖 packages/app_lints。④CI 加 build-apk job（just build-apk = flutter build apk --debug，本地冷缓存 325s / 热缓存 45s）。just verify 全绿 396 passed / 1 skipped。子代理派发在本机不可用（spawn pi ENOENT），实现与自查改为主会话内联完成。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a05987d` | (see git log) |
+| `7c85a8a` | (see git log) |
+| `50477dc` | (see git log) |
+| `ba340ee` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

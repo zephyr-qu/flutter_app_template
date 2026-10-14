@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 8
+- **Total Sessions**: 9
 - **Last Active**: 2026-10-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~452 | Active |
+| `journal-1.md` | ~488 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 9 | 2026-10-14 | 规则 4 判据 AST 化 + 重试收窄 + CI 平台构建门禁 | `a05987d`, `7c85a8a`, `50477dc`, `ba340ee` | `master` |
 | 8 | 2026-10-14 | 门禁自证任务收口 + 仓库冗余清理 | `a3857af`, `ac67ef4`, `9cd5259`, `7db08b5` | `master` |
 | 7 | 2026-10-12 | 清理冗余文件：46 个 Trellis 占位 jsonl + code-workspace | `b07e4d4` | `master` |
 | 6 | 2026-10-12 | 给 analyze 门禁加覆盖完整性断言（10-12） | `db6b53e`, `2dd358d`, `4da2b27` | `master` |
