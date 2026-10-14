@@ -112,6 +112,9 @@ batch(() {
 - 一个顶层函数比一个抽象类更简单，而且不影响 ViewModel 的构造方式
 - **不需要 dispose 机制**：ViewModel 由 `@injectable` 注册为 `factory`，每次 `getIt<VM>()` 返回一个新实例（配合页面 `useMemoized` 即为每页一个）。它的 signal 只被当前页面的 widget 订阅，页面销毁后没有监听者——此时 `runAsync` 再写入一次 signal 只是无意义的赋值，不会崩溃，实例也会被 GC 回收。因此 `runAsync` 不提供 `disposed` 守卫。
 
+> 决策来源：2026-09-19 的架构评估候选 2。
+> 那份评估是一次性快照，已删除，不再维护。
+
 ### 什么时候才需要 dispose（上一条的边界）
 
 「不需要 dispose」的前提是 **ViewModel 的信号只与它自己的信号建立订阅关系**——这样它们形成一个无外部引用的「孤岛」，可被 GC 整体回收。前提一旦打破就会真的泄漏：
