@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:msw_dio_interceptor/msw_dio_interceptor.dart';
 import 'package:my_app/core/config/network_config.dart';
 import 'package:my_app/core/data/network/auth_interceptor.dart';
+import 'package:my_app/core/data/network/retry_policy.dart';
 import 'package:my_app/core/data/network/token_refresher.dart';
 import 'package:my_app/core/data/network/token_store.dart';
 import 'package:my_app/core/logging/log_redactor.dart';
@@ -64,7 +65,14 @@ Dio createDio({
     ),
   );
 
-  dio.interceptors.add(RetryInterceptor(dio: dio, retries: config.retries));
+  // 只重试幂等方法：写请求超时重发会重复副作用（判据见 retry_policy.dart）
+  dio.interceptors.add(
+    RetryInterceptor(
+      dio: dio,
+      retries: config.retries,
+      retryEvaluator: shouldRetryRequest,
+    ),
+  );
 
   // Mock 拦截器（仅在 isMock=true 时启用）
   if (isMock) {

@@ -64,7 +64,7 @@ Dio 对**请求**按添加顺序正向穿过，对**响应 / 错误**按相反�
 
 这个顺序承载两条语义，都不能破：
 
-1. **Retry 先看到错误，但不能吞掉 401**。`dio_smart_retry` 默认只重试 408 / 429 / 5xx（`defaultRetryableStatuses`），401 不在其中，会原样穿过交给 `AuthInterceptor` 处理。
+1. **Retry 先看到错误，但不能吞掉 401**。判据在 `lib/core/data/network/retry_policy.dart`（接在 `RetryInterceptor` 的 `retryEvaluator` 上）：**只重试幂等方法**（GET / HEAD），写请求超时直接交给上层 —— `dio_smart_retry` 的默认 evaluator 不看 HTTP 方法，写请求超时会被重发、可能重复副作用。可重试 = 状态码命中 408 / 429 / 5xx **或**传输层错误（连接 / 发送 / 接收超时、connectionError）；401 两者都不沾，原样穿过交给 `AuthInterceptor`。清单在 `retry_policy.dart` 里自带一份：该库的 `retryEvaluator` 与 `retryableExtraStatuses` 互斥，不自带会连 5xx 重试一起弄丢。
 2. **重放必须走完整条链**。`AuthInterceptor` 持有的是同一个 Dio 实例，刷新成功后的 `_dio.fetch(options)` 会**从头**再过一遍 mock / 解码 / 重试。这正是它不自建「干净」客户端的原因 —— 否则 mock 模式下重放会直接打到真实网络。
 
 解码拦截器是给「后端以 `text/plain` 返回 JSON 字符串」兜底的，解析失败只记 warning、保留原始字符串。
@@ -73,7 +73,7 @@ Dio 对**请求**按添加顺序正向穿过，对**响应 / 错误**按相反�
 >
 > - `test/core/data/network/dio_factory_test.dart` —— 钉住 `createDio`
 >   装出来的栈（Auth → 解码 → Retry 的相对顺序、mock 开关、调试日志开关），
->   以及「Retry 不吞 401 / 5xx 走重试」两条语义
+>   以及「Retry 不吞 401 / 5xx 走重试 / 写请求不重试」三条语义
 > - `test/core/data/network/interceptor_stack_test.dart` —— 钉住 lib 侧
 >   `NetworkModule.dio()` 的等价行为（同一套栈，另加 `UserPreferences` / `NetworkConfig` 装配）
 >

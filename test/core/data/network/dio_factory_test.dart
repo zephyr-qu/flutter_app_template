@@ -59,6 +59,28 @@ class _PlainTextAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// 每次都抛传输层超时的适配器：用来数「同一请求实际发了几次」。
+class _TimeoutAdapter implements HttpClientAdapter {
+  /// 按到达顺序记录方法名
+  final List<String> calls = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    calls.add(options.method.toUpperCase());
+    throw DioException(
+      requestOptions: options,
+      type: DioExceptionType.connectionTimeout,
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   late FakeTokenStore store;
 
@@ -194,6 +216,26 @@ void main() {
       final response = await dio.get<dynamic>('/anything');
 
       expect(response.data, 'not json at all');
+    });
+    test('写请求超时只发一次；GET 超时按 retries 重发', () async {
+      final adapter = _TimeoutAdapter();
+      final dio = build(adapter: adapter);
+
+      await expectLater(
+        dio.post<dynamic>('/login'),
+        throwsA(isA<DioException>()),
+      );
+      // POST 超时不重发：重发写请求可能重复副作用
+      expect(adapter.calls, ['POST']);
+
+      await expectLater(
+        dio.get<dynamic>('/articles'),
+        throwsA(isA<DioException>()),
+      );
+      expect(
+        adapter.calls.where((m) => m == 'GET').length,
+        1 + _config.retries,
+      );
     });
   });
 }
