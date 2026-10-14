@@ -63,7 +63,7 @@
 
 | Guide | 内容 |
 | ------- | ------------- |
-| [跨层与门禁](./cross-cutting.md) | 架构边界与代码形态（`packages/app_lints` 插件，七条规则）、覆盖率（不设门禁）、依赖声明（`depend_on_referenced_packages`）、供应链门禁（`dart pub outdated` / OSV）、改名脚本（`tool/init_project.dart`）、代码生成与生成物（生成物不入库、重新生成时机、CI 现场生成）、build_runner 升级与缓存评估、`leak_tracker`、环境配置与 release 构建 |
+| [跨层与门禁](./cross-cutting.md) | 架构边界与代码形态（`packages/app_lints` 插件，七条规则）、覆盖率（不设门禁）、依赖声明（`depend_on_referenced_packages`）、供应链门禁（`dart pub outdated` / OSV）、改名脚本（`tool/init_project.dart`）、示例模块剪枝（`tool/prune_examples.dart`）、代码生成与生成物（生成物不入库、重新生成时机、CI 现场生成）、build_runner 升级与缓存评估、`leak_tracker`、环境配置与 release 构建 |
 
 ## 思考指南
 

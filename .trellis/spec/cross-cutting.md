@@ -50,7 +50,7 @@ plugins:
 - **analyze 的扫描面来自 justfile，漏目录不会报错**：roots 由根 `justfile` 的 `app_files` / `tool_files` 两条 `list_dart_files.dart` 调用决定；`git ls-files` 对不存在的路径返回空、退出码 0，所以「少写一个目录」只表现为门禁少看一批文件，与全绿毫无差别。两条断言兜住：每个含 Dart 源码的顶层目录必须被某个 root 覆盖，或在排除名单里（失败信息点名目录）；每个 root 各自必须列得到文件（失败信息说明「该 root 产出 0 个文件」）。新增顶层目录、给 root 改名或删目录时它会拦下 —— 见 [test/tool/analyze_coverage_test.dart](../../test/tool/analyze_coverage_test.dart)。
 - **`flutter analyze` 不加载插件**：同一份 `plugins:` 配置它只报「No issues found」。所以门禁是 `justfile` 里的两步 `dart analyze --fatal-infos`（`lib + test` 与 `tool + packages`），文件列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤）。**CI 与 pre-commit 都不自己拼这两步，统一跑 `just verify`** —— 调用形式抄错不报错、只少跑，所以不留第二份。
 - **读门禁输出要看退出码**：info → 0、warning → 2、error → 3；带 `--fatal-infos` 时 info 也变 1。CI 与 pre-commit 只认退出码，别用终端有没有红字判断。
-- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore` 的生成物段落一致（两处改动要同步）。
+- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore` 的生成物段落一致（**三处**改动要同步：这里、`.gitignore`、`tool/prune_examples.dart` 的 `isGeneratedPath`）。
 - **判据细节**：全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。
 - **规则 3/4 的节点形态**：生产代码的 `getIt` 是**对象**（`lib/di/service_locator.dart` 的 `final GetIt getIt = GetIt.instance;`），对象上的 `getIt<X>()` 走隐式 `call`，解析成 `FunctionExpressionInvocation`；`GetIt.I.get<X>()` 才是 `MethodInvocation`。两条规则都按**接收者名字**判定（`getIt` / `GetIt.I` / `GetIt.instance`）并同时订阅 `addMethodInvocation` 与 `addFunctionExpressionInvocation` —— 只订阅前者会让规则对仓库自己的写法静默失效。插件单测的桩必须镜像这个对象形态，由 `test/tool/lint_wiring_test.dart` 的 W4 拦下。
 - 规则 4 只看 `*ViewModel` 类型，且**只在页面路径**上生效（`features/*/page/`、`lib/app/pages/`）：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 由规则 3 禁止取容器，`core/` 与 `features/*/data/` 不归本规则管，都不重复报。
@@ -143,6 +143,54 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
 `dart pub get`）再 `flutter analyze`，专门兜「改完名 import
 全断」。`test/tool/self_package_prefix_test.dart` 是另一条防线：它盯 `pubspec.name` 与
 `selfPackagePrefix` 是否一致，手工改名漏掉一边会被它拦下。
+
+---
+
+## 示例模块剪枝（`tool/prune_examples.dart`）
+
+派生新项目时用它删掉示例模块，别照着手工清单删 —— 那种清单必然会漂，漏一处就是编译不过：
+
+```bash
+dart run tool/prune_examples.dart                                  # 交互式
+dart run tool/prune_examples.dart --yes --modules=article,demo      # 非交互
+```
+
+**能剪的是 `article` 与 `demo`。`auth` 拒绝剪枝**（退出码 2）：它是基础设施不是示例 ——
+`AuthStorage` 被路由守卫实时读取、拦截器栈在网络层、`app.dart` 用 `AuthReevaluateListenable`
+接线。不用登录时的改造范围见 [docs/template-pruning.md](../../docs/template-pruning.md)。
+
+固定四项动作与各自判定：
+
+| 动作 | 判定 |
+|------|------|
+| 删模块目录 + 清理全部引用点 | 锚点按**文本**定位，每条必须**恰好命中 1 次** |
+| 重跑 `just codegen` | 删掉 `@RoutePage` / `@injectable` / Drift 表后不重生成，产物里会留着已删类型 |
+| 残留扫描（模块指纹标识符） | `lib/` 与 `test/` 命中 = **失败**；`AGENTS.md` / `README.md` / `docs/` / `.trellis/spec/` 命中 = 打印清单，不算失败 |
+| 跑 `just verify` | 自证；失败时给回滚命令 |
+
+不变量（改了要同步 `test/tool/prune_examples_test.dart`）：
+
+- **全或无**：任一锚点没匹配到 → 非零退出且**零写盘**，逐条列出没对上的位置。与改名脚本同一契约。
+- **干净基线**：工作区不干净时拒绝（退出码 2），因为这是不可逆删除。检查**忽略 `.trellis/`** ——
+  任务元数据本就未入库，而剪枝正是在任务内运行。`--force` 用于越过（测试与非 git 环境）。
+  这条拒绝的文案**不给** `git checkout -- .`：那会抹掉调用者未提交的改动，干净基线只能靠提交或 stash。
+- **幂等**：模块目录已不存在时提示「已经剪过」并以 0 退出。
+- 退出码：`0` 成功／`1` 锚点或残留失败／`2` 输入被拒／`3` codegen 或 verify 失败。
+- **core 能力不连带删**：`FileStorage` 与 `AppDatabase` 留着（它们不是示例）。表列表要写成
+  `@DriftDatabase()` —— 写成 `tables: []` 会被 `avoid_redundant_argument_values` 判冗余实参，
+  `--fatal-infos` 下直接红。
+
+锚点表（在 `tool/prune_examples.dart` 里）是「删哪里」的**唯一权威**，由两层兜住：
+`test/tool/prune_examples_test.dart` 对真实仓库断言每条锚点恰好命中 1 次（漂移即红），
+以及上表的残留扫描（锚点漏了就响亮失败，不会静默少删）。加一个 feature 或改 `lib/features/*/page/`
+的标签与路由时，**必须**回头核对锚点表。
+
+两个反直觉的坑（都真踩过，测试里各有一条盯着）：
+
+- 替换块是**逐字**写进文件的，只按命中行的缩进整体重排一次 —— 块内各行的缩进必须共享同一个基准，
+  混排会让整块缩进错位。
+- 残留扫描必须排除**工具自身与它的测试**（`isPruneToolingPath`）：那两份文件里必然写着被剪模块的
+  标识符，不排除就会每次运行都「成功地」报出自己。
 
 ---
 

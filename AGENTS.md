@@ -49,6 +49,17 @@ dart run build_runner build
 flutter analyze
 ```
 
+#### 删掉示例模块（可选，看懂结构后再做）
+
+```bash
+dart run tool/prune_examples.dart                                  # 交互式
+dart run tool/prune_examples.dart --yes --modules=article,demo      # 非交互
+```
+
+删 `article` / `demo` 两个示例模块并清干净**全部**引用点，然后自己重跑 codegen 与 `just verify`。
+`auth` 不参与（它是基础设施不是示例，工具会拒绝）。命令语义与 `auth` 的手工改造见
+[`docs/template-pruning.md`](docs/template-pruning.md)。
+
 #### Manual way
 
 1. Update `pubspec.yaml` → `name`, then replace `package:<old>/` across the repo
