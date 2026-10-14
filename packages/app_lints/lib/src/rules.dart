@@ -374,23 +374,21 @@ class _PageInjectionPointVisitor extends SimpleAstVisitor<void> {
 
     final fromPath = currentPath(_context);
     if (fromPath == null || isGeneratedPath(fromPath)) return;
-    // logic 里的 getIt 由规则 3 直接禁止，这里只管页面
-    if (_isFeatureLogic(fromPath)) return;
-
-    final content = _context.currentUnit?.content;
-    if (content == null) return;
+    // 只管页面：logic 里的取容器由规则 3 禁止，core / data 不归本规则管
+    if (!isPagePath(fromPath)) return;
 
     final collector = _ContainerLookupCollector();
     node.accept(collector);
+    if (collector.firstByType.isEmpty) return;
+
+    final pieces = _InjectionPointPieces.of(node);
 
     for (final entry in collector.firstByType.entries) {
       final type = entry.key;
       final missing = <String>[
-        if (!content.contains('final $type? viewModel;'))
-          '字段 `final $type? viewModel;`',
-        if (!content.contains('this.viewModel')) '构造参数 `this.viewModel`',
-        if (!_fallbackPattern(type).hasMatch(content))
-          '`viewModel ?? getIt<$type>()` 兜底',
+        if (!pieces.hasNullableField(type)) '字段 `final $type? viewModel;`',
+        if (!pieces.hasFieldFormal) '构造参数 `this.viewModel`',
+        if (!pieces.hasFallback(type)) '`viewModel ?? getIt<$type>()` 兜底',
       ];
       if (missing.isEmpty) continue;
 
@@ -399,7 +397,90 @@ class _PageInjectionPointVisitor extends SimpleAstVisitor<void> {
   }
 }
 
+/// 三件套在 AST 上的事实。
+///
+/// 判据只看语法结构、不看文件原文：写在注释或字符串里的「三件套」不算数
+/// （旧实现用 `content.contains` 判原文，注释就能绕过）。
+class _InjectionPointPieces {
+  _InjectionPointPieces._(
+    this._fieldTypes,
+    this.hasFieldFormal,
+    this._fallbacks,
+  );
+
+  factory _InjectionPointPieces.of(CompilationUnit unit) {
+    final visitor = _InjectionPointPiecesVisitor();
+    unit.accept(visitor);
+    return _InjectionPointPieces._(
+      visitor.fieldTypes,
+      visitor.hasFieldFormal,
+      visitor.fallbacks,
+    );
+  }
+
+  /// 名为 `viewModel` 的 `final T?` 字段里的 `T`。
+  final Set<String> _fieldTypes;
+
+  /// 出现过 `this.viewModel` 形式的构造参数。
+  final bool hasFieldFormal;
+
+  /// `viewModel ?? getIt<T>()` 里的 `T`。
+  final Set<String> _fallbacks;
+
+  bool hasNullableField(String type) => _fieldTypes.contains(type);
+
+  bool hasFallback(String type) => _fallbacks.contains(type);
+}
+
+class _InjectionPointPiecesVisitor extends RecursiveAstVisitor<void> {
+  static const String _fieldName = 'viewModel';
+
+  final Set<String> fieldTypes = {};
+  final Set<String> fallbacks = {};
+  bool hasFieldFormal = false;
+
+  @override
+  void visitFieldDeclaration(FieldDeclaration node) {
+    final type = node.fields.type;
+    if (node.fields.isFinal && type is NamedType && type.question != null) {
+      for (final variable in node.fields.variables) {
+        if (variable.name.lexeme == _fieldName) {
+          fieldTypes.add(type.name.lexeme);
+        }
+      }
+    }
+    super.visitFieldDeclaration(node);
+  }
+
+  @override
+  void visitFieldFormalParameter(FieldFormalParameter node) {
+    if (node.name.lexeme == _fieldName) hasFieldFormal = true;
+    super.visitFieldFormalParameter(node);
+  }
+
+  @override
+  void visitBinaryExpression(BinaryExpression node) {
+    // V1 视图里 `viewModel ?? getIt<T>()` 是 BinaryExpression（V2 才叫 IfNull）
+    if (node.operator.lexeme == '??') {
+      final left = node.leftOperand;
+      if (left is SimpleIdentifier && left.name == _fieldName) {
+        final type = _viewModelTypeOfLookup(node.rightOperand);
+        if (type != null) fallbacks.add(type);
+      }
+    }
+    super.visitBinaryExpression(node);
+  }
+}
+
+/// 「取容器」表达式里的 `*ViewModel` 类型名；两种调用形态都认。
+String? _viewModelTypeOfLookup(Expression expression) => switch (expression) {
+  MethodInvocation() => _containerViewModelType(expression),
+  FunctionExpressionInvocation() => _containerViewModelTypeFromCall(expression),
+  _ => null,
+};
+
 /// 收集「从容器取过的 ViewModel 类型」→ 首次出现的那次调用。
+// 判据锚定在 V1 AST 节点上（不看文件原文）；`??` 在 V1 视图里是 BinaryExpression。
 class _ContainerLookupCollector extends RecursiveAstVisitor<void> {
   /// key 是 `*ViewModel` 类型名，value 是首次出现的那次调用。
   final Map<String, AstNode> firstByType = {};
@@ -566,10 +647,6 @@ String? _viewModelTypeFrom(TypeArgumentList? typeArguments) {
   final name = type.name.lexeme;
   return name.endsWith('ViewModel') ? name : null;
 }
-
-/// 可选注入点的兜底写法：`viewModel ?? getIt<XxxViewModel>()`。
-RegExp _fallbackPattern(String type) =>
-    RegExp('viewModel\\s*\\?\\s*\\?\\s*getIt<\\s*$type\\s*>');
 
 /// 接收者是不是 [expected] 这个名字（`getIt` / `GetIt`）。
 bool _isNamed(Expression? expression, String expected) => switch (expression) {

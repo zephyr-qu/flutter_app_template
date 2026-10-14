@@ -78,4 +78,10 @@ String? layerOf(String path) {
   return rest.split('/').first;
 }
 
+/// 页面路径：`features/<name>/page/**` 或全局页面 `lib/app/pages/**`。
+///
+/// 规则 4 只在页面路径上生效（判据见 cross-cutting.md「架构边界与代码形态」规则表）。
+bool isPagePath(String path) =>
+    layerOf(path) == 'page' || path.startsWith('lib/app/pages/');
+
 String _normalize(String path) => path.replaceAll(r'\', '/');

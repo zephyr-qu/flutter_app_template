@@ -19,13 +19,13 @@
 | `cross_feature_only_data` | 不能引用其他 feature 的 `page/` / `logic/`，跨 feature 只共享 `data/` |
 | `no_material_import_in_logic` | `features/*/logic/` 不得 import/export `material.dart` / `widgets.dart`，也不得引**本 feature** 的 `page/`（logic 是纯 Dart 状态层；`ChangeNotifier` / `@visibleForTesting` 所在的 `foundation` 放行） |
 | `no_service_locator_in_logic` | `features/*/logic/` 里不得取 service locator（`getIt<X>()` / `GetIt.I<X>()` / `GetIt.instance<X>()` / `GetIt.I.get<X>()`，构造器注入，理由见 [ADR-0001](../../docs/adr/ADR-0001.md)） |
-| `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()`（含 `GetIt.I<*ViewModel>()` / `GetIt.instance<*ViewModel>()`）取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底 |
+| `page_must_expose_view_model_injection_point` | 用 `getIt<*ViewModel>()`（含 `GetIt.I<*ViewModel>()` / `GetIt.instance<*ViewModel>()`）取 ViewModel 的页面，三件套缺一不可：`final T? viewModel;`、构造参数 `this.viewModel`、`viewModel ?? getIt<T>()` 兜底。**只在页面路径**（`features/*/page/`、`lib/app/pages/`）生效，判据走 AST —— 三件套光写在注释里不算数 |
 | `avoid_async_state_map` | 不得调用 `AsyncState.map`，三态渲染用 `AsyncView`（理由见 [ui/state-management.md](ui/state-management.md)「渲染状态」） |
 | `comment_block_too_long` | 连续注释块最多 10 行，超限就把解释搬进 spec（见 [guides/comment-guidelines.md](guides/comment-guidelines.md)） |
 
 前两条与规则 7 都是「谁能依赖谁」：前两条管依赖方向，规则 7 管同一 feature 内的层次。第三、四条是同一件事的两面：ViewModel 的依赖要能从构造器签名读出来，页面也要给测试留一个只有测试会用的注入口（[ADR-0001](../../docs/adr/ADR-0001.md) 的缓解措施）。这两条**没有任何编译器会提醒**——漏一个页面就少一处，所以用退出码兜住。
 
-后两条的判据必须是 AST：`AsyncState.map` 要看是否**同时带 `data` 与 `error` 两个具名实参**（正则分不清它与 `list.map(...)`，而误报会挡住提交）；注释块要看**字符偏移**（多行字符串里的 `//` 不是注释）。
+后三条的判据必须是 AST：规则 4 的三件套各判一次**真实声明**（`final T?` 字段 / `this.viewModel` 字段形参 / `??` 兜底 —— V1 视图把 `??` 表示为 `BinaryExpression`），读文件原文时把三件套抄进注释就能绕过；`AsyncState.map` 要看是否**同时带 `data` 与 `error` 两个具名实参**（正则分不清它与 `list.map(...)`，而误报会挡住提交）；注释块要看**字符偏移**（多行字符串里的 `//` 不是注释）。
 
 | 想看什么 | 文件 |
 |---|---|
@@ -53,7 +53,7 @@ plugins:
 - **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/generated_paths.dart` 一致，改动时要一起改（漂移由 `test/tool/generated_paths_consistency_test.dart` 拦下）。
 - **判据细节**：全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。
 - **规则 3/4 的节点形态**：生产代码的 `getIt` 是**对象**（`lib/di/service_locator.dart` 的 `final GetIt getIt = GetIt.instance;`），对象上的 `getIt<X>()` 走隐式 `call`，解析成 `FunctionExpressionInvocation`；`GetIt.I.get<X>()` 才是 `MethodInvocation`。两条规则都按**接收者名字**判定（`getIt` / `GetIt.I` / `GetIt.instance`）并同时订阅 `addMethodInvocation` 与 `addFunctionExpressionInvocation` —— 只订阅前者会让规则对仓库自己的写法静默失效。插件单测的桩必须镜像这个对象形态，由 `test/tool/lint_wiring_test.dart` 的 W4 拦下。
-- 规则 4 只看 `*ViewModel` 类型：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 也由规则 3 直接禁止取容器，不重复报。
+- 规则 4 只看 `*ViewModel` 类型，且**只在页面路径**上生效（`features/*/page/`、`lib/app/pages/`）：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 由规则 3 禁止取容器，`core/` 与 `features/*/data/` 不归本规则管，都不重复报。
 
 ```dart
 // ✅ 页面取 ViewModel 的标准三行

@@ -19,6 +19,7 @@ void main() {
     defineReflectiveTests(ServiceLocatorInLogicRuleTest);
     defineReflectiveTests(ServiceLocatorOutsideLogicRuleTest);
     defineReflectiveTests(PageInjectionPointRuleTest);
+    defineReflectiveTests(PageInjectionPointOutsidePageRuleTest);
     defineReflectiveTests(AvoidAsyncStateMapRuleTest);
     defineReflectiveTests(CommentBlockTooLongRuleTest);
     defineReflectiveTests(LogicImportsMaterialRuleTest);
@@ -262,7 +263,10 @@ class ServiceLocatorOutsideLogicRuleTest extends AnalysisRuleTest {
   }
 }
 
-/// 规则 4：从容器取 ViewModel 的页面必须给可选注入点。
+/// 规则 4：页面路径上从容器取 ViewModel 的文件必须给可选注入点。
+///
+/// 判据是 AST（字段 / 构造参数 / 兜底三件套），不看文件原文 —— 写在注释里的
+/// 「三件套」不算数；非页面路径（`core/`、`features/*/data/`）不归本规则管。
 @reflectiveTest
 class PageInjectionPointRuleTest extends AnalysisRuleTest {
   @override
@@ -317,6 +321,56 @@ class PageInjectionPointRuleTest extends AnalysisRuleTest {
         '$_locatorStub'
         'class AuthStorage {}\n'
         'AuthStorage probe() => getIt<AuthStorage>();\n';
+
+    await assertNoDiagnostics(source);
+  }
+
+  void test_comment_only_injection_point_reported() async {
+    // 反例：三件套只写在注释里。判据读文件原文时会被这条绕过（就是它暴露的漏报）。
+    const invocation = 'getIt<FooViewModel>()';
+    final source =
+        '$_locatorStub$_viewModelStub'
+        'FooViewModel probe() => $invocation;\n'
+        '// final FooViewModel? viewModel;\n'
+        '// 构造参数 this.viewModel\n'
+        '// 兜底 viewModel ?? getIt<FooViewModel>()\n';
+    final offset = source.indexOf(invocation);
+
+    await assertDiagnostics(source, [lint(offset, invocation.length)]);
+  }
+
+  void test_missing_field_formal_reported() async {
+    // 有字段与兜底，但构造参数走初始化列表 —— 不是 `this.viewModel` 形态
+    const invocation = 'getIt<FooViewModel>()';
+    final source =
+        '$_locatorStub$_viewModelStub'
+        'class ZzPage {\n'
+        '  ZzPage() : viewModel = null;\n'
+        '  final FooViewModel? viewModel;\n'
+        '  FooViewModel resolve() => viewModel ?? $invocation;\n'
+        '}\n';
+    final offset = source.indexOf(invocation);
+
+    await assertDiagnostics(source, [lint(offset, invocation.length)]);
+  }
+}
+
+/// 规则 4 的生效范围：非页面路径取 ViewModel 不报（判据就是页面路径）。
+@reflectiveTest
+class PageInjectionPointOutsidePageRuleTest extends AnalysisRuleTest {
+  @override
+  String get testFileName => 'features/a/data/probe.dart';
+
+  @override
+  void setUp() {
+    rule = PageInjectionPointRule();
+    super.setUp();
+  }
+
+  void test_non_page_path_ok() async {
+    final source =
+        '$_locatorStub$_viewModelStub'
+        'FooViewModel probe() => getIt<FooViewModel>();\n';
 
     await assertNoDiagnostics(source);
   }
