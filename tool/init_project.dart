@@ -152,6 +152,8 @@ int runCli(
   say('  3. Verify with: flutter analyze');
   say('  4. Env: 改 .env.example 里的 BASE_URL（它就是运行时被加载的那份）');
   say('  5. Commit: git add -A && git commit -m "chore: init as $newName"');
+  say('  6. 删示例模块（可选）：dart run tool/prune_examples.dart');
+  say('     └─ 它要求工作区干净，所以放在提交之后（见 docs/template-pruning.md）');
   return 0;
 }
 
