@@ -116,15 +116,12 @@ just codegen
 just verify        # 全部门禁（清单见根 justfile 的 verify 链）
 ```
 
-  清单与先后顺序以根 `justfile` 的 `verify` 链为准（`just --list` 列出全部 recipe）；
-  各道门的语义见 [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)。
-  覆盖率**不设门禁**：要看数字自己跑 `flutter test --coverage`（见
-  [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)「覆盖率」）。
+  各道门的语义与覆盖率口径见
+  [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md) 的「代码生成与生成物」「供应链门禁」「覆盖率」。
 
-- [ ] 依赖过一遍：`dart pub outdated` 看 `Current / Upgradable / Resolvable / Latest` 四列，
-      能升的走 `dart pub upgrade`（改动 `pubspec.lock` 后记得重跑测试与 codegen）；
-      有**已知漏洞**的必须在发版前处理——CI 的 `osv-scan` job 会拿 `pubspec.lock` 查 OSV，
-      口径见 `.trellis/spec/cross-cutting.md` 的「供应链门禁」
+- [ ] 依赖过一遍：`dart pub outdated` → `dart pub upgrade`（改动 `pubspec.lock` 后重跑测试与 codegen）；
+      有**已知漏洞**的必须在发版前处理——语义见
+      [.trellis/spec/cross-cutting.md](../.trellis/spec/cross-cutting.md)「供应链门禁」
 - [ ] 应用图标已更新：`dart run flutter_launcher_icons`
 
 ## 7. 发布前人工核查
@@ -135,9 +132,8 @@ just verify        # 全部门禁（清单见根 justfile 的 verify 链）
 - [ ] 关掉 mock：把入库的 `.env.example` 里的 `USE_MOCK` 设为 `false`。改完确认真实接口连通
 - [ ] 权限清单符合实际使用（AndroidManifest / Info.plist 里不要留多余权限）
 - [ ] 隐私政策与合规文案（若上架）已就位
-- [ ] 崩溃/错误上报已接入——`bootstrap.dart` 的 `runZonedGuarded`、
-      `FlutterError.onError`、`PlatformDispatcher.onError` 是天然接入点，
-      现在只是打了日志
+- [ ] 崩溃/错误上报已接入——接入点与当前缺口见
+      [optional-additions.md](./optional-additions.md) 的「崩溃 / 错误上报」
 
 > `leak_tracker` 只在 debug 生效（`bootstrap.dart` 用 `assert` 包裹），
 > release 不会有额外开销，无需处理。
