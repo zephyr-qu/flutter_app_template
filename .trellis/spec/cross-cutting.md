@@ -50,7 +50,7 @@ plugins:
 - **analyze 的扫描面来自 justfile，漏目录不会报错**：roots 由根 `justfile` 的 `app_files` / `tool_files` 两条 `list_dart_files.dart` 调用决定；`git ls-files` 对不存在的路径返回空、退出码 0，所以「少写一个目录」只表现为门禁少看一批文件，与全绿毫无差别。两条断言兜住：每个含 Dart 源码的顶层目录必须被某个 root 覆盖，或在排除名单里（失败信息点名目录）；每个 root 各自必须列得到文件（失败信息说明「该 root 产出 0 个文件」）。新增顶层目录、给 root 改名或删目录时它会拦下 —— 见 [test/tool/analyze_coverage_test.dart](../../test/tool/analyze_coverage_test.dart)。
 - **`flutter analyze` 不加载插件**：同一份 `plugins:` 配置它只报「No issues found」。所以门禁是 `justfile` 里的两步 `dart analyze --fatal-infos`（`lib + test` 与 `tool + packages`），文件列表由 `tool/list_dart_files.dart` 生成（`git ls-files` + 磁盘存在性过滤）。**CI 与 pre-commit 都不自己拼这两步，统一跑 `just verify`** —— 调用形式抄错不报错、只少跑，所以不留第二份。
 - **读门禁输出要看退出码**：info → 0、warning → 2、error → 3；带 `--fatal-infos` 时 info 也变 1。CI 与 pre-commit 只认退出码，别用终端有没有红字判断。
-- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore`、`tool/generated_paths.dart` 一致，改动时要一起改（漂移由 `test/tool/generated_paths_consistency_test.dart` 拦下）。
+- **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。生成器只保证产物「能编译」，不保证遵守层次约定（路由要汇总所有 feature 的 `page/`），且里面的违规没法手工修。口径与根 `.gitignore` 的生成物段落一致（两处改动要同步）。
 - **判据细节**：全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断（`test/` 里 widget 测试的 `build` 不该被管）。放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。
 - **规则 3/4 的节点形态**：生产代码的 `getIt` 是**对象**（`lib/di/service_locator.dart` 的 `final GetIt getIt = GetIt.instance;`），对象上的 `getIt<X>()` 走隐式 `call`，解析成 `FunctionExpressionInvocation`；`GetIt.I.get<X>()` 才是 `MethodInvocation`。两条规则都按**接收者名字**判定（`getIt` / `GetIt.I` / `GetIt.instance`）并同时订阅 `addMethodInvocation` 与 `addFunctionExpressionInvocation` —— 只订阅前者会让规则对仓库自己的写法静默失效。插件单测的桩必须镜像这个对象形态，由 `test/tool/lint_wiring_test.dart` 的 W4 拦下。
 - 规则 4 只看 `*ViewModel` 类型，且**只在页面路径**上生效（`features/*/page/`、`lib/app/pages/`）：页面直接取依赖（`getIt<AuthStorage>()` / `getIt<UserPreferences>()`，如 `home_page`、`profile_page`）不在管辖内；`features/*/logic/` 由规则 3 禁止取容器，`core/` 与 `features/*/data/` 不归本规则管，都不重复报。
@@ -75,7 +75,6 @@ final vm = useMemoized(() => viewModel ?? getIt<ArticleViewModel>());
 | W3 `rules.dart` 里 `LintCode('<name>', …)` 的名字集合 == 本文档规则表格里的清单 | 规则改名后文档漂移、spec 漏写新规则 |
 | W4 插件单测的 locator 桩形态 == `lib/di/service_locator.dart` 的实际声明形态，且生产侧必须是「对象」 | 桩退回函数形态 → 规则判据与生产形态脱节，测试全绿但规则对生产代码失效 |
 
-`test/tool/generated_paths_consistency_test.dart` 用两条断言兜住生成物口径的三处副本：把根 `.gitignore` 的生成物段落当**唯一真源**，归一成谓词集合，与 `tool/generated_paths.dart`、`packages/app_lints/lib/src/paths.dart` 各自抽取的谓词集合比对（D2 点名差异项），再用样例路径核对三处判定一致（D4）。口径来源见上「生成物豁免」。
 
 ### 已知边界：`dart analyze` 真的会输出诊断吗
 
@@ -92,86 +91,6 @@ W1–W4 覆盖「接线断掉」与「判定退化」，`rules_test.dart` 覆盖
 
 ---
 
-## 目录树一致性（`tool/check_readme_tree.dart`）
-
-文档里的 `lib/` 目录树是**结构性快照**：加删文件时它不会自己更新，而 markdown 链接检查也管不到它 —— 树里的路径是纯文本，不是链接，编辑器和 Git 都不会报错。
-
-```bash
-dart run tool/check_readme_tree.dart        # 退出码 0 = 一致，1 = 有出入
-```
-
-两条规则：
-
-1. 树里列出的每个路径都必须真实存在
-2. 树里**已展开**的目录，其实际内容（生成物除外）必须全部列出
-
-「已展开」= 该目录下面还有缩进更深的条目。只写到目录名、不展开子项的（如 `features/article/`）视为刻意省略，不检查其内容；用模板占位符展开的（如 `features/{feature}/`）同样跳过。
-
-`targets` 是「文档 → 目录树根」**对**的列表（不是 doc → root 的映射），因为一个文档里可以有多棵树：
-
-| 文档 | 根 |
-|------|----|
-| `README.md` | `lib` |
-| [directory-structure.md](directory-structure.md) | `lib` |
-
-`packages/` 下的独立工具包（当前只有 `app_lints`）是工具、不是应用代码，不进任何目录树。
-
----
-
-## 文档链接一致性（`tool/check_doc_links.dart`）
-
-目录树门禁只管树里的**纯文本路径**；markdown 链接与 dart 注释里的 spec 引用不在它视野里 ——
-目录改名或文件改名会静默留下断链，编辑器和 Git 都不报。这道门禁补上：
-
-```bash
-dart run tool/check_doc_links.dart        # 退出码 0 = 全绿，1 = 有断链
-```
-
-两条规则：
-
-1. **markdown 行内链接**（`[text](target)`）的相对目标必须存在（文件或目录）
-2. **dart 注释里的 spec 引用**（`data/xxx.md`）必须指向真实文件
-
-扫描面：根 `README.md` / `AGENTS.md`、`docs/**/*.md`、`.trellis/spec/**/*.md`、
-`.cursor/rules/*.mdc`、`lib/**/*.dart`、`test/**/*.dart`。
-
-| 排除 | 理由 |
-|------|------|
-| `.trellis/tasks/**` | 任务笔记：活动任务会引用**尚未创建**的目标路径，归档任务是历史 |
-| `.pi/skills/**`、`.agents/skills/**` | vendored 第三方文档，含作者本机的 `file://` 绝对链接 |
-| `packages/**` | 独立包，自带 README 的链接面向 pub 场景 |
-| 生成物 | 复用 `tool/generated_paths.dart`：里面的引用没法手工修 |
-
-围栏代码块与行内代码里的 `](...)` 不是链接（文档里写正则的例子会被误判），带 scheme 的目标
-（`https:` / `mailto:` / `file:`…）与纯锚点一律跳过。规则 B 只认 `(data|ui|guides)/<名>.md`
-与裸 `cross-cutting.md`，且只看 `//` 注释行 —— **宁可少报也不误报**：误报会直接挡住提交。
-
-**锚点与章节关键词不进这道门禁**（`guides/comment-guidelines.md` 要求引用写章节关键词而非编号）：
-校验关键词要解析每份 `.md` 的标题集合，而改章节名是本仓库的常规操作，误报会先卡住改名任务。
-这类引用由 `tool/check_doc_anchors.dart` 承担 —— **只报告，不拦提交**：
-
-```bash
-just check-anchors                              # 改完标题顺手跑一下；退出码恒为 0
-dart run tool/check_doc_anchors.dart --strict    # 有关键词对不上时退出码 1
-```
-
-判据：`路径.md「关键词」` 的引用，目标文件里**任一标题包含**该关键词即通过（引用写的是关键词，
-不是完整标题）；无 `「」` 的引用跳过。扫描面直接调 `check_doc_links.dart` 的 `collectFiles()`，
-不抄第二份。也不做自动修复（`--fix`），只报告 `文件:行号`。
-
-### 已知盲区（全绿 ≠ 无问题）
-
-这条门禁是**文件级**的，下面这些不被覆盖 —— 遇到时靠 review：
-
-- **大小写笔误**：规则 B 只认小写文件名，`data/No-Such.md` 不报（当前 spec 全小写，无实际漏报）
-- **`%20` 等 URL 编码**：链接目标不做解码
-- **引用式链接**（`[x][ref]` + `[ref]: target`）与带标题的 `[x](target "t")`：规则 A 只认行内形式
-- **跨行 code span** 与 4 个以上反引号围栏里嵌 3 个反引号：可能误报
-
-排除项 `.pi/`、`.agents/`、`packages/`、`.trellis/tasks/` 在现有扫描面下本就不可达，
-列出来是**防御性**的：将来把扫描面放宽时别忘了一起看。
-
----
 
 ## 有意不设的项
 
@@ -181,8 +100,6 @@ dart run tool/check_doc_anchors.dart --strict    # 有关键词对不上时退�
 | --- | --- | --- |
 | 覆盖率阈值 / lcov | 阈值对个人项目没有意义：它不反映可维护性，只会诱导凑数字 | 人工看 `flutter test --coverage` |
 | 「清理未使用依赖」的自动化 | 见「依赖声明」：只拦「声明了却没用」，反向没有门禁 | 改代码的人顺手删 |
-| 文档引用的**锚点与章节关键词**校验 | 见「文档链接一致性」：改章节名是本仓库常规操作，误报会卡住它 | [tool/check_doc_anchors.dart](../../tool/check_doc_anchors.dart)（只报告）+ review |
-| 目录树的**全仓库**核对 | 见「目录树一致性」：门禁只覆盖 `README.md` 与 `directory-structure.md` | 人工同步其余位置 |
 | 导航标签与测试的同步 | 见 [ui/routing.md](ui/routing.md)「主框架标签」 | review |
 | 「不存在的东西」的守卫（事件总线、per-ViewModel 日志、`domain/` 层…） | 没有稳定判据，硬做成门禁只会误报 | [`../../.cursor/rules/project-conventions.mdc`](../../.cursor/rules/project-conventions.mdc)「不存在的东西」清单 + review |
 
@@ -287,7 +204,7 @@ skill 都有磁盘目录、磁盘每个目录都登记在 lock 里、`skillPath`
 
 ### 策略：生成物不入库（gitignore）
 
-`.gitignore` **排除**生成物，它们不提交进 git。判定「哪些是生成物」的口径与 `tool/generated_paths.dart` 的 `isGeneratedPath()`、`packages/app_lints/lib/src/paths.dart` 的同名函数一致（三处改动要同步）：
+`.gitignore` **排除**生成物，它们不提交进 git。判定「哪些是生成物」的口径与 `packages/app_lints/lib/src/paths.dart` 的 `isGeneratedPath()` 一致（两处改动要同步）：
 
 | 形态 | 例子 |
 |------|------|

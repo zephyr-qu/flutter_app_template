@@ -54,7 +54,7 @@ lib/
 │   └── page/     # 页面
 └── di/           # service_locator.dart + service_locator.config.dart（生成）
 packages/app_lints/   # 唯一的独立包：本仓库的架构边界与形态规则
-tool/                 # 脚手架运维脚本（init / 文档一致性门禁：目录树 + 文档链接）；just verify 调用
+tool/                 # 脚手架运维脚本（改名 init_project / analyze 文件清单 list_dart_files）；just verify 用到
 ```
 
 依赖方向：`app → features → core`，由 `packages/app_lints` 的分析插件强制。

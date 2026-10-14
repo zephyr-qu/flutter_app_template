@@ -26,7 +26,7 @@
 - [ ] 涉及 `@freezed` / `@RoutePage` / `@injectable` / Drift 表，或增删代码文件 → 已跑 `just codegen`
 - [ ] 架构边界没破（`core/` 不引上层、跨 feature 只共享 `data/`、`features/*/logic/` 不碰 `material`/`widgets` 与本 feature 的 `page/`、`logic/` 不用 `getIt`、取 ViewModel 的页面给足可选注入点三件套、不用 `AsyncState.map`、注释块 ≤10 行）—— 判据与放行条件见 [cross-cutting.md](./cross-cutting.md)「架构边界与代码形态」
 - [ ] 新增 `FailureCode` 已补 `lib/core/ui/failure_message.dart` 的文案，`test/core/ui/failure_message_test.dart` 能覆盖到
-- [ ] 增删 `lib/` 文件 → 同步 `README.md` 与 [directory-structure.md](./directory-structure.md) 的目录树（`just verify` 的目录树门禁只覆盖 `README.md` 与 `directory-structure.md`，其余位置**靠人**）
+- [ ] 增删 `lib/` 文件 → 同步 `README.md` 与 [directory-structure.md](./directory-structure.md) 的目录树（**靠人**，没有门禁）
 - [ ] 改动触到 spec 描述的约定 → 同步对应的 `.md`
 
 ---
@@ -63,7 +63,7 @@
 
 | Guide | 内容 |
 | ------- | ------------- |
-| [跨层与门禁](./cross-cutting.md) | 架构边界与代码形态（`packages/app_lints` 插件，七条规则）、目录树一致性（`tool/check_readme_tree.dart`）、文档链接一致性（`tool/check_doc_links.dart`）、覆盖率（不设门禁）、依赖声明（`depend_on_referenced_packages`）、供应链门禁（`dart pub outdated` / OSV）、改名脚本（`tool/init_project.dart`）、代码生成与生成物（生成物不入库、重新生成时机、CI 现场生成）、build_runner 升级与缓存评估、`leak_tracker`、环境配置与 release 构建 |
+| [跨层与门禁](./cross-cutting.md) | 架构边界与代码形态（`packages/app_lints` 插件，七条规则）、覆盖率（不设门禁）、依赖声明（`depend_on_referenced_packages`）、供应链门禁（`dart pub outdated` / OSV）、改名脚本（`tool/init_project.dart`）、代码生成与生成物（生成物不入库、重新生成时机、CI 现场生成）、build_runner 升级与缓存评估、`leak_tracker`、环境配置与 release 构建 |
 
 ## 思考指南
 

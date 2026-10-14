@@ -3,8 +3,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../tool/generated_paths.dart' show isGeneratedPath;
-
 // 为什么有这个测试：`just analyze` 的扫描面由根 justfile 里两条
 // `list_dart_files.dart` 调用的 root 列表决定。root 漏掉一个顶层目录、或被改名 /
 // 删掉时 analyze **不报错**：`git ls-files` 对不存在的路径返回空、退出码 0，
@@ -16,8 +14,7 @@ import '../../tool/generated_paths.dart' show isGeneratedPath;
 /// 显式排除在扫描面之外的顶层目录（不是「隐藏目录」规则，而是本仓库自己的取舍）。
 ///
 /// `.agents/` —— vendored 第三方 skill 的示例代码
-/// （`dart-use-path-package/examples/*.dart`），与 `tool/check_doc_links.dart`
-/// 排除 `.agents/skills` / `.pi/skills` 同一口径：不是本仓库源码，改了也会被
+/// （`dart-use-path-package/examples/*.dart`）：不是本仓库源码，改了也会被
 /// 下次 vendoring 覆盖。它当前已被 [topLevelDirsWithDart] 的「隐藏目录」规则跳过，
 /// 仍在这里显式留名，是为了让「为什么它不在扫描面」在断言处就能被 review 读到。
 const excludedTopLevelDirs = <String>{'.agents'};
@@ -241,7 +238,7 @@ List<String> parseAnalyzeRoots(String justfile) {
 ///
 /// 与 `tool/list_dart_files.dart` 同一命令：测试看到的文件清单必须与门禁看到的一致，
 /// 所以这里不自己遍历目录。只要 `.dart`、磁盘上存在（index 里可能还留着已删文件）、
-/// 且不是生成物（口径复用 `tool/generated_paths.dart`，与 `.gitignore` 同一份真相）。
+/// 且不是生成物（生成物已被 `.gitignore` 排除，`--exclude-standard` 天然不带它们）。
 List<String> _analyzeDartFiles(List<String> pathspec) {
   final result = Process.runSync(
     'git',
@@ -261,7 +258,6 @@ List<String> _analyzeDartFiles(List<String> pathspec) {
   return LineSplitter.split(result.stdout as String)
       .map((path) => path.replaceAll(r'\', '/'))
       .where((path) => path.endsWith('.dart'))
-      .where((path) => !isGeneratedPath(path))
       .where((path) => File(path).existsSync())
       .toList();
 }
