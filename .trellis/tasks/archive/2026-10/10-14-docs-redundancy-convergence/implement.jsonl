@@ -1,0 +1,3 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "权威位置：R1 的指路目标（代码生成与生成物 / 供应链门禁 / 覆盖率）；确认只指路、不复述口径"}
+{"file": ".trellis/tasks/archive/2026-10/10-11-doc-redundancy/audit.md", "reason": "上轮判定与冲突面：ADR 不删的结论（:58）、release-checklist 不重复的判定（:60）"}
