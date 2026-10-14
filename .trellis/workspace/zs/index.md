@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 11
+- **Total Sessions**: 12
 - **Last Active**: 2026-10-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~556 | Active |
+| `journal-1.md` | ~590 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 12 | 2026-10-14 | 脚手架 demo 剪枝自动化：tool/prune_examples.dart | `1351c1e`, `2c3c097` | `master` |
 | 11 | 2026-10-14 | docs 局部冗余收敛：段落级去重 + 删 ADR-0002 | `9dcce59`, `f7fbe52`, `5777ee4` | `master` |
 | 10 | 2026-10-14 | 删掉文档类门禁与生成物口径断言 | `b8b90f6` | `master` |
 | 9 | 2026-10-14 | 规则 4 判据 AST 化 + 重试收窄 + CI 平台构建门禁 | `a05987d`, `7c85a8a`, `50477dc`, `ba340ee` | `master` |

@@ -554,3 +554,37 @@ release-checklist §6/§7 的复述改指路（门禁口径回归 cross-cutting�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: 脚手架 demo 剪枝自动化：tool/prune_examples.dart
+
+**Date**: 2026-10-14
+**Task**: 脚手架 demo 剪枝自动化：tool/prune_examples.dart
+**Branch**: `master`
+
+### Summary
+
+新增 tool/prune_examples.dart：一条命令删 article/demo 两个示例模块并清干净全部引用点（锚点按文本定位、每条必须恰好命中 1 次，不命中即零写盘并以非零退出），随后自动跑 just codegen + just verify 自证，残留扫描代码侧命中即失败、文档侧只打印清单，auth 在写盘前以退出码 2 拒绝。锚点实测 35 条（design 原估 19 条，多出的由 grep、残留扫描与 unused_import 三条门禁补出）；核心防线是「匹配失败就响亮失败」而不是静默少删。测试 test/tool/prune_examples_test.dart 28 个用例 + 1 个 SCAFFOLD_E2E 端到端（默认跳过）。docs/template-pruning.md 的 article/demo 手工清单（已漂移 5 处）整体删除，改为工具用法 + auth 手工改造 + 占位清单；spec/cross-cutting.md 新增「示例模块剪枝」一节，生成物口径改三处同步。just verify 全绿（375 passed / 2 skipped）。子代理在本机不可用（spawn pi ENOENT），本轮 inline 实施 + inline 复核。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1351c1e` | (see git log) |
+| `2c3c097` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
