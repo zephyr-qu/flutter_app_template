@@ -412,6 +412,9 @@ flutter build apk       # 发版构建，配置同样来自 .env.example
 - `.env` / `.env.*` 已被 `.gitignore` 忽略，dotenv 也不会读它们：**新建这类文件并指望运行时加载是无效的**。
 - `BASE_URL` 缺失时 `bootstrap()` 直接抛异常（fail fast），不会静默启动。
 
+- **平台构建有 CI 门禁**：`build-apk` job（`needs: analyze`）跑 `just build-apk` = `flutter build apk --debug`，
+  把 Gradle / 插件注册 / manifest 这类只在平台侧暴露的问题挡在 PR 上（冷缓存约 5 分钟）。
+  签名 / 混淆 / flavor 仍是有意留白（见下）。
 ### 有意留白（模板不提供的部分）
 
 以下属于**目标应用**的职责，脚手架刻意不配置。它们不是遗漏，读到这段时不要当成待办：

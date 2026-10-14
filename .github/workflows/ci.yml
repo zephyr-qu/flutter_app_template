@@ -53,6 +53,34 @@ jobs:
         env:
           SCAFFOLD_E2E: "1"
 
+  # ── 平台构建门禁：analyze + test 都只在 Dart 层，Gradle / 插件注册 / manifest
+  # 这类只在平台侧暴露的问题它们看不见（改坏 gradle 也能全绿）。这条只做一次
+  # debug 构建，跑的就是本地那条 `just build-apk`（冷缓存实测约 5 分钟）。
+  build-apk:
+    needs: analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.5"
+          channel: "stable"
+
+      - uses: extractions/setup-just@v4
+        with:
+          just-version: "1.58.0"
+
+      - name: Install dependencies
+        run: just deps
+
+      # 生成物不入库，构建前必须现场生成（与 analyze job 同因）
+      - name: Generate code
+        run: just codegen
+
+      - name: Build debug APK
+        run: just build-apk
+
   # ── 供应链门禁：拿 pubspec.lock 去 OSV 数据库查**已知漏洞**，命中即失败 ──
   # 它和 `depend_on_referenced_packages` 是两件事：后者管「声明与使用是否一致」，这里管
   # 「锁定住的版本有没有被披露过漏洞」。口径与理由见 .trellis/spec/cross-cutting.md。

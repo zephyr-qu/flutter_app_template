@@ -42,6 +42,10 @@ test *args:
 run *args:
     flutter run {{ args }}
 
+# 平台构建验证：CI 的 build-apk job 跑的就是它（冷缓存实测约 5 分钟）
+build-apk:
+    flutter build apk --debug
+
 test-app-lints:
     cd packages/app_lints && dart test
 
