@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "规则表 / 已知边界 / 有意不设的项 —— A3（规则 4 范围口径）与 A9（门禁全绿）的判据源"}
+{"file": ".trellis/spec/data/network-guidelines.md", "reason": "A4 的判据源：Retry 节必须写明状态码 + 传输层两部分与「只看 GET/HEAD」"}
+{"file": ".trellis/spec/data/quality-guidelines.md", "reason": "数据层回归面：重试判据落在 core/data/network，改完照这份复核"}
+{"file": ".trellis/spec/index.md", "reason": "「完成前自检」清单：verify 全绿、codegen 时机、目录树同步、新增断言的登记义务"}
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "注释块 ≤10 行与 spec 引用写法（改动会触到 comment_block_too_long 规则）"}

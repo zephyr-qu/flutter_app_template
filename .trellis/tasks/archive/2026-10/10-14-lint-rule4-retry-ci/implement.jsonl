@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/cross-cutting.md", "reason": "七条规则的判据表、插件接线的已知边界与「有意不设的项」—— 本任务 R1 直接改这张表第 4 行的口径，改判据前必读"}
+{"file": ".trellis/spec/data/network-guidelines.md", "reason": "拦截器顺序与 Retry 语义（R2/R3 要改的正是这份文档里的 Retry 节）"}
+{"file": ".trellis/spec/data/quality-guidelines.md", "reason": "数据/逻辑层的必须遵守与禁止模式 —— 改 dio_factory 与新增 retry_policy 时照这份"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "新建 retry_policy 前先确认没有现成的重试判据 / 路径判据可复用（避免第二套口径）"}
+{"file": "docs/adr/ADR-0001.md", "reason": "规则 4 的立法依据（ViewModel 构造器注入 + 页面可选注入点三件套）"}
+{"file": ".trellis/tasks/archive/2026-10/10-12-lint-self-proof/research/lint-plugin-wiring-findings.md", "reason": "插件判据形态漏报的历史调研（规则 3/4 的节点形态与「已知边界」的来源）"}
