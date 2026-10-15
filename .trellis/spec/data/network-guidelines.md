@@ -14,7 +14,7 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `lib/core/data/network/dio_factory.dart` | `createDio()`：拦截器栈 + 兜底解码 + Retry + Mock，**不知道 signals / Riverpod 的存在** |
+| `lib/core/data/network/dio_factory.dart` | `createDio()`：拦截器栈 + 兜底解码 + Retry + Mock，**不知道状态管理与 DI 的存在** |
 | `lib/core/data/network/auth_interceptor.dart` | 请求附加令牌；401 时刷新并重放；刷新用尽则清凭证 |
 | `lib/core/data/network/token_refresher.dart` | single-flight 换令牌 |
 | `lib/core/data/network/token_store.dart` | 令牌存取的**能力契约**（`ready` / 读写 / 过期判断 / 清除），各栈自己实现 |

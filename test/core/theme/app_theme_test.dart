@@ -60,6 +60,44 @@ void main() {
       expect(snackBar.borderRadius, BorderRadius.circular(base.radiusSm));
     });
 
+    test('输入框装饰的填充 / 圆角都取自主题', () {
+      const base = AppThemeExtension.base;
+      final expectedBorder = OutlineInputBorder(
+        borderRadius: BorderRadius.circular(base.radiusSm),
+        borderSide: BorderSide.none,
+      );
+
+      for (final theme in [buildLightTheme(), buildDarkTheme()]) {
+        final decoration = theme.inputDecorationTheme;
+
+        expect(decoration.filled, isTrue);
+        expect(decoration.fillColor, theme.colorScheme.surfaceContainerLow);
+        expect(decoration.border, expectedBorder);
+      }
+    });
+
+    testWidgets('只带 labelText 的 TextField 也会合上主题的装饰', (tester) async {
+      final theme = buildLightTheme();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: const Scaffold(
+            body: TextField(decoration: InputDecoration(labelText: '测试')),
+          ),
+        ),
+      );
+
+      // TextField 交给 InputDecorator 的装饰已经 applyDefaults 过主题
+      final decoration = tester
+          .widget<InputDecorator>(find.byType(InputDecorator))
+          .decoration;
+
+      expect(decoration.filled, isTrue);
+      expect(decoration.fillColor, theme.colorScheme.surfaceContainerLow);
+      expect(decoration.border, isA<OutlineInputBorder>());
+    });
+
     test('页面转场按平台给，不用默认构造', () {
       final builders = buildLightTheme().pageTransitionsTheme.builders;
 

@@ -17,7 +17,9 @@ sealed class Result<T, E> {
 
   bool get isFailure => this is Err<T, E>;
 
-  /// 取成功值；在 [Err] 上会抛 [StateError]，只用于测试
+  /// 取成功值；在 [Err] 上会抛 [StateError]。
+  ///
+  /// 逃生口：调用点先用 [isSuccess] 判断，确认成功后再就近取值；不要用它替代模式匹配。
   T get getOrThrow => switch (this) {
     Ok<T, E>(:final data) => data,
     Err<T, E>(:final error) => throw StateError(

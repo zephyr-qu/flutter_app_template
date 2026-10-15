@@ -121,7 +121,7 @@ Text(article.title, style: TextStyle(fontSize: 18, color: Colors.black)),
 | 文件 | 职责 |
 |---|---|
 | `app_color_scheme.dart` | 品牌色板 + 需要偏离 Material 的语义色。**唯一**允许 import `flex_color_scheme` 的文件 |
-| `app_theme.dart` | 组装 `ThemeData`，对外只暴露 `buildLightTheme()` / `buildDarkTheme()`。**内部不写裸数字**——圆角、间距取自 `app_theme_extension.dart` 的 token，不写 `BorderRadius.circular(12)` 这种字面量（数字一旦在主题里写死，页面想统一调整时就找不到它）。`_textTheme` 的字号 / 字重是主题定义本身，不在此列 |
+| `app_theme.dart` | 组装 `ThemeData`，对外只暴露 `buildLightTheme()` / `buildDarkTheme()`。**内部不写裸数字**——圆角、间距取自 `app_theme_extension.dart` 的 token，不写 `BorderRadius.circular(12)` 这种字面量（数字一旦在主题里写死，页面想统一调整时就找不到它）。语义色覆盖**只做一次**（`applyBrandOverrides(base.colorScheme)` 存进局部变量），主题里其它要取颜色的项都从这个变量拿 —— 覆盖两遍会让「主题被覆盖了几次」变成要读两遍才知道的事。`_textTheme` 的字号 / 字重是主题定义本身，不在此列 |
 | `app_theme_extension.dart` | 设计 token：**只放 `ColorScheme` 表达不了的东西**（圆角、间距） |
 
 想自己创建配色时，按想要的粒度分三档：
@@ -132,7 +132,7 @@ Text(article.title, style: TextStyle(fontSize: 18, color: Colors.black)),
 | 微调个别语义角色 | `app_color_scheme.dart` 的 `applyBrandOverrides` | 1~N 行 |
 | 完全掌控整套配色 | 用 `ColorScheme.fromSeed` 或手写 `ColorScheme` 替换 `app_theme.dart` 里的 `FlexThemeData.light/dark` 调用 | 一个 `_buildTheme` 函数体；手写要自己补齐 40+ 个角色 |
 
-### 两条边界规则（各配一条命令，破了就能看出来）
+### 三条边界规则（各配一条命令，破了就能看出来）
 
 **规则 1 —— token 不放颜色。** `app_theme_extension.dart` 只放 `ColorScheme` 表达不了的东西（圆角、间距），**不出现任何 `Color` 字段**：能用「语义角色」表达的东西就不该另造一个 token，否则换主题时会漏掉它。
 
@@ -148,6 +148,14 @@ grep -rln "flex_color_scheme" lib/   # 期望：只命中 lib/core/theme/app_col
 
 第三档之后 `lib/` 里不再有 `flex_color_scheme`，规则 2 的 `grep` 验证会变成「无输出」——
 这也是它可被验证的意义：边界会不会破，一条命令就能看出来。
+
+**规则 3 —— 输入框装饰只写在主题层。** 页面只留文案（`labelText` / `hintText`）与控件行为，
+`filled` / `fillColor` / 边框形状一律取自 `app_theme.dart` 的 `inputDecorationTheme`；
+写进页面就等于同一种输入框在每个页面各抄一份，改一次要翻遍全仓。
+
+```bash
+grep -rn "OutlineInputBorder\|fillColor" lib/   # 期望：只命中 lib/core/theme/app_theme.dart
+```
 
 **主题入口只有两个函数，不内联在 `lib/app/app.dart`。**
 

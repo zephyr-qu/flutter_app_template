@@ -40,9 +40,12 @@ ThemeData _buildTheme(Brightness brightness) {
     ),
   };
 
+  // 语义色覆盖只做一次；下面的 fillColor 也取自它，避免两处漂开
+  final colorScheme = applyBrandOverrides(base.colorScheme);
+
   return base.copyWith(
     // 语义色覆盖统一走这里，页面层只读 colorScheme
-    colorScheme: applyBrandOverrides(base.colorScheme),
+    colorScheme: colorScheme,
     extensions: const [AppThemeExtension.base],
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
@@ -65,6 +68,15 @@ ThemeData _buildTheme(Brightness brightness) {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppThemeExtension.base.radiusSm),
+      ),
+    ),
+    // 输入框装饰的全局默认值，页面只写 labelText / hintText 这类特有项
+    inputDecorationTheme: InputDecorationThemeData(
+      filled: true,
+      fillColor: colorScheme.surfaceContainerLow,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppThemeExtension.base.radiusSm),
+        borderSide: BorderSide.none,
       ),
     ),
   );

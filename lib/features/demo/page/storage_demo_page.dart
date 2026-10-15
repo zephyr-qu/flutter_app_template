@@ -23,7 +23,6 @@ class StorageDemoPage extends HookWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final appTheme = AppThemeExtension.of(context);
 
     final vm = useMemoized(() => viewModel ?? getIt<StorageDemoViewModel>());
     useEffect(() {
@@ -47,15 +46,7 @@ class StorageDemoPage extends HookWidget {
             children: [
               TextField(
                 onChanged: vm.updateNote,
-                decoration: InputDecoration(
-                  labelText: '要保存的内容',
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(appTheme.radiusSm),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                decoration: const InputDecoration(labelText: '要保存的内容'),
               ),
               const SizedBox(height: 16),
               Wrap(

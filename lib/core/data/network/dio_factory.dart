@@ -18,8 +18,8 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 /// **必须单例**（理由见 data/network-guidelines.md）。
 ///
 /// **不依赖状态管理与 DI**：`enableDebugLogging` 与 [registerMockRules] 都由调用方
-/// 传入，所以本函数不知道任何业务端点，也不知道 signals / Riverpod 的存在。
-/// 它只负责「怎么造」，「谁来提供」归各分支的装配层（见 design 6.5）。
+/// 传入，所以本函数不知道任何业务端点，也不知道令牌由哪套状态管理持有。
+/// 它只负责「怎么造」；「谁来提供」由调用方（装配层）决定。
 ///
 /// [registerMockRules] 仅在 [isMock] 为 true 时调用。
 Dio createDio({

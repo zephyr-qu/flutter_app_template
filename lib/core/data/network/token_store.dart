@@ -9,12 +9,11 @@ const Duration defaultTokenExpirySkew = Duration(seconds: 30);
 /// 令牌存取的能力契约。
 ///
 /// 网络层（`AuthInterceptor` / `TokenRefresher`）只需要「读写令牌」这一组能力，
-/// 不需要知道令牌存在哪里、也不需要知道登录态用什么状态管理暴露。各分支用自己
-/// 栈的类实现它（signals 分支：`AuthStorage`；Riverpod 分支：对应的 `Notifier`）。
+/// 不需要知道令牌存在哪里、也不需要知道登录态用什么状态管理暴露；本项目的实现是
+/// `lib/core/data/storage/auth_storage.dart` 的 `AuthStorage`。
 ///
 /// 本文件**不得** import `auth_interceptor.dart` / `token_refresher.dart`（循环依赖）；
 /// 提到这两个类时用反引号而非 `[...]`，否则 `dart fix` 会自动补 import。
-/// 为什么需要这层反转、边界怎么定，见 design.md 6.1。
 abstract interface class TokenStore {
   /// 令牌从持久化载入内存的完成信号。
   ///

@@ -96,12 +96,6 @@ class LoginPage extends HookWidget {
                         Icons.email_outlined,
                         color: colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
-                      filled: true,
-                      fillColor: colorScheme.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(appTheme.radiusSm),
-                        borderSide: BorderSide.none,
-                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -117,12 +111,6 @@ class LoginPage extends HookWidget {
                       prefixIcon: Icon(
                         Icons.lock_outlined,
                         color: colorScheme.onSurface.withValues(alpha: 0.4),
-                      ),
-                      filled: true,
-                      fillColor: colorScheme.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(appTheme.radiusSm),
-                        borderSide: BorderSide.none,
                       ),
                     ),
                   ),
