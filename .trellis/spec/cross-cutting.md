@@ -350,6 +350,10 @@ signals_flutter 的组件在 `dispose` 时会自动取消订阅；泄漏链里�
 
 约定：**真实依赖用普通 `test()` 测**（那些测试没有假时钟），**页面测试把依赖 mock 掉、由测试直接推信号值**。范例：`test/features/demo/logic/storage_demo_view_model_test.dart`（真实 FileStorage + 内存数据库）与 `test/features/demo/page/storage_demo_page_test.dart`（mock ViewModel + 推信号）。
 
+断言「样式真的走了主题」时，**读渲染层合过默认值的那个对象**，不要只读 `ThemeData`：`InputDecoration` 的等价物是
+`tester.widget<InputDecorator>(...).decoration`（已 `applyDefaults`）。只断言 `ThemeData` 的字段挡不住「页面又自己写了一份装饰」这类回归。
+写完顺手做一次 mutation 自检——把主题里的值改成另一个，测试必须变红；不变红就说明它看的不是你以为的那一层。
+范例：`test/core/theme/app_theme_test.dart` 的 `group('主题组装')`（`filled` / `fillColor` 两处 mutation 都会让它的两条测试同时红）。
 另外 `ListView` 只布局可视区内的子节点，视口外的内容 finder 找不到——测长页面时要么放大视口（`tester.view.physicalSize`），要么先滚动。
 
 - **字体**：主题（`lib/core/theme/app_theme.dart` 的 `_textTheme`）**不指定字体家族**，走平台默认字体，所以测试与设备上
