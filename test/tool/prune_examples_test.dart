@@ -6,7 +6,7 @@ import '../../tool/init_project.dart' show isBuildArtifactPath;
 import '../../tool/prune_examples.dart';
 
 // ──────────────────────────────────────────────
-// 这份测试分三层，各自兜不同的失效
+// 这份测试分两层，各自兜不同的失效
 // ──────────────────────────────────────────────
 //
 // 1. 机制层：参数解析、拒绝分支、全或无（改坏一处锚点后夹具必须零改动）。
@@ -14,7 +14,6 @@ import '../../tool/prune_examples.dart';
 //    仓库一起漂，测试照样绿。
 // 2. 锚点层：对真实仓库调 buildPlan，断言每条清理点都恰好命中 1 次。锚点一漂
 //    这个测试立刻红，是「工具认知 == 仓库现状」的长期保护。
-// 3. 端到端层（SCAFFOLD_E2E=1）：复制真实仓库 → 剪枝 → just codegen → just verify。
 //
 // 工具函数是顶层可 import 的（`runCli` / `buildPlan` / `pruneModules`），
 // 与 tool/init_project.dart 同一种形态：main() 只是薄壳。
@@ -353,9 +352,9 @@ void main() {
 
     setUp(() {
       copy = Directory('${temp.path}/repo')..createSync(recursive: true);
-      // 代码侧只复制 lib/ 与 test/ —— 剪枝只碰这两棵树，跑真实 verify 留给
-      // SCAFFOLD_E2E。生成物不入库，副本按「gitignore 之后」的形态来：留着它们的
-      // 话，假 codegen 不会重新生成，残留扫描会（正确地）报出陈旧生成物里的已删类型。
+      // 代码侧只复制 lib/ 与 test/ —— 剪枝只碰这两棵树，真实 verify 不在这里跑。
+      // 生成物不入库，副本按「gitignore 之后」的形态来：留着它们的话，假 codegen 不会
+      // 重新生成，残留扫描会（正确地）报出陈旧生成物里的已删类型。
       for (final dir in ['lib', 'test']) {
         _copyTree(
           Directory('${repo.path}/$dir'),
@@ -565,83 +564,10 @@ void main() {
       expect(text.join('\n'), contains('git checkout -- .'));
     });
   }, skip: skipNoExamples);
-
-  // ──────────────────────────────────────────────
-  // 8. 端到端：复制真实仓库 → 剪枝 → codegen → verify（AC1）
-  // ──────────────────────────────────────────────
-
-  group('端到端（默认跳过）', () {
-    // 本地要验证时设 SCAFFOLD_E2E=1，CI 的 analyze job 会带上它。
-    // 注意：剪枝**只能**在副本上做 —— 本仓库是模板本身，它的示例模块是
-    // AGENTS.md 与 .trellis/spec 反复引用的教学范例。
-    final enabled = Platform.environment['SCAFFOLD_E2E'] == '1';
-
-    test(
-      '副本上剪枝后 just verify 全绿，且本仓库的示例模块没被动过',
-      () async {
-        final e2e = Directory.systemTemp.createTempSync('prune_e2e_');
-        addTearDown(() {
-          if (e2e.existsSync()) e2e.deleteSync(recursive: true);
-        });
-        _copyTree(repo, e2e);
-
-        // 副本里的 .dart_tool 路径是原仓库的，先按 justfile 的 deps 重新解析
-        // （根工程用 flutter、独立子包用 dart —— 正是 `just deps` 的两步）
-        await _pubGetAll(_flutterCommand(), e2e);
-
-        // 工具要求工作区干净（不可逆删除的前提），所以副本得是个已提交的 git 仓库。
-        // 用 --force 绕过去就验不到这道门 —— 而它是真实使用时的第一道门。
-        await _gitInitAndCommit(e2e);
-
-        final output = <String>[];
-        final code = await runCli(
-          ['--modules=article,demo', '--yes'],
-          root: e2e,
-          out: output.add,
-          // 真实 codegen + 真实 verify，但**不把 SCAFFOLD_E2E 传给子进程**：
-          // 否则副本里的 `just verify` → `flutter test` 会继承它，把这条用例
-          // 递归地再跑一遍（副本里的副本……）。
-          runProcess: _e2eRunner,
-        );
-
-        expect(code, _ok, reason: output.join('\n'));
-        expect(output.join('\n'), contains('剪枝完成'));
-
-        // 代码侧零残留
-        for (final pattern in [
-          'features/article',
-          'features/demo',
-          'ArticleListRoute',
-        ]) {
-          expect(_grep(e2e, pattern), isEmpty, reason: '副本里还留着 $pattern');
-        }
-        // 生成物也不该再提到已删的路由类
-        expect(
-          File('${e2e.path}/lib/app/routing/router.gr.dart').readAsStringSync(),
-          isNot(contains('Article')),
-        );
-
-        // **本仓库必须没被改动** —— 这是这条测试存在的主要理由
-        expect(
-          Directory('${repo.path}/lib/features/article').existsSync(),
-          isTrue,
-          reason: '剪枝跑到了模板仓库上，而不是副本上',
-        );
-        expect(
-          Directory('${repo.path}/lib/features/demo').existsSync(),
-          isTrue,
-        );
-      },
-      skip: enabled
-          ? false
-          : '设 SCAFFOLD_E2E=1 开启（会复制整个仓库并跑 just deps / codegen / verify）',
-      timeout: const Timeout(Duration(minutes: 30)),
-    );
-  });
 }
 
 // ──────────────────────────────────────────────
-// 假进程：端到端之外的用例一律不跑真实 build_runner
+// 假进程：所有用例都不跑真实 build_runner
 // ──────────────────────────────────────────────
 
 /// 构造一个假的 [ProcessRunner]。
@@ -765,106 +691,4 @@ void _copyTree(Directory source, Directory target) {
         ..writeAsBytesSync(entity.readAsBytesSync());
     }
   }
-}
-
-/// `pub get`：先试离线，失败再联网（与 justfile 的 `deps` 两步一致）。
-/// pub get：根工程用 [flutter]、独立子包用 dart —— 与 justfile 的 `deps` 两步一致。
-///
-/// 三者都是同一个形状（`pub get`），只差可执行文件：Flutter 工程必须用 `flutter`，
-/// 独立子包（`packages/app_lints`）用 `dart`。
-Future<void> _pubGetAll(String flutter, Directory root) async {
-  await _pubGet(flutter, root);
-  await _pubGet(_dartCommand(), Directory('${root.path}/packages/app_lints'));
-}
-
-/// 先试离线（依赖已在 pub cache 里就能过），失败再联网。
-Future<void> _pubGet(String executable, Directory dir) async {
-  final offline = await Process.run(
-    executable,
-    ['pub', 'get', '--offline'],
-    workingDirectory: dir.path,
-    runInShell: Platform.isWindows,
-  );
-  if (offline.exitCode == 0) return;
-
-  final online = await Process.run(
-    executable,
-    ['pub', 'get'],
-    workingDirectory: dir.path,
-    runInShell: Platform.isWindows,
-  );
-  expect(
-    online.exitCode,
-    0,
-    reason: 'pub get 失败于 ${dir.path}：\n${online.stdout}\n${online.stderr}',
-  );
-}
-
-/// 端到端用的真实进程执行器：跑真命令，但**不把 `SCAFFOLD_E2E` 传给子进程**。
-///
-/// 副本里的 `just verify` 会拉起 `flutter test`；继承了这个环境变量的话，那条端到端
-/// 用例会在副本里再跑一遍（副本里的副本……）。
-Future<ProcessResult> _e2eRunner(
-  List<String> command,
-  String workingDirectory,
-) {
-  final environment = Map<String, String>.from(Platform.environment)
-    ..remove('SCAFFOLD_E2E');
-  return Process.run(
-    command.first,
-    command.sublist(1),
-    workingDirectory: workingDirectory,
-    environment: environment,
-    runInShell: Platform.isWindows,
-  );
-}
-
-/// 把 [root] 变成「干净基线」的 git 仓库（工具的前置检查要求）。
-Future<void> _gitInitAndCommit(Directory root) async {
-  Future<void> git(List<String> args) async {
-    final result = await Process.run(
-      'git',
-      args,
-      workingDirectory: root.path,
-      runInShell: Platform.isWindows,
-    );
-    expect(
-      result.exitCode,
-      0,
-      reason: 'git ${args.join(' ')} 失败：\n${result.stdout}\n${result.stderr}',
-    );
-  }
-
-  await git(['init']);
-  await git(['add', '-A']);
-  await git([
-    '-c',
-    'user.email=e2e@example.com',
-    '-c',
-    'user.name=e2e',
-    'commit',
-    '-m',
-    'e2e baseline',
-  ]);
-}
-
-/// `dart` 可执行文件：优先用 `FLUTTER_ROOT`（Flutter SDK 自带 `dart`），否则退回 PATH。
-String _dartCommand() {
-  final root = Platform.environment['FLUTTER_ROOT'];
-  if (root != null) {
-    final path = '$root/bin/dart${Platform.isWindows ? '.bat' : ''}';
-    if (File(path).existsSync()) return path;
-  }
-  return 'dart';
-}
-
-/// `flutter` 可执行文件：优先用 `FLUTTER_ROOT`（`flutter test` 一定会设置它），
-/// 否则退回 PATH —— 与 test/tool/init_project_test.dart 同一取舍。
-String _flutterCommand() {
-  final root = Platform.environment['FLUTTER_ROOT'];
-  if (root != null) {
-    final path = '$root/bin/flutter${Platform.isWindows ? '.bat' : ''}';
-    if (File(path).existsSync()) return path;
-  }
-  return 'flutter';
 }

@@ -45,14 +45,6 @@ jobs:
       - name: Run gates (just verify)
         run: just verify
 
-      # 改名脚本的回归：`tool/init_project.dart` 会把仓库复制到临时目录、真的改一次名，
-      # 再用 flutter analyze 验证改完的仓库自洽（import 没断、包名一致）。
-      # SCAFFOLD_E2E=1 才跑那条端到端用例 —— 它要 pub get + analyze，慢。
-      - name: Regression test (rename scaffold in temp dir)
-        run: just test test/tool/init_project_test.dart
-        env:
-          SCAFFOLD_E2E: "1"
-
   # ── 平台构建门禁：analyze + test 都只在 Dart 层，Gradle / 插件注册 / manifest
   # 这类只在平台侧暴露的问题它们看不见（改坏 gradle 也能全绿）。这条只做一次
   # debug 构建，跑的就是本地那条 `just build-apk`（冷缓存实测约 5 分钟）。

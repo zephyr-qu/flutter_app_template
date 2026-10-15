@@ -7,8 +7,8 @@
 // 就非零退出且**一个字节都不写**。
 //
 // 剪枝是给**派生项目**用的：本仓库是模板本身，它的 `lib/features/{article,demo}`
-// 是 AGENTS.md 与 .trellis/spec 反复引用的教学范例，删掉就没了。所以端到端验收
-// 在临时副本上做（见 test/tool/prune_examples_test.dart 的 SCAFFOLD_E2E 分支）。
+// 是 AGENTS.md 与 .trellis/spec 反复引用的教学范例，删掉就没了。所以回归测试一律
+// 在临时副本上做（见 test/tool/prune_examples_test.dart），不碰本仓库。
 //
 // 为什么 `auth` 拒绝剪枝：它不是示例而是基础设施 —— `AuthStorage` 被路由守卫消费、
 // 拦截器栈在网络层、`app.dart` 用 `AuthReevaluateListenable` 接线。删它等于重做

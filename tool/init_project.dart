@@ -51,7 +51,7 @@ int runCli(
   say('');
 
   // 给了任一取值选项（或 --yes）就不再交互提问，缺失项按默认值推导 ——
-  // 端到端回归测试就是靠这个把交互流程跑起来的。
+  // 回归测试就是靠这个把交互流程跑起来的。
   final interactive = !options.hasValues && !options.assumeYes;
   String value(String? given, String label, String fallback) {
     if (given != null) return given;
@@ -808,7 +808,7 @@ class _Session {
 
 /// 改名要跳过的目录：`.git` 与各类构建产物。
 ///
-/// 端到端回归测试复制仓库时也用它（[isBuildArtifactPath]），避免两处清单漂移。
+/// 测试在临时副本上复制仓库时也用它（[isBuildArtifactPath]），避免两处清单漂移。
 const Set<String> buildArtifactDirs = {
   '.git',
   '.dart_tool',

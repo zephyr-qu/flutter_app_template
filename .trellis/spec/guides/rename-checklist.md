@@ -57,9 +57,8 @@ dart run tool/init_project.dart --yes --name=your_app \
 ## 回归测试
 
 `test/tool/init_project_test.dart` 用临时目录里的 fixture 覆盖了「改对了什么」与
-「必改点缺失就中止且不写盘」。设 `SCAFFOLD_E2E=1` 时还会多跑一条端到端：
-把真实仓库复制到临时目录 → 改名 → `flutter pub get` → `flutter analyze`，
-用来兜住「改完名 import 全断」这类问题。
+「必改点缺失就中止且不写盘」，进程是假的 —— 真实改名后的 `pub get` + `analyze` 不在
+测试里跑。所以改完名**自己**在上面那三步里跑一遍，别只依赖测试绿灯。
 
 ## 附加配置
 
