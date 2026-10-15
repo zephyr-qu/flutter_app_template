@@ -636,3 +636,53 @@ release-checklist §6/§7 的复述改指路（门禁口径回归 cross-cutting�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: 删掉 SCAFFOLD_E2E 门控与两条端到端用例（撤销 10-14 的 AC1）
+
+**Date**: 2026-10-15
+**Task**: 删掉 SCAFFOLD_E2E 门控与两条端到端用例（撤销 10-14 的 AC1）
+**Branch**: `master`
+
+### Summary
+
+按决定删除「默认跳过、只有 CI 带 SCAFFOLD_E2E=1 才跑」这条门禁：test/tool/init_project_test.dart 与 test/tool/prune_examples_test.dart 各去掉一个「端到端（默认跳过）」组，以及只为它们存在的全部真实进程辅助（_repoRoot / _flutterCommand / _dartCommand / _copyTree / _pubGet / _pubGetAll / _grep / _e2eRunner / _gitInitAndCommit），两份测试里不再有任何真跑 pub get / analyze / codegen / verify 的路径；.github/workflows/ci.yml 去掉那个只为跑它而存在的 Regression test 步骤与 SCAFFOLD_E2E 变量；cross-cutting.md、rename-checklist.md、tool/init_project.dart（2 处）、tool/prune_examples.dart 的失效指引同步收口，rename-checklist 改为明确要求「改完名自己跑一遍 codegen → clean → verify」。净删除 402 行 / 新增 14 行。just verify 全绿，377 passed、0 skipped（删掉的两条此前一直以 ~2 skipped 出现在每次 verify 里）。
+
+### Main Changes
+
+- **这是对 10-14-scaffold-demo-pruning 的 AC1 的撤销**，不是遗漏：那个任务的 AC1 就是
+  「把仓库复制到临时副本 → 剪枝 → just verify 全绿」，当时定成端到端验收。现在删掉后，
+  改名与剪枝这两条**不可逆**操作只剩假进程覆盖（机制层 + 锚点层），端到端不再有任何证明。
+  代价已写进 guides/rename-checklist.md，要求改完名的人自己跑一遍。
+- 决定链条：盘点模板现状时把这两条列为「本机 27 个未推提交上从没真跑过」→ 问怎么处理 →
+  选「删掉这两条端到端用例」。追问时纠正了一个前提：它并非从不执行 —— CI 每次 push 都会
+  真跑（`analyze` job 带 `SCAFFOLD_E2E: "1"`），没跑过的原因只是本地领先 27 个未推提交。
+  也就是说这次删掉的是 push 时的端到端保障，不是删掉一个空壳。
+- 实施顺序上的一个坑：先删了辅助函数区（文件尾部的「端到端辅助」段），再回头才发现
+  `group('端到端（默认跳过）')` 还留在 main() 里 —— 两处是分开的，删的时候要各删一次。
+  残留扫描（grep SCAFFOLD_E2E / 端到端 / 默认跳过）是唯一能拦住这种半删的东西，
+  `just verify` 拦不住：半删状态下测试照样全绿。
+- 另一个坑：`just verify` 第一轮红在 `fmt-check`，因为删掉的代码块让 `dart format` 想
+  重排剩余行；`just fmt` 之后才轮到 analyze / test。删代码也要先过 fmt-check。
+- 未入库的既有改动 `.pi/extensions/trellis/index.ts`（+32/-1，pi CLI 路径解析）本轮仍未
+  触碰、未 stage。
+- 提交信息里有一个笔误：正文写成了 `SCAAFFOLD_E2E`（多一个 A）。按 git 纪律没有 amend。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dc22020` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
