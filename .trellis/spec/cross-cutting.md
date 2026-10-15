@@ -102,6 +102,7 @@ W1–W4 覆盖「接线断掉」与「判定退化」，`rules_test.dart` 覆盖
 | 「清理未使用依赖」的自动化 | 见「依赖声明」：只拦「声明了却没用」，反向没有门禁 | 改代码的人顺手删 |
 | 导航标签与测试的同步 | 见 [ui/routing.md](ui/routing.md)「主框架标签」 | review |
 | 「不存在的东西」的守卫（事件总线、per-ViewModel 日志、`domain/` 层…） | 没有稳定判据，硬做成门禁只会误报 | [`../../.cursor/rules/project-conventions.mdc`](../../.cursor/rules/project-conventions.mdc)「不存在的东西」清单 + review |
+| 文档类门禁（`test-doc-links` / `check-anchors` / `check-readme-tree`） | `b8b90f6`（2026-10-14）删除：4 工具 + 4 测试 + 3 recipe，−1803 行。**删除理由未入库**；更早的锚点校验曾因「误报会挡住提交」退回文件级（见 `10-10-spec-link-gate`） | 文档改动靠人工核对 |
 
 ---
 
@@ -146,12 +147,8 @@ just init --yes --name=my_next_app --application-id=com.example.my_next_app   # 
 
 ## 示例模块剪枝（`tool/prune_examples.dart`）
 
-派生新项目时用它删掉示例模块，别照着手工清单删 —— 那种清单必然会漂，漏一处就是编译不过：
-
-```bash
-dart run tool/prune_examples.dart                                  # 交互式
-dart run tool/prune_examples.dart --yes --modules=article,demo      # 非交互
-```
+派生新项目时用它删掉示例模块，别照着手工清单删 —— 那种清单必然会漂，漏一处就是编译不过。
+用法（交互式与 `--yes --modules=article,demo`）见 [docs/template-pruning.md](../../docs/template-pruning.md)。
 
 **能剪的是 `article` 与 `demo`。`auth` 拒绝剪枝**（退出码 2）：它是基础设施不是示例 ——
 `AuthStorage` 被路由守卫实时读取、拦截器栈在网络层、`app.dart` 用 `AuthReevaluateListenable`
