@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/index.md", "reason": "完成前自检清单：codegen 时机、架构边界、文档/目录树同步项"}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "核对 just verify 五步是否真的全绿、dart analyze 的调用形式与退出码口径、spec 不在扫描面内"}
+{"file": ".trellis/spec/ui/component-guidelines.md", "reason": "R5 新增的第三条边界规则必须与现有两条同形且当前可过；主题层职责未被破"}
+{"file": ".trellis/spec/ui/quality-guidelines.md", "reason": "改动了 login_page / storage_demo_page，按 UI 层禁止模式与必须遵守项核对"}
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "R2/R3 是注释改动：核对「为什么」没丢、也没把解释从 spec 搬进代码"}

@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/ui/component-guidelines.md", "reason": "主题层三文件职责与「app_theme.dart 内部不写裸数字」是 R1 的判据；R5 要在这份文件的「主题层」小节加第三条边界规则"}
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "R2/R3 改的是 doc 注释：这份规定代码注释写什么、spec 引用怎么写、什么不该从 spec 抄进代码"}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "门禁链（just verify 的五步）、comment_block_too_long 的判据，以及 spec 文件不在 app_lints 扫描面内这一事实"}
+{"file": ".trellis/spec/type-safety.md", "reason": "Result / Failure 的既定公开形状：R2 只改 doc 不改 API，需要知道哪些成员是刻意留宽的"}
+{"file": ".trellis/spec/data/network-guidelines.md", "reason": "R3 要改这份文件第 17 行的同源表述，需同批保持一致；TokenStore / createDio 的边界描述也在这里"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "本次立项动机就是去重：这份讲新建代码前先找已有的，用于判断「该抽还是该留」"}

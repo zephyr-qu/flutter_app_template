@@ -588,3 +588,51 @@ release-checklist §6/§7 的复述改指路（门禁口径回归 cross-cutting�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: 收敛脚手架重复：输入框装饰下沉主题 + 死面 API 与失效注释清理
+
+**Date**: 2026-10-15
+**Task**: 收敛脚手架重复：输入框装饰下沉主题 + 死面 API 与失效注释清理
+**Branch**: `master`
+
+### Summary
+
+三处逐字重复的输入框装饰下沉到 app_theme.dart 的 inputDecorationTheme（filled + fillColor 取自 applyBrandOverrides 后的 colorScheme、圆角走 AppThemeExtension.base.radiusSm），两个页面的 InputDecoration 只留 labelText/hintText/prefixIcon；新增两条测试证明「装饰真的走了主题」——test 断言主题字段，testWidgets 读 InputDecorator 合过 applyDefaults 的 decoration，复核时用 mutation（filled 改 false / fillColor 改 surface）确认两条都会变红，不是假保护。result.dart 去掉 getOrThrow「只用于测试」的失实表述（API 一个不删），dio_factory/token_store/file_storage/network-guidelines 清掉「各分支 / Riverpod 分支」与指向已归档 design.md 的指引但保留「为什么」。spec 侧：component-guidelines 主题层补第三条边界规则（页面不得写 OutlineInputBorder/fillColor）+ 可过的 grep 命令，comment-guidelines 补「代码注释不写仓库状态快照」一条。just verify 全绿（377 passed / 2 skipped）。
+
+### Main Changes
+
+- 立项与实现的分离：本轮沿用「prd + design + implement 三件套 → 子代理实施 → 子代理独立复核」。
+  复核阶段最有价值的一步是**对新增测试做 mutation**：把主题里的 `filled: true` 改 `false`、
+  `fillColor` 改成另一个角色，确认两条新测试都会变红 —— 只看「测试通过」无法区分真保护与
+  只读 `ThemeData` 的假保护。
+- 一处实现者主动报告、经复核确认合理的偏离：`storage_demo_page.dart` 里
+  `final appTheme = AppThemeExtension.of(context);` 在装饰下沉后变成未使用局部变量，随之删除。
+  复核确认它只被被删的那个装饰使用（同文件另一处 `appTheme` 属于 `_Section.build`）。
+- 收尾时按 comment-guidelines 的「快照式内容要单独标注」把实现者写的
+  「本仓库暂无调用点」也去掉了：这份 `result.dart` 是会被派生项目整份复制的模板样板，
+  那里的「本仓库」立刻不同。规则已补进 `guides/comment-guidelines.md` 的「哪些内容不放代码里」。
+- 同源表述的复核口径：`dio_factory.dart` 的 doc 与 `network-guidelines.md` 表格第 17 行
+  必须同一 diff 改完（R3 的原话是「否则失效语境只是换了地方」），但**不要求逐字相同** ——
+  表格单元格与 doc 的排版不同，逐字对齐反而会把 spec 抄进代码。
+- 未处理项（有意）：`network-guidelines.md` 顶部 scaffold note 的「signals / DI」保留 ——
+  signals 是本仓库真实使用的状态管理，属真陈述，不在 R3 枚举的 5 处内。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `37004cc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
