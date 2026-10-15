@@ -686,3 +686,38 @@ release-checklist §6/§7 的复述改指路（门禁口径回归 cross-cutting�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: 文档层精简：经审计后收窄为 12 行
+
+**Date**: 2026-10-15
+**Task**: 文档层精简：经审计后收窄为 12 行
+**Branch**: `master`
+
+### Summary
+
+开工前的四处精简判断里三处不成立：spec/index 的「开工前必读/完成前自检/索引表」三块是 10-10-spec-single-entry 的设计、UI 三份 spec 的 ArticleListPage 样例是变体且残余重合已被 10-11-doc-redundancy 决定保留、文档类门禁是 b8b90f6 昨晚有意删除（cross-cutting「有意不设的项」已登记）。实测 24 份文档 3816 行里散文只占 12.8%，没有可挤的水词。收窄为 12 行：删 directory-structure「与旧结构的区别」（历史改名映射，同文件 :55/:106 已覆盖现行约束）、index 自检项的七条规则枚举改指针；另有三处跨文件去重（README 环境节、AGENTS.md 重排、cross-cutting 剪枝命令块）。AGENTS.md 的 TRELLIS 块还原为上游模板逐字内容，项目事实全部移到块外，以免 trellis update 覆盖。新增两条 spec 知识：cross-cutting「有意不设的项」补文档类门禁一行、index.md 顶部注明三块分工不是重复。check 代理独立复核发现被删表有 3 行事实全仓唯一（已接受并在 prd 如实记录）、index.md:66 仍写死「七条规则」且同类计数 8 处无门禁覆盖（未动，建议另立任务）。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9cb50ff` | (see git log) |
+| `a2f866f` | (see git log) |
+| `531f27f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

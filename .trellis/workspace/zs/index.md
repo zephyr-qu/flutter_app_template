@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
+- **Total Sessions**: 15
 - **Last Active**: 2026-10-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~688 | Active |
+| `journal-1.md` | ~723 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-10-15 | 文档层精简：经审计后收窄为 12 行 | `9cb50ff`, `a2f866f`, `531f27f` | `master` |
 | 14 | 2026-10-15 | 删掉 SCAFFOLD_E2E 门控与两条端到端用例（撤销 10-14 的 AC1） | `dc22020` | `master` |
 | 13 | 2026-10-15 | 收敛脚手架重复：输入框装饰下沉主题 + 死面 API 与失效注释清理 | `37004cc` | `master` |
 | 12 | 2026-10-14 | 脚手架 demo 剪枝自动化：tool/prune_examples.dart | `1351c1e`, `2c3c097` | `master` |
