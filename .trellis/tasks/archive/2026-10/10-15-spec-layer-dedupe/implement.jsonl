@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/guides/comment-guidelines.md", "reason": "spec 该怎么写的判据来源：:114「提到门禁时只写见 justfile 的 verify，不写数量与项名……指针不会过期，枚举会」是 R2 改法的依据；改完还要按它的 spec 引用写法（章节关键词而非编号）自检"}
+{"file": ".trellis/spec/cross-cutting.md", "reason": "七条规则的唯一权威位置「架构边界与代码形态」。R2 把 index.md 的内联枚举换成指针前，必须先确认这一节确实完整列了规则与判据，否则指针会指向空处"}
