@@ -699,7 +699,7 @@ await GetIt.I.reset();
     'ArticleDao',
     'ArticleModule',
     'DbArticles',
-    // 路径形态也要有：AGENTS.md:117 与 README 是拿 `lib/features/article/` 指路的，
+    // 路径形态也要有：AGENTS.md 与 README 是拿 `lib/features/article/` 指路的，
     // 只用类名当指纹的话，这些「按路径引用示例」的位置永远不会出现在清单里。
     'features/article',
   ],

@@ -19,6 +19,9 @@
 - [ ] 复核 `.env.example` 里**没有密钥**——它会入库、并作为 asset 打进产物，拿到包的人都能提取出来
 - [ ] 确认没有 `git add -f` 把 `.env` / `.env.*` 带进仓库：它们已列入 `.gitignore`，
       且在 dotenv 口径下不会被加载，真实地址与密钥都只该留在本地或 CI secret 里。
+- [ ] 换后端地址时确认三个平台默认值：Android 9+ 默认阻断明文 `http://`（本项目**没开**
+      `usesCleartextTraffic`），iOS 的 ATS 同样默认阻断；Android 模拟器里的 `localhost` 指模拟器自身，
+      连本机后端要用 `10.0.2.2`。要让明文通过得在目标应用里自己配（属发版配置，脚手架不预置）。
 
 ```bash
 flutter build apk       # 配置来自入库的 .env.example，不需要额外传参
