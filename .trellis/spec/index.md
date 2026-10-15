@@ -2,6 +2,9 @@
 
 > 总入口：本文件只列入口与共享约定，每层细则见各自目录下的 `.md`。
 >
+> 三块分工不同：**开工前必读**按「要动什么」查（任务优先），**索引表**按主题浏览（发现有什么），
+> **完成前自检**是收工判据 —— 三者不是重复内容，别合并。
+>
 > 工程结构（**canonical** 布局）见 [directory-structure.md](./directory-structure.md)；
 > 跨层与门禁见 [cross-cutting.md](./cross-cutting.md)。
 
@@ -24,7 +27,7 @@
 
 - [ ] `just verify` 全绿（清单与先后顺序见根 `justfile`）
 - [ ] 涉及 `@freezed` / `@RoutePage` / `@injectable` / Drift 表，或增删代码文件 → 已跑 `just codegen`
-- [ ] 架构边界没破（`core/` 不引上层、跨 feature 只共享 `data/`、`features/*/logic/` 不碰 `material`/`widgets` 与本 feature 的 `page/`、`logic/` 不用 `getIt`、取 ViewModel 的页面给足可选注入点三件套、不用 `AsyncState.map`、注释块 ≤10 行）—— 判据与放行条件见 [cross-cutting.md](./cross-cutting.md)「架构边界与代码形态」
+- [ ] 架构边界没破（`packages/app_lints` 的插件规则全过；违规由 `just verify` 拦下）—— 规则清单与判据见 [cross-cutting.md](./cross-cutting.md)「架构边界与代码形态」
 - [ ] 新增 `FailureCode` 已补 `lib/core/ui/failure_message.dart` 的文案，`test/core/ui/failure_message_test.dart` 能覆盖到
 - [ ] 增删 `lib/` 文件 → 同步 `README.md` 与 [directory-structure.md](./directory-structure.md) 的目录树（**靠人**，没有门禁）
 - [ ] 改动触到 spec 描述的约定 → 同步对应的 `.md`

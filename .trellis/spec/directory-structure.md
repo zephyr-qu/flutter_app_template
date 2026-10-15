@@ -219,14 +219,3 @@ Page → ViewModel → Repository (接口) → Service (实现) → Api (Retrofi
 | 共享组件 | 描述性 PascalCase | `EmptyWidget`, `ErrorText` |
 
 Service 与 Repository 接口的绑定用 `@LazySingleton(as: AuthRepository)`；简单 feature 可以不写接口，直接调 Service（见上文「Repository 接口按需使用」）。
-
----
-
-## 与旧结构的区别
-
-| 旧（Clean Architecture） | 新（FSD 简化版） |
-| --- | --- |
-| `application/` | `logic/` |
-| `domain/` + `data/` | `data/`（合并） |
-| `page/` | 不变 |
-| 必须写 repository 接口 | 按需，简单 feature 可直接用 Service |
