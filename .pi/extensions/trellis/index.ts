@@ -598,7 +598,23 @@ function toolBrief(t: ToolTrace): string {
 // ── Pi CLI path resolution ────────────────────────────────────────────
 const PI_CLI_SEGMENTS = [
   ["node_modules", "@earendil-works", "pi-coding-agent", "dist", "cli.js"],
+  [
+    "node_modules",
+    "@earendil-works",
+    "pi-coding-agent",
+    "dist",
+    "bundle",
+    "cli.js",
+  ],
   ["node_modules", "@mariozechner", "pi-coding-agent", "dist", "cli.js"],
+  [
+    "node_modules",
+    "@mariozechner",
+    "pi-coding-agent",
+    "dist",
+    "bundle",
+    "cli.js",
+  ],
 ];
 
 function resolvePiCli(): { command: string; args: string[] } {
@@ -610,7 +626,7 @@ function resolvePiCli(): { command: string; args: string[] } {
   }
   const candidates: string[] = [];
   for (const arg of process.argv)
-    if (/pi-coding-agent[\\/]dist[\\/]cli\.js$/i.test(arg))
+    if (/pi-coding-agent[\\/]dist[\\/](?:bundle[\\/])?cli\.js$/i.test(arg))
       candidates.push(resolve(arg));
   const prefix =
     str(process.env.npm_config_prefix) ?? str(process.env.NPM_CONFIG_PREFIX);
@@ -624,6 +640,21 @@ function resolvePiCli(): { command: string; args: string[] } {
     addBase(join(prefix, "lib"));
   }
   if (appData) addBase(join(appData, "npm"));
+  // 受管安装（pi-launcher.js 注入 PI_MANAGED_INSTALL_ROOT）：真实 CLI 在
+  // <root>/releases/<version>/node_modules/... —— 版本目录名只在 current-version
+  // 文件里，读出来拼进候选，pi 升级后不必改这里。
+  const installRoot = str(process.env.PI_MANAGED_INSTALL_ROOT);
+  if (installRoot) {
+    addBase(installRoot);
+    try {
+      const version = readFileSync(
+        join(installRoot, "current-version"),
+        "utf-8",
+      ).trim();
+      if (version && /^[0-9A-Za-z._+-]+$/.test(version))
+        addBase(join(installRoot, "releases", version));
+    } catch {}
+  }
   for (const entry of pathVal.split(delimiter)) {
     const e = entry.trim();
     if (!e) continue;
