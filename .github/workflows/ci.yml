@@ -88,7 +88,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.7.0
     with:
       # 只扫根工程与独立插件包的 lockfile。默认的 `-r ./` 会把 build/、
       # .dart_tool/ 这些产物一并扫进去，又慢又吵。
