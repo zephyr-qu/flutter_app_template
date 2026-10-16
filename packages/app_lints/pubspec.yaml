@@ -14,5 +14,5 @@ dependencies:
   analyzer: ^14.4.0
 
 dev_dependencies:
-  analyzer_testing: ^0.4.2
+  analyzer_testing: ^0.4.3
   test_reflective_loader: ^0.4.0
