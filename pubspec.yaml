@@ -67,7 +67,7 @@ dev_dependencies:
   injectable_generator: ^3.1.0 # 生成 ServiceLocator 注册代码
 
   # ── Code Gen：API ──
-  retrofit_generator: ^10.2.1 # 生成 Retrofit 客户端实现
+  retrofit_generator: ^10.3.2 # 生成 Retrofit 客户端实现
 
   # ── Code Gen：数据库 ──
   drift_dev: ^2.35.1 # 生成 Drift DAO 代码
