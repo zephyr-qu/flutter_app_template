@@ -20,7 +20,7 @@
 
 - [ ] `just verify` 全绿（清单与先后顺序见根 `justfile`）
 - [ ] 涉及注解（`@freezed` / `@RoutePage` / `@riverpod` / Drift 表）或增删文件 → 已跑 `just codegen`
-- [ ] 架构边界没破（`core/` 不引上层、跨 feature 只共享 `data/`、`logic/` 不碰 material）
+- [ ] 架构边界没破（`core/` 不引上层、跨 feature 只共享 `data/` 或对方 `api.dart` 出口、`logic/` 不碰 material、`api.dart` 不漏 `page/`）
 - [ ] 新增 `FailureCode` 已补 `localizedMessage()` 的文案，`test/core/ui/failure_message_test.dart` 能覆盖到
 - [ ] 增删了 `lib/` 文件 → 同步了 [README](../../README.md) 与 [directory-structure.md](./directory-structure.md) 的目录树（**无门禁核对**，靠人）
 - [ ] 改动触到 spec 描述的约定 → 同步更新对应 `.md`

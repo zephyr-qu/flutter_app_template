@@ -42,14 +42,16 @@ class CoreImportsRule extends _ImportRule {
   }
 }
 
-/// 规则 2：跨 feature 只共享 `data/` 层。
+/// 规则 2：跨 feature 只共享 `data/` 层，或对方的显式出口 `{feature}/api.dart`。
 ///
-/// `page/` / `logic/` 是 feature 内部实现，其他 feature 不得引用。
+/// `page/` / `logic/` 是 feature 内部实现，其他 feature 不得直接引用。要让别的
+/// feature 用上自己 logic 层的能力，就在 feature 根上开一个 `api.dart`，里面
+/// 只 re-export 对外的只读 provider 与模型——这是**声明过的**依赖面，可审查。
 class CrossFeatureImportsRule extends _ImportRule {
   static const LintCode code = LintCode(
     'cross_feature_only_data',
-    '不能引用 {0} —— 跨 feature 只共享 data 层（page / logic 属于 feature 内部，'
-        '改成引 core 的共享能力或对方 data 层）',
+    '不能引用 {0} —— 跨 feature 只共享 data 层或对方的 api.dart 出口'
+        '（page / logic 属于 feature 内部，要对外就在对方 api.dart 里显式导出）',
     severity: DiagnosticSeverity.WARNING,
   );
 
@@ -57,7 +59,8 @@ class CrossFeatureImportsRule extends _ImportRule {
     : super(
         name: 'cross_feature_only_data',
         description:
-            'Flags cross-feature references to layers other than data/.',
+            'Flags cross-feature references to layers other than data/ '
+            'and the feature api.dart facade.',
       );
 
   @override
@@ -78,8 +81,12 @@ class CrossFeatureImportsRule extends _ImportRule {
     final to = featureOf(target);
     if (to == null || to == from) return null;
 
-    // 只有 `data/` 层可跨 feature 共享；层目录缺失（feature 根上的文件）同样
-    // 不是 data，按违规处理，否则引对方的聚合 barrel 会静默放行
+    // 显式出口：`features/<name>/api.dart` 是跨 feature 依赖的合法形态
+    if (isFeatureFacade(target)) return null;
+
+    // 只有 `data/` 层可跨 feature 共享；层目录缺失（feature 根上的、且不是
+    // api.dart 的文件）同样不是 data，按违规处理，否则引对方随手放的 barrel
+    // 会静默放行
     final layer = layerOf(target);
     if (layer == 'data') return null;
 
@@ -161,6 +168,44 @@ class RefReadInBuildRule extends AnalysisRule {
     RuleContext context,
   ) {
     registry.addMethodInvocation(this, _RefReadVisitor(this, context));
+  }
+}
+
+/// 规则 5：`{feature}/api.dart` 不得把本 feature 的 `page/` 漏出去。
+///
+/// 出口文件只放对外的 provider 与模型；`page/` 一旦被 export，别的 feature
+/// 就能拿到页面与 Widget 类型，等于把出口开成后门。跨 feature 的 `page/` 由
+/// 规则 2 拦，这里只管同一个 feature 内的泄漏，两边不重复报。
+class ApiFacadeImportsPageRule extends _ImportRule {
+  static const LintCode code = LintCode(
+    'api_facade_no_page',
+    'api.dart 不能 import/export {0} —— 对外出口只放对外的 provider 与模型，'
+        'page/ 属于 feature 内部',
+    severity: DiagnosticSeverity.WARNING,
+  );
+
+  ApiFacadeImportsPageRule()
+    : super(
+        name: 'api_facade_no_page',
+        description: 'Flags feature api.dart referencing its own page/ layer.',
+      );
+
+  @override
+  LintCode get diagnosticCode => code;
+
+  @override
+  List<Object>? check({
+    required String fromPath,
+    required String? target,
+    required String rawUri,
+  }) {
+    if (target == null) return null;
+    if (!isFeatureFacade(fromPath)) return null;
+
+    final from = featureOf(fromPath);
+    if (from == null || featureOf(target) != from) return null;
+    if (layerOf(target) != 'page') return null;
+    return ['features/$from/page/'];
   }
 }
 

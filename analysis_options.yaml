@@ -37,7 +37,7 @@ linter:
     avoid_slow_async_io: false
 
 # ── 架构边界与形态约定（app_lints 插件）──
-# 依赖方向、跨 feature 只共享 data、logic 层纯度、build 里禁 ref.read 取值，
+# 依赖方向、跨 feature 只共享 data / 对方 api.dart 出口、logic 层纯度、build 里禁 ref.read 取值，
 # 由 packages/app_lints/ 承担，声明在本文件末尾 `plugins:`。判据与豁免细节
 # 见 cross-cutting.md「架构边界与形态约定」。
 
@@ -54,8 +54,9 @@ plugins:
     # （auto_route 的固有设计，不是 Riverpod 误用）。这里关掉这一条，其余规则保持开启。
     diagnostics:
       unsupported_provider_value: false
-  # 本仓库自己的架构边界规则（core 禁上层 / 跨 feature 只共享 data / logic 禁 material /
-  # build 禁 ref.read 取值）。实现见 packages/app_lints/，全部注册为 warning 层（默认开）。
+  # 本仓库自己的架构边界规则（core 禁上层 / 跨 feature 只共享 data 或对方 api.dart 出口 /
+  # logic 禁 material / api.dart 不漏 page / build 禁 ref.read 取值）。实现见 packages/app_lints/，
+  # 全部注册为 warning 层（默认开）。
   app_lints:
     path: packages/app_lints
 

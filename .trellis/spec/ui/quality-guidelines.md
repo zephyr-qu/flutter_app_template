@@ -16,7 +16,7 @@
 6. **用 `setState()` 管异步 / API 数据** — 数据加载用 `@riverpod` 的 `AsyncNotifier`（`Future<T> build()`），渲染用 `AsyncView`；`setState` 只留给动画 / 滚动这类纯 UI 状态。
 7. **用 `withOpacity()`** — 用 `Color.withValues(alpha: X)`（Dart 3+）。
 8. **`ref.read` / `ref.watch` 在 `logic/` 里绕过 provider 拿依赖** — logic 层的依赖要么走 `ref`（`ref.watch` / `ref.read` provider），要么走构造器；不得手动 new 服务，也不得碰 UI（`features/*/logic/` 禁 material / widgets import 与本 feature `page/` 层引用，由 `packages/app_lints` 插件的 `no_material_import_in_logic` 拦）。
-9. **跨 feature import / export `page/` 或 `logic/`** — 只允许引用 `core/` 与别的 feature 的 `data/`。门禁：`packages/app_lints` 插件的 `cross_feature_only_data`；它同时禁止 `core/` import / export `features/` 或 `app/`（`no_upper_import_in_core`）。
+9. **跨 feature import / export `page/` 或 `logic/`** — 只允许引用 `core/`、别的 feature 的 `data/`，以及对方根上的显式出口 `features/{feature}/api.dart`（出口只放对外的只读 provider 与模型，不放 Notifier 类）。门禁：`packages/app_lints` 插件的 `cross_feature_only_data`（跨 feature 目标）与 `api_facade_no_page`（出口漏出 `page/`）；`core/` import / export `features/` 或 `app/` 由 `no_upper_import_in_core` 拦。
 10. **凭据放进 URL query** — 密码、令牌这类敏感值只能走**请求体**。本项目无认证；接入凭证时按此执行。
 11. **页面自己维护 loading / request token** — 首屏加载就是 provider 的 `build()`，刷新与重试退回 `ref.refresh` / `ref.invalidate`。
 12. **页面加 `final Xxx? viewModel;` 构造注入点** — 注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段。

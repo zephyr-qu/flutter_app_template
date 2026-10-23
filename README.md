@@ -74,7 +74,7 @@ lib/
 └── features/     # home、profile、sample（金标准示例）
 ```
 
-feature 内三层 `page/` → `logic/` → `data/`；`core/` 不得引用 `features/` / `app/`，跨 feature 只共享 `data/` 与 `core/` 暴露的 provider。完整树与职责见 [directory-structure.md](.trellis/spec/directory-structure.md)。
+feature 内三层 `page/` → `logic/` → `data/`；`core/` 不得引用 `features/` / `app/`，跨 feature 只共享 `data/`、对方根上的 `api.dart` 出口与 `core/` 暴露的 provider。完整树与职责见 [directory-structure.md](.trellis/spec/directory-structure.md)。
 
 ## 其它
 

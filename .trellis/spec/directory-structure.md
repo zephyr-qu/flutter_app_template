@@ -31,6 +31,7 @@ lib/
 │
 └── features/                  # 业务功能（主导航，每个自包含）
     └── {feature}/
+        ├── api.dart           # 对外出口（可选）：只 re-export 对外的 provider 与模型
         ├── logic/             # Notifier（状态 + 业务逻辑）
         │   └── {feature}_notifier.dart
         ├── data/              # 数据层（各文件职责见下方「数据层的文件角色」）
@@ -44,7 +45,7 @@ lib/
             └── {feature}_list_page.dart
 
 #   现有 feature：home（首页 + 主框架）、profile（个人中心）、
-#   sample（金标准示例 —— data 三形态 / logic / page 的照抄对象）
+#   sample（金标准示例 —— data 三形态 / logic / page / api.dart 出口的照抄对象）
 ```
 
 > 快照（2026-10）：树里的「现有 feature」是当时的状态，`ls lib/features/` 可查当前值；增删 feature 时同步本节。
@@ -69,6 +70,8 @@ lib/
 | Logic | `logic/` | Notifier + 状态（`@riverpod`） | `sample_list_notifier.dart` |
 | Data | `data/` | 网络、本地、模型 | `sample_api.dart`, `sample_dao.dart`, `sample_service.dart`, `models/` |
 
+`{feature}/api.dart` 是**可选**的第四种文件，放在 feature 根上：只有它允许被别的 feature 引用，里面只 re-export 对外的**只读 provider 与模型**（不放 Notifier 类、不放 `page/`）。想让别的 feature 用上本 feature 的 `logic/`，就在这里显式开出口 —— 不要为了「跨 feature 可引用」把业务计算挪进 `data/`。判据见 [cross-cutting.md](./cross-cutting.md)「架构边界与形态约定」。
+
 ### 3. 共享层（core/）严格克制
 
 - 只放真正跨 feature 复用的基础设施（Dio 客户端、主题常量、本地存储）；**不要提前抽取不稳定的基类** —— 宁可重复写两次；一个文件被 2+ 个 feature 使用时才考虑提到 `core/`
@@ -91,9 +94,10 @@ lib/
 - 有真实的多实现需求（mock / 线上切换）才写 repository 抽象
 - 简单的 feature 直接调用 Service，不需要额外的接口层
 
-### 5. Feature 间通信通过 core/ 的 provider
+### 5. Feature 间通信：core 的 provider，或对方的 `api.dart` 出口
 
-✅ **core/ 层暴露的 provider** 是 feature 间通信的唯一方式。
+✅ **core/ 层暴露的 provider** 是 feature 间通信的默认方式。
+✅ 需要读别的 feature 自己的状态时，走对方根上的 `api.dart` 出口（只读 provider + 模型，见 §2 末）；**不要**为此把计算挪进 `data/`。
 ❌ 不使用事件总线。
 ❌ 不依赖路由重建。
 

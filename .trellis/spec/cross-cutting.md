@@ -6,14 +6,15 @@
 
 ## 架构边界与形态约定（`packages/app_lints/` 插件）
 
-四条规则由**分析插件**实现（`analysis_server_plugin`），不是脚本：
+五条规则由**分析插件**实现（`analysis_server_plugin`），不是脚本：
 
 | 规则 | 效果 |
 |------|------|
 | `no_upper_import_in_core` | `core/**` 不能 import/export `features/**` 或 `app/**` —— 依赖方向只能是 features → core |
-| `cross_feature_only_data` | 不能 import/export 其他 feature 的 `page/` / `logic/` —— 跨 feature 只共享 `data/` |
+| `cross_feature_only_data` | 不能 import/export 其他 feature 的 `page/` / `logic/` —— 跨 feature 只共享 `data/` 与对方的显式出口 `api.dart` |
 | `no_material_import_in_logic` | `features/*/logic/` 不得 import/export `package:flutter/material.dart` / `widgets.dart`，也不得 import 本 feature 的 `page/` 层文件 |
 | `avoid_ref_read_in_build` | `build` 里不得用 `ref.read` 取 provider 值；`ref.read(xxx.notifier)` 不在管辖内 |
+| `api_facade_no_page` | `features/*/api.dart` 不得 import/export 本 feature 的 `page/` —— 出口只放对外的 provider 与模型 |
 
 | 想看什么 | 文件 |
 |---|---|
@@ -30,7 +31,7 @@ plugins:
     path: packages/app_lints
 ```
 
-四条都用 `registerWarningRule` 注册 → **默认开**，不需要在 `diagnostics:` 里逐条打开（只有 `registerLintRule` 注册的才默认关）。`riverpod_lint` 走同一套机制（`plugins:` + warning 层默认开），见 `pubspec.yaml` 与 `analysis_options.yaml`。
+五条都用 `registerWarningRule` 注册 → **默认开**，不需要在 `diagnostics:` 里逐条打开（只有 `registerLintRule` 注册的才默认关）。`riverpod_lint` 走同一套机制（`plugins:` + warning 层默认开），见 `pubspec.yaml` 与 `analysis_options.yaml`。
 
 ### 包的摆法
 
@@ -51,6 +52,7 @@ plugins:
 - 全部规则先过 `context.isInLibDir`——只有 `lib/` 下的文件参与判断。
 - **生成物豁免**：每条规则自带 `isGeneratedPath` 判断（`.g.dart` / `.freezed.dart` / `.gr.dart` / `.config.dart` / `.gen.dart` / `/gen/` / `app_localizations`）。口径与 `.gitignore` 一致，改动要一起改。
 - 放行的情况：feature 引用自己、组合根（`lib/app/`）引用任何 feature（FSD 的 app 层负责装配）、生成文件。`core/` 引用 `lib/core/` 内部也放行。
+- `cross_feature_only_data` 认两种跨 feature 目标：对方的 `data/` 层与对方的**显式出口** `features/{feature}/api.dart`。出口文件是「声明过的依赖面」——只放对外的**只读 provider 与模型**，不放 Notifier 类本身（放类就等于拿到写权限，回到无边界）。`api.dart` 若把本 feature 的 `page/` 漏出去，由 `api_facade_no_page` 单独拦；`page/` 出口本身没有豁免。
 - `no_material_import_in_logic` 拦三样：`package:flutter/material.dart`、`package:flutter/widgets.dart`、本 feature 的 `page/` 层文件。`foundation` 不管；跨 feature 的 `page/` 由 `cross_feature_only_data` 拦；管辖范围只有 `features/*/logic/`。
 - `avoid_ref_read_in_build` 的判据是三个 AST 事实：「最近的 `MethodDeclaration` 祖先叫 `build`」（方法体里的闭包也算）、「目标是 `ref` 或 `.ref` 属性（`this.ref` 同样拦）」与「实参不是 `.notifier`」。豁免 `.notifier`。
 
@@ -61,9 +63,17 @@ plugins:
 import 'package:my_app/features/sample/page/sample_list_page.dart';
 import 'package:my_app/features/sample/logic/sample_list_notifier.dart';
 
-// ✅ 允许：引用 core，或另一个 feature 的 data 层
+// ✅ 允许：引用 core、另一个 feature 的 data 层，或对方的显式出口 api.dart
 import 'package:my_app/features/sample/data/sample_repository.dart';
+import 'package:my_app/features/sample/api.dart'; // 只 re-export 对外的 provider / 模型
 import 'package:my_app/app/routing/router.dart';
+```
+
+```dart
+// features/sample/api.dart —— 唯一对外出口：只放 provider 与模型，不放 Notifier 类
+export 'data/models/sample_item.dart';
+export 'logic/sample_list_notifier.dart' show sampleListProvider;
+
 ```
 
 ```dart

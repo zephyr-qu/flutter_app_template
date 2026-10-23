@@ -2,7 +2,7 @@ import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
 import 'package:app_lints/src/rules.dart';
 import 'package:test_reflective_loader/test_reflective_loader.dart';
 
-/// `app_lints` 四条规则的测试。
+/// `app_lints` 五条规则的测试。
 ///
 /// 用官方 `analyzer_testing` 的 `AnalysisRuleTest`：`testFileName` 决定被测文件落在
 /// 包内哪个路径（规则的判据依赖路径，如 `lib/core/`），`newFile` 造被引用的文件，
@@ -16,6 +16,7 @@ void main() {
     defineReflectiveTests(CoreImportsRuleTest);
     defineReflectiveTests(CrossFeatureImportsRuleTest);
     defineReflectiveTests(LogicImportsMaterialRuleTest);
+    defineReflectiveTests(ApiFacadeImportsPageRuleTest);
     defineReflectiveTests(RefReadInBuildRuleTest);
   });
 }
@@ -76,7 +77,7 @@ class CoreImportsRuleTest extends AnalysisRuleTest {
   }
 }
 
-/// 规则 2：跨 feature 只共享 `data/`。
+/// 规则 2：跨 feature 只共享 `data/` 或对方的显式出口 `api.dart`。
 @reflectiveTest
 class CrossFeatureImportsRuleTest extends AnalysisRuleTest {
   @override
@@ -131,6 +132,7 @@ class CrossFeatureImportsRuleTest extends AnalysisRuleTest {
     );
   }
 
+  /// 出口豁免只认 `features/<name>/api.dart`：feature 根上的其他文件照旧违规。
   void test_other_feature_root_file() async {
     newFile('$testPackageLibPath/features/b/b.dart', 'void zz() {}\n');
     final source =
@@ -138,6 +140,24 @@ class CrossFeatureImportsRuleTest extends AnalysisRuleTest {
         'void use() => zz();\n';
 
     await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  void test_other_feature_facade_ok() async {
+    newFile('$testPackageLibPath/features/b/api.dart', 'void zz() {}\n');
+
+    await assertNoDiagnostics(
+      "import '../../b/api.dart';\n"
+      'void use() => zz();\n',
+    );
+  }
+
+  void test_other_feature_data_api_file_ok() async {
+    newFile('$testPackageLibPath/features/b/data/b_api.dart', 'void zz() {}\n');
+
+    await assertNoDiagnostics(
+      "import '../../b/data/b_api.dart';\n"
+      'void use() => zz();\n',
+    );
   }
 }
 
@@ -312,5 +332,37 @@ class ZzWidget {
 ''';
 
     await assertNoDiagnostics(source);
+  }
+}
+
+/// 规则 5：`{feature}/api.dart` 不得把本 feature 的 `page/` 漏出去。
+@reflectiveTest
+class ApiFacadeImportsPageRuleTest extends AnalysisRuleTest {
+  @override
+  String get testFileName => 'features/a/api.dart';
+
+  @override
+  void setUp() {
+    rule = ApiFacadeImportsPageRule();
+    super.setUp();
+  }
+
+  void test_facade_exports_own_page() async {
+    newFile('$testPackageLibPath/features/a/page/zz.dart', 'void zz() {}\n');
+    final source = "export './page/zz.dart';\n";
+
+    await assertDiagnostics(source, [lint(0, source.indexOf(';') + 1)]);
+  }
+
+  void test_facade_exports_own_logic_ok() async {
+    newFile('$testPackageLibPath/features/a/logic/zz.dart', 'void zz() {}\n');
+
+    await assertNoDiagnostics("export './logic/zz.dart';\n");
+  }
+
+  void test_facade_exports_other_feature_data_ok() async {
+    newFile('$testPackageLibPath/features/b/data/zz.dart', 'void zz() {}\n');
+
+    await assertNoDiagnostics("export '../b/data/zz.dart';\n");
   }
 }

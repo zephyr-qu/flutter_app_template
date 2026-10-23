@@ -18,6 +18,7 @@ class AppLintsPlugin extends Plugin {
       ..registerWarningRule(CoreImportsRule())
       ..registerWarningRule(CrossFeatureImportsRule())
       ..registerWarningRule(LogicImportsMaterialRule())
+      ..registerWarningRule(ApiFacadeImportsPageRule())
       ..registerWarningRule(RefReadInBuildRule());
   }
 }

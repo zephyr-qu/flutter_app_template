@@ -27,6 +27,7 @@ just verify      # 全部门禁（清单见根 justfile，首个失败即停）
 | Repository 抽象 + provider 装配                                 | `lib/features/sample/data/sample_repository.dart`、`sample_providers.dart`          |
 | `@freezed` 模型                                               | `lib/features/sample/data/models/sample_item.dart`                                 |
 | `AsyncNotifier` + `AsyncView` 页面                            | `lib/features/sample/logic/sample_list_notifier.dart`、`page/sample_list_page.dart` |
+| 跨 feature 出口（`api.dart`：只读 provider + 模型）                | `lib/features/sample/api.dart`、`test/features/sample/api_test.dart`                |
 | 对应的测试                                                       | `test/features/sample/**`                                                          |
 
 ### 删除示例（派生新项目时）

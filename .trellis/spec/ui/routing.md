@@ -22,4 +22,4 @@
 
 ---
 
-相关：导航的状态渲染见 [state-management.md](./state-management.md)「渲染状态」；跨 feature 只共享 `data/`、`page/`/`logic/` 不互引见 [cross-cutting.md](../cross-cutting.md)「架构边界与形态约定」。
+相关：导航的状态渲染见 [state-management.md](./state-management.md)「渲染状态」；跨 feature 只共享 `data/` 与对方 `api.dart` 出口、`page/`/`logic/` 不互引见 [cross-cutting.md](../cross-cutting.md)「架构边界与形态约定」。

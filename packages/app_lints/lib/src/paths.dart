@@ -78,4 +78,13 @@ String? layerOf(String path) {
   return rest.split('/').first;
 }
 
+/// feature 的对外出口文件：`lib/features/<name>/api.dart`。
+///
+/// 只有 feature 根上的 `api.dart` 算出口；层目录里的同名文件（如
+/// `data/sample_api.dart`）不是，否则出口判据会被 data 层顺手绕开。
+bool isFeatureFacade(String path) =>
+    featureOf(path) != null &&
+    layerOf(path) == null &&
+    path.endsWith('/api.dart');
+
 String _normalize(String path) => path.replaceAll(r'\', '/');
