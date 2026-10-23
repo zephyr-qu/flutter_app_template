@@ -20,6 +20,7 @@
 10. **凭据放进 URL query** — 密码、令牌这类敏感值只能走**请求体**。本项目无认证；接入凭证时按此执行。
 11. **页面自己维护 loading / request token** — 首屏加载就是 provider 的 `build()`，刷新与重试退回 `ref.refresh` / `ref.invalidate`。
 12. **页面加 `final Xxx? viewModel;` 构造注入点** — 注入口是 `ProviderScope(overrides:)`，页面不持有可注入字段。
+13. **用 `AppBar` / `NavigationBar` 做页面头或页内二级切换** — 页面头用 `PageHead`（`core/ui/page_head.dart`）；`NavigationBar` / `NavigationRail` 只属于主框架 `main_page.dart`。`AppBar` 仅在需要折叠头或搜索 / 多选这类系统级动作时使用，并在同一处写理由注释。门禁口径：`grep -rn "appBar: AppBar\|SliverAppBar(" lib/` 期望无输出（见 [component-guidelines.md](./component-guidelines.md)「页面骨架」）
 
 ---
 
@@ -32,6 +33,7 @@
 3. **`build` 开头取 `Theme.of(context)`**：`final theme = Theme.of(context);`
 4. **所有 widget 用 `const` 构造**
 5. **读状态用 `ref.watch`** —— `ref.read` 只在方法 / 回调里取一次性值（门禁口径见本文件「禁止模式」）。
+6. **新页面骨架 = `PageBody` + `PageHead` + `SectionHead` + `ListGroup`** —— 最外层 `PageBody` 负责宽屏限宽、页面头不用 `AppBar`、区块标题不手写 `Text`、分组列表不用裸 `Container + Column`；> 50 项的列表用 `SliverListGroup`（只构建可视项）。骨架与反例见 [component-guidelines.md](./component-guidelines.md)「页面骨架」
 
 ---
 

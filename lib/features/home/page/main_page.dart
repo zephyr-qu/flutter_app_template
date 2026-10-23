@@ -1,8 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/routing/router.dart';
+import 'package:my_app/core/ui/breakpoints.dart';
 
-/// 主框架页面——窄屏（≤ 800px）底部导航栏、宽屏（> 800px）侧边导航栏。
+/// 主框架页面——窄屏（≤ `Breakpoints.expanded`）底部导航栏，宽屏（> 该阈值）
+/// 侧边导航栏。断点值不在这里写死，见 ui/component-guidelines.md「布局断点与响应式」。
 ///
 /// 标签用 [AutoTabsRouter] 管理（而非本地 `_currentIndex`），且用默认的
 /// IndexedStack 版本——两条理由见 directory-structure.md「应用层」。
@@ -35,7 +37,7 @@ class MainPage extends StatelessWidget {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth > 800) {
+            if (constraints.maxWidth > Breakpoints.expanded) {
               return Scaffold(
                 body: Row(
                   children: [

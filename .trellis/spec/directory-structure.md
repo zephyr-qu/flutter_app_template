@@ -27,7 +27,7 @@ lib/
 │   ├── logging/               #   日志封装 + 调试日志脱敏
 │   ├── providers.dart         #   基础设施 provider（prefs / 数据库 / 文件）
 │   ├── theme/                 #   色板 / ThemeData 组装 / 设计 token
-│   └── ui/                    #   共享 UI：三态组件 + Failure 文案（本地常量表）
+│   └── ui/                    #   共享 UI：页面骨架（PageBody / PageHead / SectionHead / ListGroup）+ 布局断点 + 三态组件 + Failure 文案
 │
 └── features/                  # 业务功能（主导航，每个自包含）
     └── {feature}/

@@ -242,19 +242,27 @@ class SampleListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(sampleListProvider);
 
+    // 页面骨架：PageHead 固定在顶部，内容区进 Expanded —— 见
+    // component-guidelines.md「页面骨架」
     return Scaffold(
-      appBar: AppBar(title: const Text('示例')),
-      body: AsyncView<List<SampleItem>>(
-        state: items,
-        loading: () => const LoadingIndicator(),
-        error: (error, stackTrace) => ErrorText(
-          error: error,
-          onRetry: () => ref.invalidate(sampleListProvider),
-        ),
-        data: (list) => RefreshIndicator(
-          onRefresh: () => ref.refresh(sampleListProvider.future),
-          child: /* 可滚动的列表 / 空态，见「页面侧的两个配套要求」 */,
-        ),
+      body: Column(
+        children: [
+          const PageHead(title: '示例'),
+          Expanded(
+            child: AsyncView<List<SampleItem>>(
+              state: items,
+              loading: () => const LoadingIndicator(),
+              error: (error, stackTrace) => ErrorText(
+                error: error,
+                onRetry: () => ref.invalidate(sampleListProvider),
+              ),
+              data: (list) => RefreshIndicator(
+                onRefresh: () => ref.refresh(sampleListProvider.future),
+                child: /* 可滚动的列表 / 空态，见「页面侧的两个配套要求」 */,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

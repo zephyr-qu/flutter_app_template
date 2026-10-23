@@ -5,7 +5,10 @@ import 'package:my_app/core/theme/app_theme_extension.dart';
 import 'package:my_app/core/ui/async_view.dart';
 import 'package:my_app/core/ui/empty_widget.dart';
 import 'package:my_app/core/ui/error_text.dart';
+import 'package:my_app/core/ui/list_group.dart';
 import 'package:my_app/core/ui/loading_indicator.dart';
+import 'package:my_app/core/ui/page_body.dart';
+import 'package:my_app/core/ui/page_head.dart';
 import 'package:my_app/features/sample/data/models/sample_item.dart';
 import 'package:my_app/features/sample/logic/sample_list_notifier.dart';
 
@@ -26,45 +29,61 @@ class SampleListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(sampleListProvider);
 
+    // 页面骨架：PageHead 固定在顶部，内容区进 Expanded（见
+    // ui/component-guidelines.md「页面骨架」）
     return Scaffold(
-      appBar: AppBar(title: const Text('示例'), centerTitle: false),
-      body: AsyncView<List<SampleItem>>(
-        state: items,
-        loading: () => const LoadingIndicator(),
-        error: (error, stackTrace) => ErrorText(
-          error: error,
-          onRetry: () => ref.invalidate(sampleListProvider),
-        ),
-        data: (list) {
-          // 两个分支都要能下拉刷新：显式给 AlwaysScrollableScrollPhysics，
-          // 空态也要包成可滚动的。见 ui/state-management.md「页面侧的两个配套要求」。
-          return RefreshIndicator(
-            onRefresh: () => ref.refresh(sampleListProvider.future),
-            child: list.isEmpty
-                ? const CustomScrollView(
-                    physics: AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: EmptyWidget(
-                          icon: Icons.widgets_outlined,
-                          message: '暂无示例数据',
-                        ),
-                      ),
-                    ],
-                  )
-                : ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+      body: PageBody(
+        child: Column(
+          children: [
+            const PageHead(title: '示例'),
+            Expanded(
+              child: AsyncView<List<SampleItem>>(
+                state: items,
+                loading: () => const LoadingIndicator(),
+                error: (error, stackTrace) => ErrorText(
+                  error: error,
+                  onRetry: () => ref.invalidate(sampleListProvider),
+                ),
+                data: (list) {
+                  // 两个分支都要能下拉刷新：显式给 AlwaysScrollableScrollPhysics，
+                  // 空态也要包成可滚动的。见 ui/state-management.md「页面侧的两个配套要求」。
+                  return RefreshIndicator(
+                    onRefresh: () => ref.refresh(sampleListProvider.future),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: list.isEmpty
+                          ? const [
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: EmptyWidget(
+                                  icon: Icons.widgets_outlined,
+                                  message: '暂无示例数据',
+                                ),
+                              ),
+                            ]
+                          : [
+                              SliverPadding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                // 大列表走 sliver 版：只构建可视项，不做首帧全量建树
+                                sliver: SliverListGroup(
+                                  itemCount: list.length,
+                                  itemBuilder: (context, index) => _SampleCard(
+                                    item: list[index],
+                                    index: index,
+                                  ),
+                                ),
+                              ),
+                            ],
                     ),
-                    itemCount: list.length,
-                    itemBuilder: (context, index) =>
-                        _SampleCard(item: list[index], index: index),
-                  ),
-          );
-        },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -134,6 +134,21 @@ void main() {
         same(AppThemeExtension.base),
       );
     });
+    test('间距标尺按 dp 值命名，且单调递增（不与圆角混用）', () {
+      const scale = <double>[
+        AppThemeExtension.s4,
+        AppThemeExtension.s8,
+        AppThemeExtension.s12,
+        AppThemeExtension.s16,
+        AppThemeExtension.s20,
+        AppThemeExtension.s24,
+        AppThemeExtension.s32,
+      ];
+
+      expect(scale, [4, 8, 12, 16, 20, 24, 32]);
+      // 页面左右边距全项目统一 20dp —— 它必须在这把标尺上
+      expect(scale, contains(20));
+    });
 
     testWidgets('of(context) 从主题里取到 token', (tester) async {
       late AppThemeExtension fromContext;

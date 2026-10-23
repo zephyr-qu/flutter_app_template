@@ -9,6 +9,8 @@
 按你要动的东西选：
 
 - [ ] 写页面 / provider / Notifier，或动 `core/` 的状态适配层 → [ui/state-management.md](./ui/state-management.md)
+- [ ] 写页面 → 页面骨架（`PageBody` + `PageHead` + `SectionHead` + `ListGroup`）见 [ui/component-guidelines.md](./ui/component-guidelines.md)「页面骨架」
+- [ ] 宽屏适配 → 断点与两条必改项见 [ui/component-guidelines.md](./ui/component-guidelines.md)「布局断点与响应式」
 - [ ] 新增或改动 UI、组件、主题 → [ui/component-guidelines.md](./ui/component-guidelines.md)、[ui/quality-guidelines.md](./ui/quality-guidelines.md)
 - [ ] 动路由 / 导航（router、初始路由、底部导航标签）→ [ui/routing.md](./ui/routing.md)
 - [ ] 新建 feature、增删文件、判断某文件该放哪 → [directory-structure.md](./directory-structure.md)
@@ -22,6 +24,7 @@
 - [ ] 涉及注解（`@freezed` / `@RoutePage` / `@riverpod` / Drift 表）或增删文件 → 已跑 `just codegen`
 - [ ] 架构边界没破（`core/` 不引上层、跨 feature 只共享 `data/` 或对方 `api.dart` 出口、`logic/` 不碰 material、`api.dart` 不漏 `page/`）
 - [ ] 新增 `FailureCode` 已补 `localizedMessage()` 的文案，`test/core/ui/failure_message_test.dart` 能覆盖到
+- [ ] 页面头没用 `AppBar`：`grep -rn "appBar: AppBar\|SliverAppBar(" lib/` 无输出（新页面一律 `PageHead`，例外面见 component-guidelines.md「页面骨架」）
 - [ ] 增删了 `lib/` 文件 → 同步了 [README](../../README.md) 与 [directory-structure.md](./directory-structure.md) 的目录树（**无门禁核对**，靠人）
 - [ ] 改动触到 spec 描述的约定 → 同步更新对应 `.md`
 
@@ -38,7 +41,7 @@
 | Guide | 内容 |
 | ------- | ------------- |
 | [State Management](./ui/state-management.md) | Riverpod provider、`AsyncView`、生命周期、Consumer 与页面写法 |
-| [Component Guidelines](./ui/component-guidelines.md) | 页面结构、主题层、共享组件 |
+| [Component Guidelines](./ui/component-guidelines.md) | 页面结构、页面骨架、布局断点、主题层、共享组件 |
 | [Type Safety](./type-safety.md) | sealed `Result` / `Failure`、`@freezed` 模型、实际启用的 lint |
 | [Localization](./ui/localization.md) | 单语言约定、文案写在哪、要加 l10n 时怎么做 |
 | [Routing & Navigation](./ui/routing.md) | 路由器生命周期、初始 location、主框架标签、底部导航改动的测试同步 |
