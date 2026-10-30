@@ -32,7 +32,7 @@ dependencies:
   retrofit: ^4.9.2 # 运行时注解，API 客户端生成
 
   # ── Data & Persistence ──
-  drift: ^2.34.1 # 数据库与表在 lib/core/data/database/，运行期需要
+  drift: ^2.35.3 # 数据库与表在 lib/core/data/database/，运行期需要
   path_provider: ^2.1.0 # core/data/database 与 core/data/storage 取应用目录
   shared_preferences: ^2.5.6
 
