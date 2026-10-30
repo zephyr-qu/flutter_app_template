@@ -60,7 +60,7 @@ dev_dependencies:
     sdk: flutter
 
   # ── Code Gen：序列化 ──
-  json_serializable: ^6.9.3 # 生成 toJson/fromJson
+  json_serializable: ^6.15.2 # 生成 toJson/fromJson
   freezed: ^4.0.1 # 生成 copyWith/==/hashCode
 
   # ── Code Gen：DI ──
