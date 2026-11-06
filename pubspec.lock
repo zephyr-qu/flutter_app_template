@@ -865,10 +865,10 @@ packages:
     dependency: "direct dev"
     description:
       name: retrofit_generator
-      sha256: "9d6eddb495edd114d546d875ef165f557dca0dbcbdf6787b9255a4a52d40f15b"
+      sha256: "756d252a6089e18209e5cf515f18784b80819b1a09abcc2ba3dcdafeb0246004"
       url: "https://pub.dev"
     source: hosted
-    version: "10.2.11"
+    version: "10.3.3"
   shared_preferences:
     dependency: "direct main"
     description:
